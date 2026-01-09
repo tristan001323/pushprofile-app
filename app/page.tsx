@@ -31,8 +31,13 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="text-2xl font-bold" style={{ color: '#1D3557' }}>
-            Push<span style={{ color: '#E63946' }}>Profile</span>
+          <div className="flex items-center gap-3">
+            <div className="text-2xl font-bold" style={{ color: '#1D3557' }}>
+              Push<span style={{ color: '#6366F1' }}>Profile</span>
+            </div>
+            <span className="px-2 py-1 text-xs font-semibold rounded-full" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
+              BETA
+            </span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="#fonctionnalites" className="text-sm font-medium hover:text-gray-900" style={{ color: '#457B9D' }}>Fonctionnalités</a>
@@ -42,7 +47,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
               <Link href="/searches">
-                <Button style={{ backgroundColor: '#E63946', color: 'white' }}>
+                <Button style={{ backgroundColor: '#6366F1', color: 'white' }}>
                   Mon espace
                 </Button>
               </Link>
@@ -52,7 +57,7 @@ export default function LandingPage() {
                   <Button variant="ghost" style={{ color: '#1D3557' }}>Connexion</Button>
                 </Link>
                 <Link href="/signup">
-                  <Button style={{ backgroundColor: '#E63946', color: 'white' }}>
+                  <Button style={{ backgroundColor: '#6366F1', color: 'white' }}>
                     Essai gratuit
                   </Button>
                 </Link>
@@ -69,7 +74,7 @@ export default function LandingPage() {
           <div className="flex justify-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium" style={{ backgroundColor: '#F1FAEE', color: '#1D3557' }}>
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              Économisez 750€/mois vs LinkedIn + Apollo + Indeed
+              Économisez 750€/mois vs LinkedIn + Lusha + Indeed
             </div>
           </div>
 
@@ -77,17 +82,17 @@ export default function LandingPage() {
             <h1 className="text-5xl md:text-6xl font-bold leading-tight mb-6" style={{ color: '#1D3557' }}>
               Arrêtez de payer pour 5 outils.
               <br />
-              <span style={{ color: '#E63946' }}>PushProfile fait tout.</span>
+              <span style={{ color: '#6366F1' }}>PushProfile fait tout.</span>
             </h1>
             <p className="text-xl mb-8" style={{ color: '#457B9D' }}>
               Matching CV-Job • Sourcing • Contacts • Multi-sources
               <br />
-              <span className="font-medium">Le tout alimenté par Claude AI</span>
+              <span className="font-medium">Recherche intelligente assistée par IA</span>
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
               <Link href="/signup">
-                <Button size="lg" className="text-lg px-8 py-6" style={{ backgroundColor: '#E63946', color: 'white' }}>
+                <Button size="lg" className="text-lg px-8 py-6" style={{ backgroundColor: '#6366F1', color: 'white' }}>
                   Essayer gratuitement
                 </Button>
               </Link>
@@ -118,18 +123,32 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Hero Image/Screenshot */}
-          <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-gray-50 to-transparent z-10 pointer-events-none" style={{ height: '30%', bottom: 0, top: 'auto' }}></div>
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 mx-auto max-w-5xl">
-              <div className="bg-gray-100 rounded-xl p-8 text-center" style={{ minHeight: '400px' }}>
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">🎯</div>
-                    <p className="text-lg font-medium" style={{ color: '#1D3557' }}>Interface PushProfile</p>
-                    <p style={{ color: '#457B9D' }}>Upload CV → 50 jobs en 30 secondes</p>
-                  </div>
-                </div>
+          {/* Comment ça marche - 3 étapes */}
+          <div className="mt-16">
+            <h3 className="text-center text-lg font-semibold mb-8" style={{ color: '#457B9D' }}>Comment ça marche ?</h3>
+            <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              {/* Étape 1 */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 text-center relative">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>1</div>
+                <div className="text-4xl mb-4 mt-2">📄</div>
+                <h4 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Uploadez ou définissez vos critères</h4>
+                <p className="text-sm" style={{ color: '#457B9D' }}>CV en PDF/DOCX ou critères de recherche (poste, lieu, contrat...)</p>
+              </div>
+
+              {/* Étape 2 */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 text-center relative">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>2</div>
+                <div className="text-4xl mb-4 mt-2">🔍</div>
+                <h4 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Analyse intelligente</h4>
+                <p className="text-sm" style={{ color: '#457B9D' }}>Notre algorithme scanne 50K+ offres et score les meilleures correspondances</p>
+              </div>
+
+              {/* Étape 3 */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 text-center relative">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>3</div>
+                <div className="text-4xl mb-4 mt-2">🎯</div>
+                <h4 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Top 10 opportunités</h4>
+                <p className="text-sm" style={{ color: '#457B9D' }}>Recevez vos meilleures offres avec explications de matching</p>
               </div>
             </div>
           </div>
@@ -144,29 +163,24 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
             <div className="text-center">
-              <div className="text-2xl font-bold line-through" style={{ color: '#E63946' }}>LinkedIn Recruiter</div>
+              <div className="text-2xl font-bold line-through" style={{ color: '#6366F1' }}>LinkedIn Recruiter</div>
               <div className="text-sm" style={{ color: '#457B9D' }}>500€/mois</div>
             </div>
             <div className="text-3xl" style={{ color: '#A8DADC' }}>+</div>
             <div className="text-center">
-              <div className="text-2xl font-bold line-through" style={{ color: '#E63946' }}>Indeed</div>
+              <div className="text-2xl font-bold line-through" style={{ color: '#6366F1' }}>Indeed</div>
               <div className="text-sm" style={{ color: '#457B9D' }}>300€/mois</div>
             </div>
             <div className="text-3xl" style={{ color: '#A8DADC' }}>+</div>
             <div className="text-center">
-              <div className="text-2xl font-bold line-through" style={{ color: '#E63946' }}>Apollo.io</div>
+              <div className="text-2xl font-bold line-through" style={{ color: '#6366F1' }}>Lusha</div>
               <div className="text-sm" style={{ color: '#457B9D' }}>99€/mois</div>
-            </div>
-            <div className="text-3xl" style={{ color: '#A8DADC' }}>+</div>
-            <div className="text-center">
-              <div className="text-2xl font-bold line-through" style={{ color: '#E63946' }}>Hunter.io</div>
-              <div className="text-sm" style={{ color: '#457B9D' }}>49€/mois</div>
             </div>
           </div>
           <div className="text-center mt-8">
             <div className="inline-block px-6 py-3 rounded-full" style={{ backgroundColor: '#F1FAEE' }}>
               <span className="text-lg" style={{ color: '#457B9D' }}>= </span>
-              <span className="text-2xl font-bold line-through" style={{ color: '#E63946' }}>1,148€/mois</span>
+              <span className="text-2xl font-bold line-through" style={{ color: '#6366F1' }}>899€/mois</span>
               <span className="text-lg mx-3" style={{ color: '#457B9D' }}>→</span>
               <span className="text-2xl font-bold" style={{ color: '#059669' }}>149€/mois</span>
               <span className="text-lg ml-2" style={{ color: '#457B9D' }}>avec PushProfile</span>
@@ -204,10 +218,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4" style={{ color: '#1D3557' }}>
-              Une IA qui comprend vraiment votre profil
+              Une recherche qui comprend vraiment votre profil
             </h2>
             <p className="text-xl max-w-2xl mx-auto" style={{ color: '#457B9D' }}>
-              Powered by Claude AI - l'IA la plus avancée pour analyser CV et offres d'emploi
+              Algorithme intelligent pour analyser CV et matcher les meilleures offres d'emploi
             </p>
           </div>
 
@@ -220,7 +234,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-bold mb-3" style={{ color: '#1D3557' }}>Upload & Analyse</h3>
               <p style={{ color: '#457B9D' }}>
-                Uploadez votre CV (PDF, DOCX) ou collez le texte. Notre IA extrait automatiquement compétences, expériences et préférences.
+                Uploadez votre CV (PDF, DOCX) ou définissez vos critères. L'algorithme extrait automatiquement compétences, expériences et préférences.
               </p>
             </div>
 
@@ -242,9 +256,9 @@ export default function LandingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold mb-3" style={{ color: '#1D3557' }}>Scoring IA Expliqué</h3>
+              <h3 className="text-xl font-bold mb-3" style={{ color: '#1D3557' }}>Scoring Intelligent</h3>
               <p style={{ color: '#457B9D' }}>
-                Chaque match est scoré par l'IA avec une explication détaillée. Vous savez POURQUOI cette offre correspond.
+                Chaque match est scoré avec une explication détaillée. Vous savez POURQUOI cette offre correspond.
               </p>
             </div>
           </div>
@@ -268,7 +282,7 @@ export default function LandingPage() {
             <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
               <div className="grid md:grid-cols-2">
                 <div className="p-8 md:p-12">
-                  <div className="inline-block px-4 py-2 rounded-full text-sm font-medium mb-6" style={{ backgroundColor: '#E63946', color: 'white' }}>
+                  <div className="inline-block px-4 py-2 rounded-full text-sm font-medium mb-6" style={{ backgroundColor: '#6366F1', color: 'white' }}>
                     Cabinets de recrutement
                   </div>
                   <h3 className="text-3xl font-bold mb-4" style={{ color: '#1D3557' }}>
@@ -301,7 +315,7 @@ export default function LandingPage() {
                     <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>149€</span>
                     <span style={{ color: '#457B9D' }}>/mois</span>
                     <Link href="/signup">
-                      <Button style={{ backgroundColor: '#E63946', color: 'white' }}>
+                      <Button style={{ backgroundColor: '#6366F1', color: 'white' }}>
                         Commencer
                       </Button>
                     </Link>
@@ -348,7 +362,7 @@ export default function LandingPage() {
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                      <span style={{ color: '#1D3557' }}>Scores IA expliqués - sachez POURQUOI ça matche</span>
+                      <span style={{ color: '#1D3557' }}>Scores expliqués - sachez POURQUOI ça matche</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -361,7 +375,7 @@ export default function LandingPage() {
                     <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>Gratuit</span>
                     <span style={{ color: '#457B9D' }}>1 recherche offerte</span>
                     <Link href="/signup">
-                      <Button style={{ backgroundColor: '#E63946', color: 'white' }}>
+                      <Button style={{ backgroundColor: '#6366F1', color: 'white' }}>
                         Essayer
                       </Button>
                     </Link>
@@ -465,7 +479,7 @@ export default function LandingPage() {
                   <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Scoring IA
+                  Scoring intelligent
                 </li>
               </ul>
               <Link href="/signup" className="block">
@@ -476,10 +490,10 @@ export default function LandingPage() {
             </div>
 
             {/* Starter */}
-            <div className="bg-white rounded-2xl p-8 shadow-xl border-2" style={{ borderColor: '#E63946' }}>
+            <div className="bg-white rounded-2xl p-8 shadow-xl border-2" style={{ borderColor: '#6366F1' }}>
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-xl font-bold" style={{ color: '#1D3557' }}>Starter</h3>
-                <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#E63946', color: 'white' }}>
+                <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#6366F1', color: 'white' }}>
                   Populaire
                 </span>
               </div>
@@ -515,7 +529,7 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Link href="/signup" className="block">
-                <Button className="w-full" style={{ backgroundColor: '#E63946', color: 'white' }}>
+                <Button className="w-full" style={{ backgroundColor: '#6366F1', color: 'white' }}>
                   Choisir Starter
                 </Button>
               </Link>
@@ -576,11 +590,11 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/signup">
-              <Button size="lg" className="text-lg px-8 py-6" style={{ backgroundColor: '#E63946', color: 'white' }}>
+              <Button size="lg" className="text-lg px-8 py-6" style={{ backgroundColor: '#6366F1', color: 'white' }}>
                 Commencer gratuitement
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-white text-white hover:bg-white/10">
+            <Button size="lg" className="text-lg px-8 py-6" style={{ backgroundColor: 'white', color: '#1D3557' }}>
               Demander une démo
             </Button>
           </div>
@@ -593,10 +607,10 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="text-2xl font-bold mb-4" style={{ color: '#1D3557' }}>
-                Push<span style={{ color: '#E63946' }}>Profile</span>
+                Push<span style={{ color: '#6366F1' }}>Profile</span>
               </div>
               <p className="text-sm" style={{ color: '#457B9D' }}>
-                La plateforme IA de matching CV-Job qui remplace vos 5 outils de recrutement.
+                La plateforme intelligente de matching CV-Job qui remplace vos outils de recrutement.
               </p>
             </div>
             <div>
