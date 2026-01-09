@@ -52,6 +52,14 @@ interface NormalizedJob {
   prefilter_score?: number
 }
 
+// Helper: nettoie le JSON des backticks markdown
+function cleanJsonResponse(text: string): string {
+  return text
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim()
+}
+
 // 1. Parse CV with Claude
 async function parseCV(cvText: string): Promise<ParsedCV> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -66,13 +74,13 @@ async function parseCV(cvText: string): Promise<ParsedCV> {
       max_tokens: 2000,
       messages: [{
         role: 'user',
-        content: `Parse ce CV et retourne JSON structuré.\n\nCV:\n${cvText}\n\nFormat:\n{"target_roles":[],"skills":[],"experience_years":0,"location":"","seniority":"","education":"","languages":[]}`
+        content: `Parse ce CV et retourne UNIQUEMENT le JSON (sans backticks, sans markdown).\n\nCV:\n${cvText}\n\nFormat:\n{"target_roles":[],"skills":[],"experience_years":0,"location":"","seniority":"","education":"","languages":[]}`
       }]
     }),
   })
 
   const data = await response.json()
-  const cvDataText = data.content[0].text
+  const cvDataText = cleanJsonResponse(data.content[0].text)
   return JSON.parse(cvDataText)
 }
 
