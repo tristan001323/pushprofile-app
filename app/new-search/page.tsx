@@ -37,17 +37,11 @@ export default function NewSearchPage() {
   const extractPdfText = async (file: File): Promise<string> => {
     const pdfjsLib = await import('pdfjs-dist')
 
-    // Désactiver le worker pour éviter les problèmes de compatibilité
-    // @ts-ignore
-    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+    // Worker URL pour pdfjs-dist v5.x (utilise jsdelivr qui est plus fiable)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
 
     const arrayBuffer = await file.arrayBuffer()
-    const pdf = await pdfjsLib.getDocument({
-      data: arrayBuffer,
-      useWorkerFetch: false,
-      isEvalSupported: false,
-      useSystemFonts: true,
-    }).promise
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
 
     let fullText = ''
 
