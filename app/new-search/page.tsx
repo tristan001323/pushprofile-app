@@ -37,14 +37,20 @@ export default function NewSearchPage() {
   const extractPdfText = async (file: File): Promise<string> => {
     const pdfjsLib = await import('pdfjs-dist')
 
-    // Configuration du worker (pdfjs-dist v5.x utilise .mjs)
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
-    
+    // Désactiver le worker pour éviter les problèmes de compatibilité
+    // @ts-ignore
+    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+
     const arrayBuffer = await file.arrayBuffer()
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-    
+    const pdf = await pdfjsLib.getDocument({
+      data: arrayBuffer,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
+    }).promise
+
     let fullText = ''
-    
+
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i)
       const textContent = await page.getTextContent()
@@ -53,7 +59,7 @@ export default function NewSearchPage() {
         .join(' ')
       fullText += pageText + '\n'
     }
-    
+
     return fullText
   }
 
@@ -136,7 +142,7 @@ export default function NewSearchPage() {
     setLoading(true)
 
     try {
-      const response = await fetch(process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL!, {
+      const response = await fetch('/api/analyze-cv', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,7 +151,7 @@ export default function NewSearchPage() {
           name: searchTitle,
           search_type: searchMode,
           exclude_agencies: excludeAgencies,
-          
+
           // Champs Standard (optionnels)
           job_title: jobTitle || null,
           location: location || null,
@@ -153,10 +159,10 @@ export default function NewSearchPage() {
           remote_options: remoteOptions.length > 0 ? remoteOptions : null,
           seniority: seniority || null,
           brief: brief || null,
-          
+
           // CV
           cv_text: cvText || null,
-          
+
           user_id: 'anonymous', // Temporaire, sera remplacé par auth
           filename: uploadedFile?.name || 'pasted_cv.txt',
         }),
