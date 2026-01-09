@@ -60,6 +60,22 @@ function cleanJsonResponse(text: string): string {
     .trim()
 }
 
+// Helper: suit les redirections pour obtenir l'URL finale
+async function getDirectJobUrl(adzunaUrl: string): Promise<string> {
+  try {
+    // Faire une requête HEAD pour suivre les redirections
+    const response = await fetch(adzunaUrl, {
+      method: 'HEAD',
+      redirect: 'follow',
+    })
+    // L'URL finale après toutes les redirections
+    return response.url
+  } catch (error) {
+    // En cas d'erreur, retourner l'URL Adzuna originale
+    return adzunaUrl
+  }
+}
+
 // 1. Parse CV with Claude
 async function parseCV(cvText: string): Promise<ParsedCV> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -366,6 +382,14 @@ export async function POST(request: NextRequest) {
         matches_inserted: 0
       })
     }
+
+    // 4b. Résoudre les URLs directes (en parallèle pour les 20 premiers)
+    console.log('Resolving direct job URLs...')
+    const urlPromises = top50Jobs.slice(0, 20).map(async (job, index) => {
+      const directUrl = await getDirectJobUrl(job.job_url)
+      top50Jobs[index].job_url = directUrl
+    })
+    await Promise.all(urlPromises)
 
     // 5. Score top 10 with Claude
     console.log('Scoring top jobs with Claude...')
