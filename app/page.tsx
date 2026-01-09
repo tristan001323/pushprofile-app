@@ -123,32 +123,40 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Comment ça marche - 3 étapes */}
+          {/* Comment ça marche - 4 étapes */}
           <div className="mt-16">
             <h3 className="text-center text-lg font-semibold mb-8" style={{ color: '#457B9D' }}>Comment ça marche ?</h3>
-            <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-4 gap-5 max-w-5xl mx-auto">
               {/* Étape 1 */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center relative">
+              <div className="bg-white rounded-2xl shadow-lg p-5 text-center relative">
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>1</div>
-                <div className="text-4xl mb-4 mt-2">📄</div>
-                <h4 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Uploadez ou définissez vos critères</h4>
-                <p className="text-sm" style={{ color: '#457B9D' }}>CV en PDF/DOCX ou critères de recherche (poste, lieu, contrat...)</p>
+                <div className="text-3xl mb-3 mt-2">📄</div>
+                <h4 className="font-semibold mb-2 text-sm" style={{ color: '#1D3557' }}>Uploadez ou définissez vos critères</h4>
+                <p className="text-xs" style={{ color: '#457B9D' }}>CV en PDF/DOCX ou critères de recherche (poste, lieu, contrat...)</p>
               </div>
 
               {/* Étape 2 */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center relative">
+              <div className="bg-white rounded-2xl shadow-lg p-5 text-center relative">
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>2</div>
-                <div className="text-4xl mb-4 mt-2">🔍</div>
-                <h4 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Analyse intelligente</h4>
-                <p className="text-sm" style={{ color: '#457B9D' }}>Notre algorithme scanne 50K+ offres et score les meilleures correspondances</p>
+                <div className="text-3xl mb-3 mt-2">🔍</div>
+                <h4 className="font-semibold mb-2 text-sm" style={{ color: '#1D3557' }}>Analyse intelligente</h4>
+                <p className="text-xs" style={{ color: '#457B9D' }}>Notre algorithme scanne 50K+ offres et score les meilleures correspondances</p>
               </div>
 
               {/* Étape 3 */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center relative">
+              <div className="bg-white rounded-2xl shadow-lg p-5 text-center relative">
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>3</div>
-                <div className="text-4xl mb-4 mt-2">🎯</div>
-                <h4 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Top 10 opportunités</h4>
-                <p className="text-sm" style={{ color: '#457B9D' }}>Recevez vos meilleures offres avec explications de matching</p>
+                <div className="text-3xl mb-3 mt-2">🎯</div>
+                <h4 className="font-semibold mb-2 text-sm" style={{ color: '#1D3557' }}>~50 offres dont TOP 10</h4>
+                <p className="text-xs" style={{ color: '#457B9D' }}>Recevez environ 50 offres par recherche, avec les 10 meilleures mises en avant</p>
+              </div>
+
+              {/* Étape 4 */}
+              <div className="bg-white rounded-2xl shadow-lg p-5 text-center relative">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>4</div>
+                <div className="text-3xl mb-3 mt-2">📞</div>
+                <h4 className="font-semibold mb-2 text-sm" style={{ color: '#1D3557' }}>Contacts directs</h4>
+                <p className="text-xs" style={{ color: '#457B9D' }}>Email + téléphone des recruteurs pour chaque offre (70% des cas)</p>
               </div>
             </div>
           </div>
