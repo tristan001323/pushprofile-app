@@ -225,9 +225,6 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <div className="text-2xl font-bold" style={{ color: match.score >= 70 ? '#059669' : match.score >= 50 ? '#d97706' : '#6b7280' }}>
-                    {match.score_display ? match.score_display.toFixed(1) : (match.score / 10).toFixed(1)}/10
-                  </div>
                   <div className="px-3 py-1 rounded-full text-xs" style={{ backgroundColor: match.status === 'nouveau' ? '#dbeafe' : '#d1fae5', color: match.status === 'nouveau' ? '#1e40af' : '#065f46' }}>
                     {match.status === 'nouveau' ? 'Nouveau' : match.status}
                   </div>
@@ -256,16 +253,11 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-              <div className="text-right">
-                <div className="text-3xl font-bold" style={{ color: selectedMatch.score >= 70 ? '#059669' : selectedMatch.score >= 50 ? '#d97706' : '#6b7280' }}>
-                  {selectedMatch.score_display ? selectedMatch.score_display.toFixed(1) : (selectedMatch.score / 10).toFixed(1)}/10
-                </div>
-                {selectedMatch.rank <= 10 && (
-                  <span className="px-3 py-1 rounded text-sm font-semibold" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
-                    TOP 10
-                  </span>
-                )}
-              </div>
+              {selectedMatch.rank <= 10 && (
+                <span className="px-3 py-1 rounded text-sm font-semibold" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
+                  TOP 10
+                </span>
+              )}
             </div>
 
             {/* Titre du poste */}
@@ -379,13 +371,6 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 >
                   🏢 Voir le site de {selectedMatch.company_name}
                 </Button>
-              )}
-
-              {/* Avertissement si URL Adzuna */}
-              {selectedMatch.job_url.includes('adzuna') && (
-                <p className="text-xs text-center" style={{ color: '#d97706' }}>
-                  ⚠️ Lien via Adzuna - Lance une nouvelle recherche pour obtenir les liens directs
-                </p>
               )}
             </div>
           </div>
