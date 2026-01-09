@@ -20,6 +20,7 @@ type Match = {
   status: string
   rank: number
   posted_date: string
+  viewed_at: string | null
   matching_details: {
     contract_type?: string
     remote_type?: string
@@ -79,9 +80,26 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     return true
   })
 
-  const openPanel = (match: Match) => {
+  const openPanel = async (match: Match) => {
     setSelectedMatch(match)
     setIsPanelOpen(true)
+
+    // Marquer comme vu si pas encore vu
+    if (!match.viewed_at) {
+      const now = new Date().toISOString()
+      const { error } = await supabase
+        .from('matches')
+        .update({ viewed_at: now })
+        .eq('id', match.id)
+
+      if (!error) {
+        // Mettre à jour localement
+        setMatches(prev => prev.map(m =>
+          m.id === match.id ? { ...m, viewed_at: now } : m
+        ))
+        setSelectedMatch({ ...match, viewed_at: now })
+      }
+    }
   }
 
   const closePanel = () => {
@@ -225,8 +243,19 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <div className="px-3 py-1 rounded-full text-xs" style={{ backgroundColor: match.status === 'nouveau' ? '#dbeafe' : '#d1fae5', color: match.status === 'nouveau' ? '#1e40af' : '#065f46' }}>
-                    {match.status === 'nouveau' ? 'Nouveau' : match.status}
+                  <div className="flex items-center gap-2">
+                    {match.viewed_at && (
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#f3f4f6', color: '#6b7280' }}>
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
+                        Vu
+                      </div>
+                    )}
+                    <div className="px-3 py-1 rounded-full text-xs" style={{ backgroundColor: match.status === 'nouveau' ? '#dbeafe' : '#d1fae5', color: match.status === 'nouveau' ? '#1e40af' : '#065f46' }}>
+                      {match.status === 'nouveau' ? 'Nouveau' : match.status}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -244,7 +273,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
         {selectedMatch && (
           <div className="p-8">
             {/* Header avec bouton fermer */}
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-4">
               <button
                 onClick={closePanel}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -259,6 +288,19 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 </span>
               )}
             </div>
+
+            {/* Indicateur vu avec date/heure */}
+            {selectedMatch.viewed_at && (
+              <div className="flex items-center gap-2 mb-4 text-xs" style={{ color: '#6b7280' }}>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                </svg>
+                <span>
+                  Consulté le {new Date(selectedMatch.viewed_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} à {new Date(selectedMatch.viewed_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            )}
 
             {/* Titre du poste */}
             <h2 className="text-2xl font-bold mb-4" style={{ color: '#1D3557' }}>
@@ -358,7 +400,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
               <Button
                 onClick={() => window.open(selectedMatch.job_url, '_blank')}
                 className="w-full"
-                style={{ backgroundColor: '#E63946', color: 'white' }}
+                style={{ backgroundColor: '#6366F1', color: 'white' }}
               >
                 Voir l'offre complète →
               </Button>
