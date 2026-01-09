@@ -229,7 +229,7 @@ export default function LandingPage() {
               Une recherche qui comprend vraiment votre profil
             </h2>
             <p className="text-xl max-w-2xl mx-auto" style={{ color: '#457B9D' }}>
-              Algorithme intelligent pour analyser CV et matcher les meilleures offres d'emploi
+              Algorithme intelligent boosté par l'IA pour analyser CV et matcher les meilleures offres d'emploi
             </p>
           </div>
 
