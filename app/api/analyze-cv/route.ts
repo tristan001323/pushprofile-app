@@ -63,15 +63,26 @@ function cleanJsonResponse(text: string): string {
 // Helper: suit les redirections pour obtenir l'URL finale
 async function getDirectJobUrl(adzunaUrl: string): Promise<string> {
   try {
-    // Faire une requête HEAD pour suivre les redirections
+    // Utiliser GET avec redirect manual pour capturer l'URL de redirection
     const response = await fetch(adzunaUrl, {
-      method: 'HEAD',
-      redirect: 'follow',
+      method: 'GET',
+      redirect: 'manual',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
     })
-    // L'URL finale après toutes les redirections
-    return response.url
+
+    // Si c'est une redirection, récupérer l'URL de destination
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location')
+      if (location && !location.includes('adzuna')) {
+        return location
+      }
+    }
+
+    // Sinon retourner l'URL originale
+    return adzunaUrl
   } catch (error) {
-    // En cas d'erreur, retourner l'URL Adzuna originale
     return adzunaUrl
   }
 }

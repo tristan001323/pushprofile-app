@@ -37,6 +37,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const [filter, setFilter] = useState<'all' | 'top10' | 'others'>('all')
 
   useEffect(() => {
     loadMatches()
@@ -63,9 +64,20 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
       .eq('search_id', resolvedParams.id)
       .order('rank', { ascending: true })
 
-    if (data) setMatches(data)
+    if (data) {
+      // Trier par score décroissant
+      const sorted = data.sort((a: Match, b: Match) => b.score - a.score)
+      setMatches(sorted)
+    }
     setLoading(false)
   }
+
+  // Filtrer les matches selon le filtre sélectionné
+  const filteredMatches = matches.filter(match => {
+    if (filter === 'top10') return match.rank <= 10
+    if (filter === 'others') return match.rank > 10
+    return true
+  })
 
   const openPanel = (match: Match) => {
     setSelectedMatch(match)
@@ -145,10 +157,44 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
           </Button>
           <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>{searchName}</h1>
           <p className="mt-2" style={{ color: '#457B9D' }}>{matches.length} opportunités trouvées</p>
+
+          {/* Filtres */}
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                filter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Tous ({matches.length})
+            </button>
+            <button
+              onClick={() => setFilter('top10')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                filter === 'top10'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              TOP 10 ({matches.filter(m => m.rank <= 10).length})
+            </button>
+            <button
+              onClick={() => setFilter('others')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                filter === 'others'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Autres ({matches.filter(m => m.rank > 10).length})
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-4">
-          {matches.map((match) => (
+          {filteredMatches.map((match) => (
             <Card
               key={match.id}
               className="p-6 hover:shadow-xl transition-shadow cursor-pointer"
@@ -161,7 +207,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       {match.job_title}
                     </h3>
                     {match.rank <= 10 && (
-                      <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#E63946', color: 'white' }}>
+                      <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
                         TOP 10
                       </span>
                     )}
@@ -215,7 +261,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   {selectedMatch.score_display ? selectedMatch.score_display.toFixed(1) : (selectedMatch.score / 10).toFixed(1)}/10
                 </div>
                 {selectedMatch.rank <= 10 && (
-                  <span className="px-3 py-1 rounded text-sm font-semibold" style={{ backgroundColor: '#E63946', color: 'white' }}>
+                  <span className="px-3 py-1 rounded text-sm font-semibold" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
                     TOP 10
                   </span>
                 )}
