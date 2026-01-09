@@ -115,6 +115,19 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     return 'Non spécifié'
   }
 
+  // Extraire le domaine du site entreprise depuis l'URL du job
+  const getCompanyWebsite = (jobUrl: string): string | null => {
+    try {
+      const url = new URL(jobUrl)
+      // Ignorer les URLs Adzuna
+      if (url.hostname.includes('adzuna')) return null
+      // Retourner juste le domaine principal
+      return `${url.protocol}//${url.hostname}`
+    } catch {
+      return null
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F9FA' }}>
@@ -179,17 +192,9 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      {/* Overlay */}
-      {isPanelOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
-          onClick={closePanel}
-        />
-      )}
-
-      {/* Sliding Panel */}
+      {/* Sliding Panel - sans overlay sombre */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-xl bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto ${
+        className={`fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto border-l border-gray-200 ${
           isPanelOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -310,14 +315,33 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
               </Select>
             </div>
 
-            {/* Bouton voir l'offre */}
-            <Button
-              onClick={() => window.open(selectedMatch.job_url, '_blank')}
-              className="w-full"
-              style={{ backgroundColor: '#E63946', color: 'white' }}
-            >
-              Voir l'offre complète →
-            </Button>
+            {/* Liens */}
+            <div className="space-y-3">
+              <Button
+                onClick={() => window.open(selectedMatch.job_url, '_blank')}
+                className="w-full"
+                style={{ backgroundColor: '#E63946', color: 'white' }}
+              >
+                Voir l'offre complète →
+              </Button>
+
+              {getCompanyWebsite(selectedMatch.job_url) && (
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(getCompanyWebsite(selectedMatch.job_url)!, '_blank')}
+                  className="w-full"
+                >
+                  🏢 Voir le site de {selectedMatch.company_name}
+                </Button>
+              )}
+
+              {/* Avertissement si URL Adzuna */}
+              {selectedMatch.job_url.includes('adzuna') && (
+                <p className="text-xs text-center" style={{ color: '#d97706' }}>
+                  ⚠️ Lien via Adzuna - Lance une nouvelle recherche pour obtenir les liens directs
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>
