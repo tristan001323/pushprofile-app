@@ -10,6 +10,7 @@ export default function LandingPage() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [isAnnual, setIsAnnual] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -562,9 +563,30 @@ export default function LandingPage() {
             <h2 className="text-4xl font-bold mb-4" style={{ color: '#1D3557' }}>
               Tarifs simples et transparents
             </h2>
-            <p className="text-xl" style={{ color: '#457B9D' }}>
+            <p className="text-xl mb-8" style={{ color: '#457B9D' }}>
               Commencez gratuitement, passez Pro quand vous êtes prêt
             </p>
+
+            {/* Toggle Mensuel / Annuel */}
+            <div className="flex items-center justify-center gap-4">
+              <span className={`font-medium ${!isAnnual ? 'text-gray-900' : 'text-gray-400'}`}>Mensuel</span>
+              <button
+                onClick={() => setIsAnnual(!isAnnual)}
+                className="relative w-16 h-8 rounded-full transition-colors"
+                style={{ backgroundColor: isAnnual ? '#6366F1' : '#E5E7EB' }}
+              >
+                <div
+                  className="absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform"
+                  style={{ transform: isAnnual ? 'translateX(34px)' : 'translateX(4px)' }}
+                />
+              </button>
+              <span className={`font-medium ${isAnnual ? 'text-gray-900' : 'text-gray-400'}`}>
+                Annuel
+                <span className="ml-2 px-2 py-1 text-xs rounded-full" style={{ backgroundColor: '#D1FAE5', color: '#059669' }}>
+                  -20%
+                </span>
+              </span>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -612,8 +634,13 @@ export default function LandingPage() {
               </div>
               <p className="mb-6" style={{ color: '#457B9D' }}>Pour les candidats actifs</p>
               <div className="mb-6">
-                <span className="text-4xl font-bold" style={{ color: '#1D3557' }}>49€</span>
+                <span className="text-4xl font-bold" style={{ color: '#1D3557' }}>{isAnnual ? '39€' : '49€'}</span>
                 <span style={{ color: '#457B9D' }}>/mois</span>
+                {isAnnual && (
+                  <span className="block text-sm mt-1" style={{ color: '#059669' }}>
+                    Facturé 468€/an
+                  </span>
+                )}
               </div>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
@@ -653,8 +680,13 @@ export default function LandingPage() {
               <h3 className="text-xl font-bold mb-2" style={{ color: '#1D3557' }}>Pro</h3>
               <p className="mb-6" style={{ color: '#457B9D' }}>Pour les recruteurs</p>
               <div className="mb-6">
-                <span className="text-4xl font-bold" style={{ color: '#1D3557' }}>149€</span>
+                <span className="text-4xl font-bold" style={{ color: '#1D3557' }}>{isAnnual ? '119€' : '149€'}</span>
                 <span style={{ color: '#457B9D' }}>/mois</span>
+                {isAnnual && (
+                  <span className="block text-sm mt-1" style={{ color: '#059669' }}>
+                    Facturé 1 428€/an
+                  </span>
+                )}
               </div>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
