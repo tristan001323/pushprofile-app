@@ -30,6 +30,9 @@ export default function NewSearchPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
   
+  // Récurrence
+  const [recurrence, setRecurrence] = useState<'none' | '2days' | 'weekly'>('none')
+
   // États UI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -157,6 +160,9 @@ export default function NewSearchPage() {
 
           // CV
           cv_text: cvText || null,
+
+          // Récurrence
+          recurrence: recurrence !== 'none' ? recurrence : null,
 
           user_id: 'anonymous', // Temporaire, sera remplacé par auth
           filename: uploadedFile?.name || 'pasted_cv.txt',
@@ -440,6 +446,64 @@ export default function NewSearchPage() {
                 )}
               </div>
             )}
+
+            {/* Récurrence */}
+            <div className="p-6 bg-secondary rounded-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A8DADC' }}>
+                  <span className="text-xl">🔄</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Recherche récurrente</h3>
+                  <p className="text-sm text-muted">Relancer automatiquement cette recherche</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRecurrence('none')}
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                    recurrence === 'none'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <p className="font-medium" style={{ color: recurrence === 'none' ? '#6366F1' : '#1D3557' }}>Une seule fois</p>
+                  <p className="text-xs text-muted mt-1">Pas de récurrence</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecurrence('2days')}
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                    recurrence === '2days'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <p className="font-medium" style={{ color: recurrence === '2days' ? '#6366F1' : '#1D3557' }}>Tous les 2 jours</p>
+                  <p className="text-xs text-muted mt-1">~15 recherches/mois</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecurrence('weekly')}
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                    recurrence === 'weekly'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <p className="font-medium" style={{ color: recurrence === 'weekly' ? '#6366F1' : '#1D3557' }}>Hebdomadaire</p>
+                  <p className="text-xs text-muted mt-1">~4 recherches/mois</p>
+                </button>
+              </div>
+
+              {recurrence !== 'none' && (
+                <p className="text-sm mt-4 p-3 rounded-lg" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
+                  ⚡ Les nouvelles offres seront automatiquement ajoutées à cette recherche {recurrence === '2days' ? 'tous les 2 jours' : 'chaque semaine'}.
+                </p>
+              )}
+            </div>
 
             {/* Messages d'erreur */}
             {error && (
