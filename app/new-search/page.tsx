@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
+import AppLayout from '@/components/AppLayout'
 
 export default function NewSearchPage() {
   const router = useRouter()
@@ -179,9 +180,10 @@ export default function NewSearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-4xl mx-auto">
-        <Card className="p-8">
+    <AppLayout>
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          <Card className="p-8">
           <h1 className="text-3xl font-bold text-text mb-2">Nouvelle Recherche</h1>
           <p className="text-muted mb-8">
             Trouvez les meilleures opportunités pour votre profil ou vos critères
@@ -464,8 +466,9 @@ export default function NewSearchPage() {
               </Button>
             </div>
           </form>
-        </Card>
+          </Card>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   )
 }
