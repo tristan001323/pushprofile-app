@@ -487,7 +487,7 @@ export default function LandingPage() {
                   </ul>
                   <div className="flex items-center gap-4">
                     <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>Gratuit</span>
-                    <span style={{ color: '#457B9D' }}>1 recherche offerte</span>
+                    <span style={{ color: '#457B9D' }}>2 recherches offertes</span>
                     <Link href="/signup">
                       <Button style={{ backgroundColor: '#6366F1', color: 'white' }}>
                         Essayer
