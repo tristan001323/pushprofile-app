@@ -126,8 +126,7 @@ export default function LandingPage() {
 
           {/* Comment ça marche - 4 étapes */}
           <div className="mt-20 mb-8">
-            <h3 className="text-center text-2xl font-bold mb-4" style={{ color: '#1D3557' }}>Comment ça marche ?</h3>
-            <p className="text-center mb-12" style={{ color: '#457B9D' }}>En 4 étapes simples, trouvez votre prochain job</p>
+            <h3 className="text-center text-2xl font-bold mb-12" style={{ color: '#1D3557' }}>Comment ça marche ?</h3>
 
             {/* Version desktop */}
             <div className="hidden md:block max-w-5xl mx-auto px-8">
