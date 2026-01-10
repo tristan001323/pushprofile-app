@@ -123,141 +123,125 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Comment ça marche - 4 étapes avec flèches */}
+          {/* Comment ça marche - 4 étapes */}
           <div className="mt-20 mb-8">
-            <h3 className="text-center text-2xl font-bold mb-12" style={{ color: '#1D3557' }}>Comment ça marche ?</h3>
+            <h3 className="text-center text-2xl font-bold mb-4" style={{ color: '#1D3557' }}>Comment ça marche ?</h3>
+            <p className="text-center mb-12" style={{ color: '#457B9D' }}>En 4 étapes simples, trouvez votre prochain job</p>
 
-            {/* Version desktop avec flèches */}
-            <div className="hidden md:block max-w-6xl mx-auto">
-              <div className="relative">
-                {/* Ligne de connexion */}
-                <div className="absolute top-16 left-[12%] right-[12%] h-1 bg-gradient-to-r from-indigo-200 via-indigo-300 to-indigo-200 rounded-full"></div>
-
-                <div className="grid grid-cols-4 gap-4 relative">
-                  {/* Étape 1 */}
-                  <div className="flex flex-col items-center">
-                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg mb-4 relative z-10">
-                      <div className="text-center text-white">
-                        <div className="text-4xl mb-1">📄</div>
-                        <div className="text-xs font-bold">ÉTAPE 1</div>
-                      </div>
+            {/* Version desktop */}
+            <div className="hidden md:block max-w-5xl mx-auto px-8">
+              <div className="grid grid-cols-4 gap-8">
+                {/* Étape 1 */}
+                <div className="relative">
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-indigo-100 hover:border-indigo-300 transition-colors h-full">
+                    <div className="w-14 h-14 rounded-xl bg-indigo-100 flex items-center justify-center mb-4">
+                      <span className="text-3xl">📄</span>
                     </div>
-                    <h4 className="font-bold text-center mb-2" style={{ color: '#1D3557' }}>Upload CV ou Critères</h4>
-                    <p className="text-xs text-center px-2" style={{ color: '#457B9D' }}>PDF, DOCX ou définissez poste, lieu, contrat...</p>
+                    <div className="text-indigo-500 text-sm font-bold mb-2">Étape 1</div>
+                    <h4 className="font-bold mb-2" style={{ color: '#1D3557' }}>Upload ou Critères</h4>
+                    <p className="text-sm" style={{ color: '#457B9D' }}>CV en PDF/DOCX ou définissez vos critères de recherche</p>
                   </div>
+                  {/* Connecteur */}
+                  <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-indigo-200"></div>
+                </div>
 
-                  {/* Flèche 1 */}
-                  <div className="absolute left-[22%] top-14 z-20">
-                    <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
-                      <path d="M0 12H32M32 12L24 4M32 12L24 20" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-
-                  {/* Étape 2 */}
-                  <div className="flex flex-col items-center">
-                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg mb-4 relative z-10">
-                      <div className="text-center text-white">
-                        <div className="text-4xl mb-1">🔍</div>
-                        <div className="text-xs font-bold">ÉTAPE 2</div>
-                      </div>
+                {/* Étape 2 */}
+                <div className="relative">
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-indigo-100 hover:border-indigo-300 transition-colors h-full">
+                    <div className="w-14 h-14 rounded-xl bg-indigo-100 flex items-center justify-center mb-4">
+                      <span className="text-3xl">🔍</span>
                     </div>
-                    <h4 className="font-bold text-center mb-2" style={{ color: '#1D3557' }}>Analyse IA</h4>
-                    <p className="text-xs text-center px-2" style={{ color: '#457B9D' }}>Scan de 50K+ offres et scoring intelligent</p>
+                    <div className="text-indigo-500 text-sm font-bold mb-2">Étape 2</div>
+                    <h4 className="font-bold mb-2" style={{ color: '#1D3557' }}>Analyse IA</h4>
+                    <p className="text-sm" style={{ color: '#457B9D' }}>Notre algorithme scanne 50K+ offres en quelques secondes</p>
                   </div>
+                  {/* Connecteur */}
+                  <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-indigo-200"></div>
+                </div>
 
-                  {/* Flèche 2 */}
-                  <div className="absolute left-[47%] top-14 z-20">
-                    <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
-                      <path d="M0 12H32M32 12L24 4M32 12L24 20" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-
-                  {/* Étape 3 */}
-                  <div className="flex flex-col items-center">
-                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg mb-4 relative z-10">
-                      <div className="text-center text-white">
-                        <div className="text-4xl mb-1">🎯</div>
-                        <div className="text-xs font-bold">ÉTAPE 3</div>
-                      </div>
+                {/* Étape 3 */}
+                <div className="relative">
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-indigo-100 hover:border-indigo-300 transition-colors h-full">
+                    <div className="w-14 h-14 rounded-xl bg-indigo-100 flex items-center justify-center mb-4">
+                      <span className="text-3xl">🎯</span>
                     </div>
-                    <h4 className="font-bold text-center mb-2" style={{ color: '#1D3557' }}>~50 Jobs + TOP 10</h4>
-                    <p className="text-xs text-center px-2" style={{ color: '#457B9D' }}>Les 10 meilleurs mis en avant avec justification</p>
+                    <div className="text-indigo-500 text-sm font-bold mb-2">Étape 3</div>
+                    <h4 className="font-bold mb-2" style={{ color: '#1D3557' }}>~50 Jobs + TOP 10</h4>
+                    <p className="text-sm" style={{ color: '#457B9D' }}>Les meilleures offres scorées avec explications détaillées</p>
                   </div>
+                  {/* Connecteur */}
+                  <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-green-200"></div>
+                </div>
 
-                  {/* Flèche 3 */}
-                  <div className="absolute left-[72%] top-14 z-20">
-                    <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
-                      <path d="M0 12H32M32 12L24 4M32 12L24 20" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-
-                  {/* Étape 4 */}
-                  <div className="flex flex-col items-center">
-                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg mb-4 relative z-10">
-                      <div className="text-center text-white">
-                        <div className="text-4xl mb-1">📞</div>
-                        <div className="text-xs font-bold">ÉTAPE 4</div>
-                      </div>
+                {/* Étape 4 */}
+                <div className="relative">
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-green-100 hover:border-green-300 transition-colors h-full">
+                    <div className="w-14 h-14 rounded-xl bg-green-100 flex items-center justify-center mb-4">
+                      <span className="text-3xl">📞</span>
                     </div>
-                    <h4 className="font-bold text-center mb-2" style={{ color: '#1D3557' }}>Contacts Directs</h4>
-                    <p className="text-xs text-center px-2" style={{ color: '#457B9D' }}>Email + téléphone du recruteur (70% des offres)</p>
+                    <div className="text-green-600 text-sm font-bold mb-2">Étape 4</div>
+                    <h4 className="font-bold mb-2" style={{ color: '#1D3557' }}>Contacts Directs</h4>
+                    <p className="text-sm" style={{ color: '#457B9D' }}>Email + téléphone du recruteur (70% des offres)</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Version mobile */}
-            <div className="md:hidden max-w-sm mx-auto">
-              <div className="relative">
-                {/* Ligne verticale */}
-                <div className="absolute left-8 top-0 bottom-0 w-1 bg-indigo-200 rounded-full"></div>
-
-                <div className="space-y-8">
-                  {/* Étape 1 */}
-                  <div className="flex gap-6 items-start">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 relative z-10">
+            <div className="md:hidden px-6">
+              <div className="space-y-4">
+                {/* Étape 1 */}
+                <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-indigo-500">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-2xl">📄</span>
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-indigo-500 mb-1">ÉTAPE 1</div>
-                      <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>Upload CV ou Critères</h4>
-                      <p className="text-sm" style={{ color: '#457B9D' }}>PDF, DOCX ou définissez poste, lieu, contrat...</p>
+                      <div className="text-indigo-500 text-xs font-bold mb-1">Étape 1</div>
+                      <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>Upload ou Critères</h4>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>CV en PDF/DOCX ou définissez vos critères</p>
                     </div>
                   </div>
+                </div>
 
-                  {/* Étape 2 */}
-                  <div className="flex gap-6 items-start">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 relative z-10">
+                {/* Étape 2 */}
+                <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-indigo-500">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-2xl">🔍</span>
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-indigo-500 mb-1">ÉTAPE 2</div>
+                      <div className="text-indigo-500 text-xs font-bold mb-1">Étape 2</div>
                       <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>Analyse IA</h4>
-                      <p className="text-sm" style={{ color: '#457B9D' }}>Scan de 50K+ offres et scoring intelligent</p>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>Scan de 50K+ offres en quelques secondes</p>
                     </div>
                   </div>
+                </div>
 
-                  {/* Étape 3 */}
-                  <div className="flex gap-6 items-start">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 relative z-10">
+                {/* Étape 3 */}
+                <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-indigo-500">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-2xl">🎯</span>
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-indigo-500 mb-1">ÉTAPE 3</div>
+                      <div className="text-indigo-500 text-xs font-bold mb-1">Étape 3</div>
                       <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>~50 Jobs + TOP 10</h4>
-                      <p className="text-sm" style={{ color: '#457B9D' }}>Les 10 meilleurs mis en avant avec justification</p>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>Les meilleures offres avec explications</p>
                     </div>
                   </div>
+                </div>
 
-                  {/* Étape 4 */}
-                  <div className="flex gap-6 items-start">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0 relative z-10">
+                {/* Étape 4 */}
+                <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-green-500">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-2xl">📞</span>
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-green-500 mb-1">ÉTAPE 4</div>
+                      <div className="text-green-600 text-xs font-bold mb-1">Étape 4</div>
                       <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>Contacts Directs</h4>
-                      <p className="text-sm" style={{ color: '#457B9D' }}>Email + téléphone du recruteur (70% des offres)</p>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>Email + téléphone (70% des offres)</p>
                     </div>
                   </div>
                 </div>
