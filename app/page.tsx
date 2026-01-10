@@ -309,67 +309,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stratégie PushProfile - Problème/Solution */}
-      <section className="py-20 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            {/* Le Problème */}
-            <div className="bg-red-50 rounded-2xl p-8 border border-red-100">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <span className="text-2xl">😤</span>
-                </div>
-                <h3 className="text-xl font-bold" style={{ color: '#DC2626' }}>Le Problème</h3>
-              </div>
-              <p className="text-lg leading-relaxed" style={{ color: '#1D3557' }}>
-                Vous avez des <span className="font-bold">CVs excellents qui dorment</span> dans votre base.
-                Vos recruteurs et commerciaux passent des heures à chercher des jobs pertinents à proposer,
-                pendant que vos candidats attendent.
-              </p>
-              <div className="mt-6 flex items-center gap-2 text-sm" style={{ color: '#DC2626' }}>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <span>2h en moyenne pour qualifier 1 CV manuellement</span>
-              </div>
-            </div>
-
-            {/* La Solution */}
-            <div className="bg-green-50 rounded-2xl p-8 border border-green-100">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                  <span className="text-2xl">💡</span>
-                </div>
-                <h3 className="text-xl font-bold" style={{ color: '#059669' }}>La Solution PushProfile</h3>
-              </div>
-              <p className="text-lg leading-relaxed" style={{ color: '#1D3557' }}>
-                <span className="font-bold">On inverse le processus :</span> au lieu de chercher des candidats pour un job,
-                PushProfile trouve <span className="font-bold">50 jobs qualifiés</span> pour chaque CV
-                en <span className="font-bold">30 secondes</span>.
-              </p>
-              <div className="mt-6 flex items-center gap-2 text-sm" style={{ color: '#059669' }}>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>30 secondes = 50 jobs pertinents + contacts</span>
-              </div>
-            </div>
-          </div>
-
-          {/* CTA */}
-          <div className="mt-12 text-center">
-            <p className="text-lg mb-6" style={{ color: '#457B9D' }}>
-              Transformez chaque CV dormant en opportunité
-            </p>
-            <Link href="/signup">
-              <Button size="lg" className="text-lg px-8 py-4" style={{ backgroundColor: '#6366F1', color: 'white' }}>
-                Réveiller mes CVs
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* Features Section */}
       <section id="fonctionnalites" className="py-20 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
@@ -442,6 +381,17 @@ export default function LandingPage() {
                   <div className="inline-block px-4 py-2 rounded-full text-sm font-medium mb-6" style={{ backgroundColor: '#6366F1', color: 'white' }}>
                     Cabinets de recrutement / conseil
                   </div>
+
+                  {/* Problème / Solution */}
+                  <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: '#FEF2F2' }}>
+                    <p className="text-sm font-medium mb-2" style={{ color: '#DC2626' }}>
+                      😤 Le problème : Vos CVs dorment dans votre base, faute de jobs pertinents à proposer rapidement.
+                    </p>
+                    <p className="text-sm font-medium" style={{ color: '#059669' }}>
+                      💡 La solution : On inverse le processus - 50 jobs qualifiés par CV en 30 secondes.
+                    </p>
+                  </div>
+
                   <h3 className="text-3xl font-bold mb-4" style={{ color: '#1D3557' }}>
                     Placez 3x plus de candidats
                   </h3>
