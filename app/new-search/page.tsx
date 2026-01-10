@@ -444,7 +444,7 @@ export default function NewSearchPage() {
                   }`}
                 >
                   <p className="font-medium" style={{ color: recurrence === 'none' ? '#6366F1' : '#1D3557' }}>Une seule fois</p>
-                  <p className="text-xs text-muted mt-1">Pas de récurrence</p>
+                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>Pas de récurrence</p>
                 </button>
                 <button
                   type="button"
@@ -456,7 +456,7 @@ export default function NewSearchPage() {
                   }`}
                 >
                   <p className="font-medium" style={{ color: recurrence === '2days' ? '#6366F1' : '#1D3557' }}>Tous les 2 jours</p>
-                  <p className="text-xs text-muted mt-1">~15 recherches/mois</p>
+                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~15 recherches/mois</p>
                 </button>
                 <button
                   type="button"
@@ -468,7 +468,7 @@ export default function NewSearchPage() {
                   }`}
                 >
                   <p className="font-medium" style={{ color: recurrence === 'weekly' ? '#6366F1' : '#1D3557' }}>Hebdomadaire</p>
-                  <p className="text-xs text-muted mt-1">~4 recherches/mois</p>
+                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~4 recherches/mois</p>
                 </button>
               </div>
 
