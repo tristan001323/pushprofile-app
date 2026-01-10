@@ -191,7 +191,7 @@ export default function NewSearchPage() {
         <div className="max-w-4xl mx-auto">
           <Card className="p-8">
           <h1 className="text-3xl font-bold text-text mb-2">Nouvelle Recherche</h1>
-          <p className="text-muted mb-8">
+          <p className="mb-8" style={{ color: '#457B9D' }}>
             Trouvez les meilleures opportunités pour votre profil ou vos critères
           </p>
 
@@ -418,32 +418,6 @@ export default function NewSearchPage() {
                     <p className="text-sm text-muted mt-2">⏳ Extraction en cours...</p>
                   )}
                 </div>
-
-                {/* OU séparateur et Textarea - cachés si fichier uploadé */}
-                {!uploadedFile && (
-                  <>
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
-                      </div>
-                      <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-secondary text-muted">OU</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="cvText">Collez votre CV ici</Label>
-                      <Textarea
-                        id="cvText"
-                        value={cvText}
-                        onChange={(e) => setCvText(e.target.value)}
-                        placeholder="Nom Prénom&#10;Titre du poste&#10;&#10;Expérience professionnelle...&#10;&#10;Compétences..."
-                        rows={12}
-                        className="mt-2 font-mono text-sm"
-                      />
-                    </div>
-                  </>
-                )}
               </div>
             )}
 
