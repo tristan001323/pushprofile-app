@@ -426,11 +426,13 @@ export default function LandingPage() {
                     </li>
                   </ul>
                   <div className="flex items-center gap-4">
-                    <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>149€</span>
-                    <span style={{ color: '#457B9D' }}>/mois</span>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: '#F1FAEE' }}>
+                      <span className="text-lg">🎁</span>
+                      <span className="font-medium" style={{ color: '#1D3557' }}>2 recherches gratuites</span>
+                    </div>
                     <Link href="/signup">
                       <Button style={{ backgroundColor: '#6366F1', color: 'white' }}>
-                        Commencer
+                        Tester gratuitement
                       </Button>
                     </Link>
                   </div>
@@ -486,11 +488,13 @@ export default function LandingPage() {
                     </li>
                   </ul>
                   <div className="flex items-center gap-4">
-                    <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>Gratuit</span>
-                    <span style={{ color: '#457B9D' }}>2 recherches offertes</span>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: '#F1FAEE' }}>
+                      <span className="text-lg">🎁</span>
+                      <span className="font-medium" style={{ color: '#1D3557' }}>2 recherches gratuites</span>
+                    </div>
                     <Link href="/signup">
                       <Button style={{ backgroundColor: '#6366F1', color: 'white' }}>
-                        Essayer
+                        Tester gratuitement
                       </Button>
                     </Link>
                   </div>
@@ -537,8 +541,6 @@ export default function LandingPage() {
                     </li>
                   </ul>
                   <div className="flex items-center gap-4">
-                    <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>499€</span>
-                    <span style={{ color: '#457B9D' }}>/mois</span>
                     <Button disabled variant="outline">
                       Liste d'attente
                     </Button>
