@@ -123,40 +123,144 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Comment ça marche - 4 étapes */}
-          <div className="mt-16">
-            <h3 className="text-center text-lg font-semibold mb-8" style={{ color: '#457B9D' }}>Comment ça marche ?</h3>
-            <div className="grid md:grid-cols-4 gap-5 max-w-5xl mx-auto">
-              {/* Étape 1 */}
-              <div className="bg-white rounded-2xl shadow-lg p-5 text-center relative">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>1</div>
-                <div className="text-3xl mb-3 mt-2">📄</div>
-                <h4 className="font-semibold mb-2 text-sm" style={{ color: '#1D3557' }}>Uploadez ou définissez vos critères</h4>
-                <p className="text-xs" style={{ color: '#457B9D' }}>CV en PDF/DOCX ou critères de recherche (poste, lieu, contrat...)</p>
-              </div>
+          {/* Comment ça marche - 4 étapes avec flèches */}
+          <div className="mt-20 mb-8">
+            <h3 className="text-center text-2xl font-bold mb-12" style={{ color: '#1D3557' }}>Comment ça marche ?</h3>
 
-              {/* Étape 2 */}
-              <div className="bg-white rounded-2xl shadow-lg p-5 text-center relative">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>2</div>
-                <div className="text-3xl mb-3 mt-2">🔍</div>
-                <h4 className="font-semibold mb-2 text-sm" style={{ color: '#1D3557' }}>Analyse intelligente</h4>
-                <p className="text-xs" style={{ color: '#457B9D' }}>Notre algorithme scanne 50K+ offres et score les meilleures correspondances</p>
-              </div>
+            {/* Version desktop avec flèches */}
+            <div className="hidden md:block max-w-6xl mx-auto">
+              <div className="relative">
+                {/* Ligne de connexion */}
+                <div className="absolute top-16 left-[12%] right-[12%] h-1 bg-gradient-to-r from-indigo-200 via-indigo-300 to-indigo-200 rounded-full"></div>
 
-              {/* Étape 3 */}
-              <div className="bg-white rounded-2xl shadow-lg p-5 text-center relative">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>3</div>
-                <div className="text-3xl mb-3 mt-2">🎯</div>
-                <h4 className="font-semibold mb-2 text-sm" style={{ color: '#1D3557' }}>~50 offres dont TOP 10</h4>
-                <p className="text-xs" style={{ color: '#457B9D' }}>Recevez environ 50 offres par recherche, avec les 10 meilleures mises en avant</p>
-              </div>
+                <div className="grid grid-cols-4 gap-4 relative">
+                  {/* Étape 1 */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg mb-4 relative z-10">
+                      <div className="text-center text-white">
+                        <div className="text-4xl mb-1">📄</div>
+                        <div className="text-xs font-bold">ÉTAPE 1</div>
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-center mb-2" style={{ color: '#1D3557' }}>Upload CV ou Critères</h4>
+                    <p className="text-xs text-center px-2" style={{ color: '#457B9D' }}>PDF, DOCX ou définissez poste, lieu, contrat...</p>
+                  </div>
 
-              {/* Étape 4 */}
-              <div className="bg-white rounded-2xl shadow-lg p-5 text-center relative">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: '#6366F1' }}>4</div>
-                <div className="text-3xl mb-3 mt-2">📞</div>
-                <h4 className="font-semibold mb-2 text-sm" style={{ color: '#1D3557' }}>Contacts directs</h4>
-                <p className="text-xs" style={{ color: '#457B9D' }}>Email + téléphone des recruteurs pour chaque offre (70% des cas)</p>
+                  {/* Flèche 1 */}
+                  <div className="absolute left-[22%] top-14 z-20">
+                    <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
+                      <path d="M0 12H32M32 12L24 4M32 12L24 20" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+
+                  {/* Étape 2 */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg mb-4 relative z-10">
+                      <div className="text-center text-white">
+                        <div className="text-4xl mb-1">🔍</div>
+                        <div className="text-xs font-bold">ÉTAPE 2</div>
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-center mb-2" style={{ color: '#1D3557' }}>Analyse IA</h4>
+                    <p className="text-xs text-center px-2" style={{ color: '#457B9D' }}>Scan de 50K+ offres et scoring intelligent</p>
+                  </div>
+
+                  {/* Flèche 2 */}
+                  <div className="absolute left-[47%] top-14 z-20">
+                    <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
+                      <path d="M0 12H32M32 12L24 4M32 12L24 20" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+
+                  {/* Étape 3 */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg mb-4 relative z-10">
+                      <div className="text-center text-white">
+                        <div className="text-4xl mb-1">🎯</div>
+                        <div className="text-xs font-bold">ÉTAPE 3</div>
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-center mb-2" style={{ color: '#1D3557' }}>~50 Jobs + TOP 10</h4>
+                    <p className="text-xs text-center px-2" style={{ color: '#457B9D' }}>Les 10 meilleurs mis en avant avec justification</p>
+                  </div>
+
+                  {/* Flèche 3 */}
+                  <div className="absolute left-[72%] top-14 z-20">
+                    <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
+                      <path d="M0 12H32M32 12L24 4M32 12L24 20" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+
+                  {/* Étape 4 */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg mb-4 relative z-10">
+                      <div className="text-center text-white">
+                        <div className="text-4xl mb-1">📞</div>
+                        <div className="text-xs font-bold">ÉTAPE 4</div>
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-center mb-2" style={{ color: '#1D3557' }}>Contacts Directs</h4>
+                    <p className="text-xs text-center px-2" style={{ color: '#457B9D' }}>Email + téléphone du recruteur (70% des offres)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Version mobile */}
+            <div className="md:hidden max-w-sm mx-auto">
+              <div className="relative">
+                {/* Ligne verticale */}
+                <div className="absolute left-8 top-0 bottom-0 w-1 bg-indigo-200 rounded-full"></div>
+
+                <div className="space-y-8">
+                  {/* Étape 1 */}
+                  <div className="flex gap-6 items-start">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 relative z-10">
+                      <span className="text-2xl">📄</span>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-indigo-500 mb-1">ÉTAPE 1</div>
+                      <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>Upload CV ou Critères</h4>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>PDF, DOCX ou définissez poste, lieu, contrat...</p>
+                    </div>
+                  </div>
+
+                  {/* Étape 2 */}
+                  <div className="flex gap-6 items-start">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 relative z-10">
+                      <span className="text-2xl">🔍</span>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-indigo-500 mb-1">ÉTAPE 2</div>
+                      <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>Analyse IA</h4>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>Scan de 50K+ offres et scoring intelligent</p>
+                    </div>
+                  </div>
+
+                  {/* Étape 3 */}
+                  <div className="flex gap-6 items-start">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 relative z-10">
+                      <span className="text-2xl">🎯</span>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-indigo-500 mb-1">ÉTAPE 3</div>
+                      <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>~50 Jobs + TOP 10</h4>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>Les 10 meilleurs mis en avant avec justification</p>
+                    </div>
+                  </div>
+
+                  {/* Étape 4 */}
+                  <div className="flex gap-6 items-start">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0 relative z-10">
+                      <span className="text-2xl">📞</span>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-green-500 mb-1">ÉTAPE 4</div>
+                      <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>Contacts Directs</h4>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>Email + téléphone du recruteur (70% des offres)</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -285,13 +389,13 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Cabinets de recrutement */}
+          {/* Cabinets de recrutement / conseil */}
           <div className="mb-16">
             <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
               <div className="grid md:grid-cols-2">
                 <div className="p-8 md:p-12">
                   <div className="inline-block px-4 py-2 rounded-full text-sm font-medium mb-6" style={{ backgroundColor: '#6366F1', color: 'white' }}>
-                    Cabinets de recrutement
+                    Cabinets de recrutement / conseil
                   </div>
                   <h3 className="text-3xl font-bold mb-4" style={{ color: '#1D3557' }}>
                     Placez 3x plus de candidats
