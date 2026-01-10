@@ -589,53 +589,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Starter - 10 recherches */}
-            <div className="bg-gray-50 rounded-2xl p-8">
-              <h3 className="text-xl font-bold mb-2" style={{ color: '#1D3557' }}>Starter</h3>
-              <p className="mb-6" style={{ color: '#457B9D' }}>Pour démarrer</p>
-              <div className="mb-6">
-                <span className="text-4xl font-bold" style={{ color: '#1D3557' }}>{isAnnual ? '39€' : '49€'}</span>
-                <span style={{ color: '#457B9D' }}>/mois</span>
-                {isAnnual && (
-                  <span className="block text-sm mt-1" style={{ color: '#059669' }}>
-                    Facturé 468€/an
-                  </span>
-                )}
-              </div>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-semibold">10 recherches/mois</span>
-                </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  ~50 jobs par recherche
-                </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Contacts enrichis
-                </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Support email
-                </li>
-              </ul>
-              <Link href="/signup" className="block">
-                <Button variant="outline" className="w-full">
-                  Choisir Starter
-                </Button>
-              </Link>
-            </div>
-
+          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             {/* Pro - 50 recherches */}
             <div className="bg-white rounded-2xl p-8 shadow-xl border-2" style={{ borderColor: '#6366F1' }}>
               <div className="flex justify-between items-start mb-2">
@@ -741,6 +695,24 @@ export default function LandingPage() {
               <Link href="/signup" className="block">
                 <Button variant="outline" className="w-full">
                   Choisir Illimité
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Essai gratuit */}
+          <div className="mt-12 text-center">
+            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl" style={{ backgroundColor: '#F1FAEE' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A8DADC' }}>
+                <span className="text-lg">🎁</span>
+              </div>
+              <div className="text-left">
+                <p className="font-semibold" style={{ color: '#1D3557' }}>Essai gratuit</p>
+                <p className="text-sm" style={{ color: '#457B9D' }}>2 recherches offertes pour tester, sans carte bancaire</p>
+              </div>
+              <Link href="/signup">
+                <Button size="sm" variant="outline" style={{ borderColor: '#6366F1', color: '#6366F1' }}>
+                  Essayer
                 </Button>
               </Link>
             </div>
