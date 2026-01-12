@@ -374,6 +374,7 @@ export default function SignupPage() {
                   required
                   placeholder="Jean Dupont"
                   className="mt-1"
+                  autoComplete="name"
                 />
               </div>
 
@@ -388,6 +389,7 @@ export default function SignupPage() {
                   required
                   placeholder="votre@email.com"
                   className="mt-1"
+                  autoComplete="email"
                 />
               </div>
 
@@ -403,6 +405,7 @@ export default function SignupPage() {
                     required
                     placeholder="Acme Inc."
                     className="mt-1"
+                    autoComplete="organization"
                   />
                 </div>
               )}
@@ -418,6 +421,7 @@ export default function SignupPage() {
                   required
                   placeholder="Paris, France"
                   className="mt-1"
+                  autoComplete="address-level2"
                 />
               </div>
 
@@ -431,6 +435,7 @@ export default function SignupPage() {
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+33 6 12 34 56 78"
                   className="mt-1"
+                  autoComplete="tel"
                 />
               </div>
 
@@ -445,9 +450,10 @@ export default function SignupPage() {
                   required
                   placeholder="••••••••"
                   className="mt-1"
-                  minLength={6}
+                  minLength={8}
+                  autoComplete="new-password"
                 />
-                <p className="text-xs mt-1" style={{ color: '#457B9D' }}>Minimum 6 caractères</p>
+                <p className="text-xs mt-1" style={{ color: '#457B9D' }}>Minimum 8 caractères</p>
               </div>
 
               {error && (

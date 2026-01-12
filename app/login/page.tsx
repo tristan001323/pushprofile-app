@@ -90,6 +90,7 @@ export default function LoginPage() {
                   required
                   placeholder="votre@email.com"
                   className="mt-1"
+                  autoComplete="email"
                 />
               </div>
 
@@ -142,6 +143,7 @@ export default function LoginPage() {
               required
               placeholder="votre@email.com"
               className="mt-1"
+              autoComplete="email"
             />
           </div>
 
@@ -155,6 +157,7 @@ export default function LoginPage() {
               required
               placeholder="••••••••"
               className="mt-1"
+              autoComplete="current-password"
             />
           </div>
 

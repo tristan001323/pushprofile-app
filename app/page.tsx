@@ -97,9 +97,6 @@ export default function LandingPage() {
                   Essayer gratuitement
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6" style={{ borderColor: '#1D3557', color: '#1D3557' }}>
-                Voir la démo
-              </Button>
             </div>
 
             <div className="flex flex-wrap justify-center gap-6 text-sm" style={{ color: '#457B9D' }}>
@@ -736,9 +733,6 @@ export default function LandingPage() {
                 Commencer gratuitement
               </Button>
             </Link>
-            <Button size="lg" className="text-lg px-8 py-6" style={{ backgroundColor: 'white', color: '#1D3557' }}>
-              Demander une démo
-            </Button>
           </div>
         </div>
       </section>
