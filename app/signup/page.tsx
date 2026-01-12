@@ -343,8 +343,15 @@ export default function SignupPage() {
         {step === 10 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Créez votre compte</h2>
-              <p className="text-sm mt-2" style={{ color: '#457B9D' }}>Plus qu'une étape pour commencer !</p>
+              <div className="text-5xl mb-4">🎯</div>
+              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Merci pour vos réponses !</h2>
+              <p className="text-sm mt-3 px-4 py-3 rounded-xl" style={{ backgroundColor: '#F1FAEE', color: '#1D3557' }}>
+                {isJobSeeker
+                  ? "Vous êtes à deux doigts de devenir un chasseur de jobs d'élite. 🏹 Fini les heures perdues sur LinkedIn !"
+                  : "Vous êtes à deux doigts de devenir un sniper du recrutement. 🎯 Vos concurrents vont pleurer."
+                }
+              </p>
+              <p className="text-sm mt-4" style={{ color: '#457B9D' }}>Créez votre compte pour commencer</p>
             </div>
 
             <form onSubmit={handleSignup} className="space-y-4">
