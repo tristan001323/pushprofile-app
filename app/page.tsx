@@ -13,11 +13,22 @@ export default function LandingPage() {
   const [isAnnual, setIsAnnual] = useState(false)
 
   useEffect(() => {
+    // Vérifier la session existante
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsLoggedIn(!!session)
       setCheckingAuth(false)
     })
-  }, [])
+
+    // Écouter les événements d'authentification (notamment PASSWORD_RECOVERY)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Rediriger vers la page de reset password
+        router.push('/reset-password')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [router])
 
   if (checkingAuth) {
     return (
