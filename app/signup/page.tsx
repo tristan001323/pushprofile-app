@@ -26,6 +26,10 @@ export default function SignupPage() {
   const [step, setStep] = useState(1)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [location, setLocation] = useState('')
+  const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -103,10 +107,14 @@ export default function SignupPage() {
       setError(signupError.message)
       setLoading(false)
     } else {
-      // Sauvegarder les données d'onboarding dans une table séparée si nécessaire
+      // Sauvegarder les données d'onboarding dans une table séparée
       if (data.user) {
         await supabase.from('user_profiles').upsert({
           user_id: data.user.id,
+          full_name: fullName,
+          company_name: companyName || null,
+          location: location,
+          phone: phone || null,
           company_type: onboarding.companyType,
           team_size: onboarding.teamSize,
           role: onboarding.role,
@@ -355,8 +363,23 @@ export default function SignupPage() {
             </div>
 
             <form onSubmit={handleSignup} className="space-y-4">
+              {/* Nom complet */}
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="fullName">Nom complet *</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  placeholder="Jean Dupont"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -368,8 +391,52 @@ export default function SignupPage() {
                 />
               </div>
 
+              {/* Nom de la société (pas pour les chercheurs d'emploi) */}
+              {!isJobSeeker && (
+                <div>
+                  <Label htmlFor="companyName">Nom de la société *</Label>
+                  <Input
+                    id="companyName"
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    required
+                    placeholder="Acme Inc."
+                    className="mt-1"
+                  />
+                </div>
+              )}
+
+              {/* Localisation */}
               <div>
-                <Label htmlFor="password">Mot de passe</Label>
+                <Label htmlFor="location">Localisation *</Label>
+                <Input
+                  id="location"
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  required
+                  placeholder="Paris, France"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Téléphone (optionnel) */}
+              <div>
+                <Label htmlFor="phone">Téléphone <span className="text-gray-400">(optionnel)</span></Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+33 6 12 34 56 78"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Mot de passe */}
+              <div>
+                <Label htmlFor="password">Mot de passe *</Label>
                 <Input
                   id="password"
                   type="password"
