@@ -82,11 +82,11 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-7xl mx-auto">
-          {/* Badge économie */}
+          {/* Badge */}
           <div className="flex justify-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium" style={{ backgroundColor: '#F1FAEE', color: '#1D3557' }}>
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              Économisez 750€/mois vs LinkedIn + Lusha + Indeed
+              Gagnez du temps et visez juste — ça n'a pas de prix
             </div>
           </div>
 
