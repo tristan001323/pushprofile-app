@@ -653,85 +653,192 @@ export default function LandingPage() {
       {/* Pricing Section */}
       <section id="tarifs" className="py-20 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4" style={{ color: '#1D3557' }}>
               Tarifs simples et transparents
             </h2>
-            <p className="text-xl mb-8" style={{ color: '#457B9D' }}>
+            <p className="text-xl" style={{ color: '#457B9D' }}>
               Commencez gratuitement, passez Pro quand vous êtes prêt
             </p>
-
-            {/* Toggle Mensuel / Annuel */}
-            <div className="flex items-center justify-center gap-4">
-              <span className={`font-medium ${!isAnnual ? 'text-gray-900' : 'text-gray-400'}`}>Mensuel</span>
-              <button
-                onClick={() => setIsAnnual(!isAnnual)}
-                className="relative w-16 h-8 rounded-full transition-colors"
-                style={{ backgroundColor: isAnnual ? '#6366F1' : '#E5E7EB' }}
-              >
-                <div
-                  className="absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform"
-                  style={{ transform: isAnnual ? 'translateX(34px)' : 'translateX(4px)' }}
-                />
-              </button>
-              <span className={`font-medium ${isAnnual ? 'text-gray-900' : 'text-gray-400'}`}>
-                Annuel
-                <span className="ml-2 px-2 py-1 text-xs rounded-full" style={{ backgroundColor: '#D1FAE5', color: '#059669' }}>
-                  -20%
-                </span>
-              </span>
-            </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            {/* Pro - 50 recherches */}
-            <div className="bg-white rounded-2xl p-8 shadow-xl border-2" style={{ borderColor: '#6366F1' }}>
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-xl font-bold" style={{ color: '#1D3557' }}>Pro</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Essai Gratuit */}
+            <div className="bg-gray-50 rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">🎁</span>
+                <h3 className="text-lg font-bold" style={{ color: '#1D3557' }}>Essai Gratuit</h3>
+              </div>
+              <div className="mb-4">
+                <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>0€</span>
+              </div>
+              <p className="text-sm mb-4" style={{ color: '#059669' }}>Pas de CB requise</p>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span><strong>2 recherches</strong> CV gratuites</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>~50 jobs matchés/recherche</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Scores IA + justifications</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>3 décideurs/entreprise (top 10)</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Emails + téléphones enrichis</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Historique 30 jours</span>
+                </li>
+              </ul>
+              <Link href="/signup" className="block">
+                <Button variant="outline" className="w-full">
+                  Essayer gratuitement
+                </Button>
+              </Link>
+            </div>
+
+            {/* Starter */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200">
+              <h3 className="text-lg font-bold mb-2" style={{ color: '#1D3557' }}>Starter</h3>
+              <div className="mb-4">
+                <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>49€</span>
+                <span style={{ color: '#457B9D' }}>/mois</span>
+              </div>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span><strong>10 recherches</strong> CV/mois</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>25 jobs matchés/recherche</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Scores IA + justifications</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>3 décideurs/entreprise (top 10)</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Emails enrichis uniquement</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Historique 30 jours</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>1 utilisateur</span>
+                </li>
+              </ul>
+              <Link href="/signup" className="block">
+                <Button variant="outline" className="w-full">
+                  Choisir Starter
+                </Button>
+              </Link>
+            </div>
+
+            {/* Pro - Populaire */}
+            <div className="bg-white rounded-2xl p-6 shadow-xl border-2 relative" style={{ borderColor: '#6366F1' }}>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#6366F1', color: 'white' }}>
                   Populaire
                 </span>
               </div>
-              <p className="mb-6" style={{ color: '#457B9D' }}>Pour les recruteurs actifs</p>
-              <div className="mb-6">
-                <span className="text-4xl font-bold" style={{ color: '#1D3557' }}>{isAnnual ? '79€' : '99€'}</span>
-                <span style={{ color: '#457B9D' }}>/mois</span>
-                {isAnnual && (
-                  <span className="block text-sm mt-1" style={{ color: '#059669' }}>
-                    Facturé 948€/an
-                  </span>
-                )}
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-lg font-bold" style={{ color: '#1D3557' }}>Pro</h3>
+                <span>⭐</span>
               </div>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+              <div className="mb-4">
+                <span className="text-3xl font-bold" style={{ color: '#1D3557' }}>149€</span>
+                <span style={{ color: '#457B9D' }}>/mois</span>
+              </div>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  <span className="font-semibold">50 recherches/mois</span>
+                  <span><strong>50 recherches</strong> CV/mois</span>
                 </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  ~50 jobs par recherche
+                  <span>50 jobs matchés/recherche</span>
                 </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Contacts enrichis
+                  <span>Scores IA + justifications</span>
                 </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Export CSV
+                  <span>3 décideurs/entreprise (top 10)</span>
                 </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Support prioritaire
+                  <span>Emails + téléphones enrichis</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Historique illimité</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Support email prioritaire</span>
+                </li>
+                <li className="flex items-start gap-2" style={{ color: '#1D3557' }}>
+                  <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>3 utilisateurs</span>
                 </li>
               </ul>
               <Link href="/signup" className="block">
@@ -741,72 +848,72 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Illimité */}
-            <div className="bg-gray-50 rounded-2xl p-8">
-              <h3 className="text-xl font-bold mb-2" style={{ color: '#1D3557' }}>Illimité</h3>
-              <p className="mb-6" style={{ color: '#457B9D' }}>Pour les équipes</p>
-              <div className="mb-6">
-                <span className="text-4xl font-bold" style={{ color: '#1D3557' }}>{isAnnual ? '159€' : '199€'}</span>
-                <span style={{ color: '#457B9D' }}>/mois</span>
-                {isAnnual && (
-                  <span className="block text-sm mt-1" style={{ color: '#059669' }}>
-                    Facturé 1 908€/an
-                  </span>
-                )}
+            {/* Business */}
+            <div className="bg-gray-900 rounded-2xl p-6 text-white">
+              <h3 className="text-lg font-bold mb-2">Business</h3>
+              <div className="mb-4">
+                <span className="text-3xl font-bold">349€</span>
+                <span className="text-gray-400">/mois</span>
               </div>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  <span className="font-semibold">Recherches illimitées</span>
+                  <span><strong>200 recherches</strong> CV/mois</span>
                 </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  ~50 jobs par recherche
+                  <span>50 jobs matchés/recherche</span>
                 </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Contacts enrichis
+                  <span>Scores IA + justifications</span>
                 </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  API access
+                  <span>3 décideurs/entreprise (TOUS)</span>
                 </li>
-                <li className="flex items-center gap-2" style={{ color: '#1D3557' }}>
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Support dédié
+                  <span>Emails + téléphones enrichis</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Historique illimité</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Export CSV <span className="text-gray-400">(T1 2026)</span></span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Support dédié</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>10 utilisateurs</span>
                 </li>
               </ul>
               <Link href="/signup" className="block">
-                <Button variant="outline" className="w-full">
-                  Choisir Illimité
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Essai gratuit */}
-          <div className="mt-12 text-center">
-            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl" style={{ backgroundColor: '#F1FAEE' }}>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A8DADC' }}>
-                <span className="text-lg">🎁</span>
-              </div>
-              <div className="text-left">
-                <p className="font-semibold" style={{ color: '#1D3557' }}>Essai gratuit</p>
-                <p className="text-sm" style={{ color: '#457B9D' }}>2 recherches offertes pour tester, sans carte bancaire</p>
-              </div>
-              <Link href="/signup">
-                <Button size="sm" variant="outline" style={{ borderColor: '#6366F1', color: '#6366F1' }}>
-                  Essayer
+                <Button className="w-full" style={{ backgroundColor: 'white', color: '#1D3557' }}>
+                  Choisir Business
                 </Button>
               </Link>
             </div>
