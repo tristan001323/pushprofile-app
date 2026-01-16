@@ -174,7 +174,7 @@ export default function LandingPage() {
                       <span className="text-3xl">🎯</span>
                     </div>
                     <div className="text-indigo-500 text-sm font-bold mb-2">Étape 3</div>
-                    <h4 className="font-bold mb-2" style={{ color: '#1D3557' }}>~50 Jobs + TOP 10</h4>
+                    <h4 className="font-bold mb-2" style={{ color: '#1D3557' }}>~50 Jobs matchés</h4>
                     <p className="text-sm" style={{ color: '#457B9D' }}>Les meilleures offres scorées avec explications détaillées</p>
                   </div>
                   {/* Connecteur */}
@@ -189,7 +189,7 @@ export default function LandingPage() {
                     </div>
                     <div className="text-green-600 text-sm font-bold mb-2">Étape 4</div>
                     <h4 className="font-bold mb-2" style={{ color: '#1D3557' }}>Contacts Directs</h4>
-                    <p className="text-sm" style={{ color: '#457B9D' }}>Email + téléphone du recruteur (70% des offres)</p>
+                    <p className="text-sm" style={{ color: '#457B9D' }}>Coordonnées des personnes ayant publié l'offre</p>
                   </div>
                 </div>
               </div>
@@ -234,7 +234,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <div className="text-indigo-500 text-xs font-bold mb-1">Étape 3</div>
-                      <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>~50 Jobs + TOP 10</h4>
+                      <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>~50 Jobs matchés</h4>
                       <p className="text-sm" style={{ color: '#457B9D' }}>Les meilleures offres avec explications</p>
                     </div>
                   </div>
@@ -249,7 +249,7 @@ export default function LandingPage() {
                     <div>
                       <div className="text-green-600 text-xs font-bold mb-1">Étape 4</div>
                       <h4 className="font-bold mb-1" style={{ color: '#1D3557' }}>Contacts Directs</h4>
-                      <p className="text-sm" style={{ color: '#457B9D' }}>Email + téléphone (70% des offres)</p>
+                      <p className="text-sm" style={{ color: '#457B9D' }}>Coordonnées des personnes ayant publié l'offre</p>
                     </div>
                   </div>
                 </div>
@@ -259,35 +259,83 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Trust Bar - Remplace ces outils */}
+      {/* Sources Schema */}
       <section className="py-16 border-y border-gray-200 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <p className="text-center text-sm font-medium uppercase tracking-wider mb-8" style={{ color: '#457B9D' }}>
-            PushProfile remplace tous ces outils
+        <div className="max-w-5xl mx-auto px-6">
+          <p className="text-center text-sm font-medium uppercase tracking-wider mb-10" style={{ color: '#457B9D' }}>
+            Toutes vos sources en un seul endroit
           </p>
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-            <div className="text-center">
-              <div className="text-2xl font-bold line-through" style={{ color: '#6366F1' }}>LinkedIn Recruiter</div>
-              <div className="text-sm" style={{ color: '#457B9D' }}>500€/mois</div>
+
+          <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-4">
+            {/* Sources */}
+            <div className="flex flex-col gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#0A66C2' }}>
+                  <span className="text-white font-bold text-sm">in</span>
+                </div>
+                <span className="font-medium" style={{ color: '#1D3557' }}>LinkedIn Jobs</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#2164F3' }}>
+                  <span className="text-white font-bold text-sm">in</span>
+                </div>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Indeed</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FFCD00' }}>
+                  <span className="font-bold text-sm" style={{ color: '#1D3557' }}>W</span>
+                </div>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Welcome to the Jungle</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F1FAEE' }}>
+                  <span className="text-lg">🌐</span>
+                </div>
+                <span className="font-medium" style={{ color: '#1D3557' }}>+50K offres sites spécialisés</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white border-2 border-green-100 rounded-xl px-4 py-3 shadow-sm">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#D1FAE5' }}>
+                  <span className="text-lg">📇</span>
+                </div>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Contacts enrichis des recruteurs</span>
+              </div>
             </div>
-            <div className="text-3xl" style={{ color: '#A8DADC' }}>+</div>
-            <div className="text-center">
-              <div className="text-2xl font-bold line-through" style={{ color: '#6366F1' }}>Indeed</div>
-              <div className="text-sm" style={{ color: '#457B9D' }}>300€/mois</div>
+
+            {/* Arrow */}
+            <div className="flex items-center justify-center py-4 md:py-0 md:px-6">
+              <svg className="w-12 h-12 md:w-16 md:h-16 rotate-90 md:rotate-0" style={{ color: '#6366F1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </div>
-            <div className="text-3xl" style={{ color: '#A8DADC' }}>+</div>
-            <div className="text-center">
-              <div className="text-2xl font-bold line-through" style={{ color: '#6366F1' }}>Lusha</div>
-              <div className="text-sm" style={{ color: '#457B9D' }}>99€/mois</div>
-            </div>
-          </div>
-          <div className="text-center mt-8">
-            <div className="inline-block px-6 py-3 rounded-full" style={{ backgroundColor: '#F1FAEE' }}>
-              <span className="text-lg" style={{ color: '#457B9D' }}>= </span>
-              <span className="text-2xl font-bold line-through" style={{ color: '#6366F1' }}>899€/mois</span>
-              <span className="text-lg mx-3" style={{ color: '#457B9D' }}>→</span>
-              <span className="text-2xl font-bold" style={{ color: '#059669' }}>149€/mois</span>
-              <span className="text-lg ml-2" style={{ color: '#457B9D' }}>avec PushProfile</span>
+
+            {/* Result */}
+            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl w-full md:w-auto">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-3xl">🎯</span>
+                </div>
+                <h4 className="text-xl font-bold mb-2">Vos résultats</h4>
+                <ul className="text-sm space-y-2 text-indigo-100">
+                  <li className="flex items-center gap-2 justify-center">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    ~50 jobs pertinents
+                  </li>
+                  <li className="flex items-center gap-2 justify-center">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Scores de matching IA
+                  </li>
+                  <li className="flex items-center gap-2 justify-center">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Contacts directs
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -296,7 +344,7 @@ export default function LandingPage() {
       {/* Stats Section */}
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto">
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold mb-2" style={{ color: '#1D3557' }}>30s</div>
               <div style={{ color: '#457B9D' }}>Temps de matching</div>
@@ -304,10 +352,6 @@ export default function LandingPage() {
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold mb-2" style={{ color: '#1D3557' }}>50+</div>
               <div style={{ color: '#457B9D' }}>Jobs par recherche</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold mb-2" style={{ color: '#1D3557' }}>750€</div>
-              <div style={{ color: '#457B9D' }}>Économie mensuelle</div>
             </div>
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold mb-2" style={{ color: '#1D3557' }}>3x</div>
