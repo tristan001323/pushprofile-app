@@ -11,6 +11,25 @@ export default function LandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [isAnnual, setIsAnnual] = useState(false)
+  const [waitlistEmail, setWaitlistEmail] = useState('')
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
+  const [waitlistLoading, setWaitlistLoading] = useState(false)
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!waitlistEmail) return
+
+    setWaitlistLoading(true)
+
+    // Sauvegarder l'email dans Supabase
+    await supabase.from('waitlist').insert({
+      email: waitlistEmail,
+      created_at: new Date().toISOString()
+    })
+
+    setWaitlistSubmitted(true)
+    setWaitlistLoading(false)
+  }
 
   useEffect(() => {
     // Vérifier la session existante
@@ -461,7 +480,7 @@ export default function LandingPage() {
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                      <span style={{ color: '#1D3557' }}>Économie : 750€/mois en outils + 49h/mois en temps</span>
+                      <span style={{ color: '#1D3557' }}>Gagnez du temps et visez juste — ça n'a pas de prix</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -473,7 +492,7 @@ export default function LandingPage() {
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                      <span style={{ color: '#1D3557' }}>Contacts enrichis : email + téléphone (70% des offres)</span>
+                      <span style={{ color: '#1D3557' }}>Prospection ultra-ciblée avec email et téléphone direct</span>
                     </li>
                   </ul>
                   <div className="flex items-center gap-4">
@@ -535,7 +554,7 @@ export default function LandingPage() {
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                      <span style={{ color: '#1D3557' }}>Économie : 500h/an = 7,500€ de temps gagné</span>
+                      <span style={{ color: '#1D3557' }}>Des heures économisées + contacts directs des recruteurs</span>
                     </li>
                   </ul>
                   <div className="flex items-center gap-4">
@@ -569,14 +588,20 @@ export default function LandingPage() {
                     Sourcez les meilleurs talents
                   </h3>
                   <p className="text-lg mb-6" style={{ color: '#457B9D' }}>
-                    Upload fiche de poste → On trouve les talents sur GitHub, LinkedIn, Stack Overflow.
+                    Upload fiche de poste → On cible les candidats "Open to Work" et ceux prêts au changement.
                   </p>
                   <ul className="space-y-4 mb-8">
                     <li className="flex items-start gap-3">
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                      <span style={{ color: '#1D3557' }}>Scraping GitHub/LinkedIn/Stack Overflow</span>
+                      <span style={{ color: '#1D3557' }}>Ciblage des profils "Open to Work" et en veille active</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span style={{ color: '#1D3557' }}>Pas besoin de connecter votre LinkedIn (évite les blocages)</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -584,18 +609,34 @@ export default function LandingPage() {
                       </svg>
                       <span style={{ color: '#1D3557' }}>Contacts enrichis automatiquement</span>
                     </li>
-                    <li className="flex items-start gap-3">
-                      <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span style={{ color: '#1D3557' }}>50% moins cher que LinkedIn Recruiter</span>
-                    </li>
                   </ul>
-                  <div className="flex items-center gap-4">
-                    <Button disabled variant="outline">
-                      Liste d'attente
-                    </Button>
-                  </div>
+
+                  {/* Formulaire liste d'attente */}
+                  {waitlistSubmitted ? (
+                    <div className="p-4 rounded-xl" style={{ backgroundColor: '#D1FAE5' }}>
+                      <p className="text-sm font-medium" style={{ color: '#059669' }}>
+                        ✅ Merci ! Vous serez notifié dès la sortie de cette fonctionnalité.
+                      </p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleWaitlistSubmit} className="flex gap-2">
+                      <input
+                        type="email"
+                        value={waitlistEmail}
+                        onChange={(e) => setWaitlistEmail(e.target.value)}
+                        placeholder="votre@email.com"
+                        required
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                      <Button
+                        type="submit"
+                        disabled={waitlistLoading}
+                        style={{ backgroundColor: '#1D3557', color: 'white' }}
+                      >
+                        {waitlistLoading ? '...' : "M'alerter"}
+                      </Button>
+                    </form>
+                  )}
                 </div>
                 <div className="bg-gradient-to-br p-8 flex items-center justify-center opacity-75" style={{ backgroundColor: '#1D3557' }}>
                   <div className="text-center">
