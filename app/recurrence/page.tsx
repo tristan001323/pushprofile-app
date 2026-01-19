@@ -10,7 +10,7 @@ import Link from 'next/link'
 type RecurringSearch = {
   id: string
   name: string
-  recurrence: '2days' | 'weekly'
+  recurrence: '2days' | '4days' | 'weekly' | 'biweekly' | 'monthly'
   is_recurrence_active: boolean
   next_run_at: string | null
   created_at: string
@@ -65,7 +65,10 @@ export default function RecurrencePage() {
   const getRecurrenceLabel = (recurrence: string) => {
     switch (recurrence) {
       case '2days': return 'Tous les 2 jours'
+      case '4days': return 'Tous les 4 jours'
       case 'weekly': return 'Hebdomadaire'
+      case 'biweekly': return 'Bi-mensuel'
+      case 'monthly': return 'Mensuel'
       default: return recurrence
     }
   }
@@ -117,22 +120,28 @@ export default function RecurrencePage() {
           ) : (
             <div className="space-y-4">
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <Card className="p-4 text-center">
                   <p className="text-2xl font-bold" style={{ color: '#1D3557' }}>{searches.length}</p>
-                  <p className="text-sm" style={{ color: '#457B9D' }}>Récurrences actives</p>
+                  <p className="text-sm" style={{ color: '#457B9D' }}>Total récurrences</p>
+                </Card>
+                <Card className="p-4 text-center">
+                  <p className="text-2xl font-bold" style={{ color: '#059669' }}>
+                    {searches.filter(s => s.is_recurrence_active).length}
+                  </p>
+                  <p className="text-sm" style={{ color: '#457B9D' }}>Actives</p>
+                </Card>
+                <Card className="p-4 text-center">
+                  <p className="text-2xl font-bold" style={{ color: '#DC2626' }}>
+                    {searches.filter(s => !s.is_recurrence_active).length}
+                  </p>
+                  <p className="text-sm" style={{ color: '#457B9D' }}>En pause</p>
                 </Card>
                 <Card className="p-4 text-center">
                   <p className="text-2xl font-bold" style={{ color: '#1D3557' }}>
-                    {searches.filter(s => s.recurrence === '2days').length}
+                    {searches.filter(s => s.next_run_at && new Date(s.next_run_at) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)).length}
                   </p>
-                  <p className="text-sm" style={{ color: '#457B9D' }}>Tous les 2 jours</p>
-                </Card>
-                <Card className="p-4 text-center">
-                  <p className="text-2xl font-bold" style={{ color: '#1D3557' }}>
-                    {searches.filter(s => s.recurrence === 'weekly').length}
-                  </p>
-                  <p className="text-sm" style={{ color: '#457B9D' }}>Hebdomadaires</p>
+                  <p className="text-sm" style={{ color: '#457B9D' }}>Prochaines 48h</p>
                 </Card>
               </div>
 

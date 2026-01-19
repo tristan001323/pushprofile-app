@@ -311,11 +311,49 @@ async function scoreTopJobsWithClaude(jobs: NormalizedJob[], cvData: ParsedCV): 
   return JSON.parse(scoresText)
 }
 
+// Helper: Calculate next run date based on recurrence
+function calculateNextRunAt(recurrence: string): string | null {
+  if (!recurrence) return null
+
+  const now = new Date()
+  let nextRun = new Date(now)
+
+  switch (recurrence) {
+    case '2days':
+      nextRun.setDate(now.getDate() + 2)
+      break
+    case '4days':
+      nextRun.setDate(now.getDate() + 4)
+      break
+    case 'weekly':
+      nextRun.setDate(now.getDate() + 7)
+      break
+    case 'biweekly':
+      nextRun.setDate(now.getDate() + 14)
+      break
+    case 'monthly':
+      nextRun.setMonth(now.getMonth() + 1)
+      break
+    default:
+      return null
+  }
+
+  // Set to 9:00 AM on weekday
+  nextRun.setHours(9, 0, 0, 0)
+
+  // Skip weekends
+  const day = nextRun.getDay()
+  if (day === 0) nextRun.setDate(nextRun.getDate() + 1) // Sunday -> Monday
+  if (day === 6) nextRun.setDate(nextRun.getDate() + 2) // Saturday -> Monday
+
+  return nextRun.toISOString()
+}
+
 // Main API handler
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { cv_text, user_id, name, search_type, filename } = body
+    const { cv_text, user_id, name, search_type, filename, recurrence } = body
 
     if (!cv_text) {
       return NextResponse.json({ error: 'CV text is required' }, { status: 400 })
@@ -342,7 +380,10 @@ export async function POST(request: NextRequest) {
         brief: parsedData.skills.join(', ') || null,
         cv_text: cv_text,
         parsed_data: parsedData,
-        status: 'processing'
+        status: 'processing',
+        recurrence: recurrence || null,
+        is_recurrence_active: recurrence ? true : false,
+        next_run_at: calculateNextRunAt(recurrence)
       })
       .select()
       .single()
@@ -446,17 +487,48 @@ export async function POST(request: NextRequest) {
 
     const allMatches = [...top10Matches, ...other40Matches]
 
-    // 7. Save matches to Supabase
-    console.log('Saving matches...')
-    const { error: matchesError } = await supabase
+    // 7. Check for existing matches to avoid duplicates (important for recurrence)
+    console.log('Checking for duplicates...')
+    const { data: existingMatches } = await supabase
       .from('matches')
-      .insert(allMatches)
+      .select('external_id, job_title, company_name')
+      .eq('search_id', searchId)
 
-    if (matchesError) {
-      console.error('Supabase matches error:', matchesError)
+    // Create a Set of existing job identifiers
+    const existingJobKeys = new Set<string>()
+    if (existingMatches) {
+      existingMatches.forEach(match => {
+        // Use external_id as primary key, fallback to title+company
+        if (match.external_id) {
+          existingJobKeys.add(match.external_id)
+        }
+        existingJobKeys.add(`${match.job_title?.toLowerCase()}_${match.company_name?.toLowerCase()}`)
+      })
     }
 
-    // 8. Update search status to completed
+    // Filter out duplicates
+    const newMatches = allMatches.filter(match => {
+      const externalIdExists = match.external_id && existingJobKeys.has(match.external_id)
+      const titleCompanyKey = `${match.job_title?.toLowerCase()}_${match.company_name?.toLowerCase()}`
+      const titleCompanyExists = existingJobKeys.has(titleCompanyKey)
+      return !externalIdExists && !titleCompanyExists
+    })
+
+    console.log(`Filtered ${allMatches.length - newMatches.length} duplicates, inserting ${newMatches.length} new matches`)
+
+    // 8. Save new matches to Supabase
+    console.log('Saving matches...')
+    if (newMatches.length > 0) {
+      const { error: matchesError } = await supabase
+        .from('matches')
+        .insert(newMatches)
+
+      if (matchesError) {
+        console.error('Supabase matches error:', matchesError)
+      }
+    }
+
+    // 9. Update search status to completed
     await supabase
       .from('searches')
       .update({ status: 'completed' })
@@ -467,7 +539,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       search_id: searchId,
-      matches_inserted: allMatches.length
+      matches_inserted: newMatches.length,
+      duplicates_skipped: allMatches.length - newMatches.length
     })
 
   } catch (error) {
