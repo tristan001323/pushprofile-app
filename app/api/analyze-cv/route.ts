@@ -172,8 +172,17 @@ async function fetchAdzunaJobs(urls: string[]): Promise<Job[]> {
 
   for (const url of urls) {
     try {
+      console.log('Fetching Adzuna URL:', url.replace(/app_key=[^&]+/, 'app_key=***'))
       const response = await fetch(url)
       const data = await response.json()
+
+      if (!response.ok) {
+        console.error('Adzuna API error:', data)
+        continue
+      }
+
+      console.log(`Adzuna returned ${data.results?.length || 0} results for this URL`)
+
       if (data.results) {
         allJobs.push(...data.results)
       }
@@ -574,7 +583,9 @@ export async function POST(request: NextRequest) {
     console.log(`Built ${urls.length} search URLs for type: ${search_type}`)
     const allJobs = await fetchAdzunaJobs(urls)
 
-    console.log(`Found ${allJobs.length} jobs`)
+    console.log(`Found ${allJobs.length} jobs from Adzuna`)
+    console.log('Parsed CV data:', JSON.stringify(parsedData, null, 2))
+    console.log('Search URLs:', urls)
 
     if (allJobs.length === 0) {
       // Update search status to completed with no results
@@ -586,7 +597,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         search_id: searchId,
-        matches_inserted: 0
+        matches_inserted: 0,
+        debug: {
+          reason: 'Adzuna returned 0 jobs',
+          parsed_cv: parsedData,
+          urls_tried: urls
+        }
       })
     }
 
@@ -605,7 +621,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         search_id: searchId,
-        matches_inserted: 0
+        matches_inserted: 0,
+        debug: {
+          reason: 'All jobs filtered out by prefilter',
+          total_from_adzuna: allJobs.length,
+          parsed_cv: parsedData
+        }
       })
     }
 
