@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const anthropicApiKey = process.env.ANTHROPIC_API_KEY!
-const adzunaAppId = process.env.ADZUNA_APP_ID!
-const adzunaAppKey = process.env.ADZUNA_APP_KEY!
+// Environment variables - loaded at runtime
+const getSupabase = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) {
+    throw new Error('Missing Supabase environment variables')
+  }
+  return createClient(url, key)
+}
 
-// Use service role key to bypass RLS in API routes
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const getAnthropicKey = () => process.env.ANTHROPIC_API_KEY || ''
+const getAdzunaCredentials = () => ({
+  appId: process.env.ADZUNA_APP_ID || '',
+  appKey: process.env.ADZUNA_APP_KEY || ''
+})
 
 interface ParsedCV {
   target_roles: string[]
@@ -95,7 +102,7 @@ async function parseCV(cvText: string): Promise<ParsedCV> {
     headers: {
       'Content-Type': 'application/json',
       'anthropic-version': '2023-06-01',
-      'x-api-key': anthropicApiKey,
+      'x-api-key': getAnthropicKey(),
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
@@ -127,6 +134,7 @@ async function parseCV(cvText: string): Promise<ParsedCV> {
 
 // 2. Build Adzuna search URLs
 function buildAdzunaUrls(cvData: ParsedCV): string[] {
+  const { appId, appKey } = getAdzunaCredentials()
   const skills = (cvData.skills || []).map(s => s.toLowerCase())
   const targetRole = cvData.target_roles?.[0] || 'developer'
   const location = cvData.location?.toLowerCase() || 'paris'
@@ -135,7 +143,7 @@ function buildAdzunaUrls(cvData: ParsedCV): string[] {
   const isTech = skills.some(s => itSkills.includes(s))
 
   const baseUrl = 'https://api.adzuna.com/v1/api/jobs/fr/search/1'
-  const params = `?app_id=${adzunaAppId}&app_key=${adzunaAppKey}&results_per_page=100&where=${encodeURIComponent(location)}&distance=50&max_days_old=30`
+  const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=100&where=${encodeURIComponent(location)}&distance=50&max_days_old=30`
 
   const urls: string[] = []
 
@@ -331,7 +339,7 @@ async function scoreTopJobsWithClaude(jobs: NormalizedJob[], cvData: ParsedCV): 
     headers: {
       'Content-Type': 'application/json',
       'anthropic-version': '2023-06-01',
-      'x-api-key': anthropicApiKey,
+      'x-api-key': getAnthropicKey(),
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
@@ -437,11 +445,12 @@ function buildFromStandardCriteria(body: any): ParsedCV {
 
 // Build Adzuna URLs from standard criteria (more direct approach)
 function buildAdzunaUrlsFromCriteria(body: any): string[] {
+  const { appId, appKey } = getAdzunaCredentials()
   const { job_title, location, contract_types, remote_options, brief } = body
 
   const baseUrl = 'https://api.adzuna.com/v1/api/jobs/fr/search/1'
   const locationParam = location || 'france'
-  const params = `?app_id=${adzunaAppId}&app_key=${adzunaAppKey}&results_per_page=100&where=${encodeURIComponent(locationParam)}&distance=50&max_days_old=30`
+  const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=100&where=${encodeURIComponent(locationParam)}&distance=50&max_days_old=30`
 
   const urls: string[] = []
 
@@ -481,6 +490,7 @@ function buildAdzunaUrlsFromCriteria(body: any): string[] {
 // Main API handler
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase()
     const body = await request.json()
     const { cv_text, user_id, name, search_type, filename, recurrence, job_title, location, seniority, brief, contract_types, remote_options, exclude_agencies } = body
 
