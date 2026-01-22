@@ -161,15 +161,40 @@ async function fetchAdzunaJobs(urls: string[]): Promise<Job[]> {
 }
 
 // 4. Prefilter and score jobs
-function prefilterJobs(jobs: Job[], cvData: ParsedCV, searchId: string): NormalizedJob[] {
+function prefilterJobs(jobs: Job[], cvData: ParsedCV, searchId: string, excludeAgencies: boolean = true): NormalizedJob[] {
+  // List of recruitment agencies to filter out
+  const recruitmentAgencies = [
+    'michael page', 'robert half', 'hays', 'randstad', 'adecco', 'manpower',
+    'kelly services', 'page personnel', 'expectra', 'synergie', 'crit',
+    'proman', 'actual', 'start people', 'supplay', 'interaction', 'adequat',
+    'spring', 'lhh', 'lincoln', 'jp associates', 'freelance.com', 'malt',
+    'talent.io', 'hired', 'side', 'coopaname', 'keljob', 'jobteaser',
+    'externatic', 'urban linker', 'free-work', 'free work', 'le collectif',
+    'skillwise', 'happy to meet you', 'htmy', 'ignition program', 'mobiskill',
+    'silkhom', 'altaide', 'mybeautifuljob', 'hunteed', 'opensourcing',
+    'cadremploi', 'apec', 'meteojob', 'indeed', 'linkedin', 'monster',
+    'nexten', 'kicklox', 'welovedevs', 'chooseyourboss', 'lesjeudis',
+    'club freelance', 'comet', 'xor talents', 'mindquest', 'wenabi'
+  ]
+
+  // Filter out recruitment agencies if enabled
+  let filteredJobs = jobs
+  if (excludeAgencies) {
+    filteredJobs = jobs.filter(job => {
+      const companyName = (job.company?.display_name || '').toLowerCase()
+      return !recruitmentAgencies.some(agency => companyName.includes(agency))
+    })
+    console.log(`Filtered ${jobs.length - filteredJobs.length} jobs from recruitment agencies`)
+  }
+
   // Filter out business/sales roles for tech profiles
   const isTechProfile = cvData.skills.some(skill => {
     const techSkills = ['javascript', 'python', 'java', 'react', 'typescript', 'node', 'php', 'ruby', 'go', 'rust', 'c++', 'c#', 'sql', 'aws', 'docker', 'git', 'angular', 'vue', 'next', 'redux', 'graphql', 'mongodb', 'postgresql']
     return techSkills.includes(skill.toLowerCase())
   })
 
-  const filteredJobs = isTechProfile
-    ? jobs.filter(job => {
+  filteredJobs = isTechProfile
+    ? filteredJobs.filter(job => {
         const title = job.title.toLowerCase()
         return !(
           title.includes('business developer') ||
@@ -178,7 +203,7 @@ function prefilterJobs(jobs: Job[], cvData: ParsedCV, searchId: string): Normali
           title.includes('sales')
         )
       })
-    : jobs
+    : filteredJobs
 
   // Deduplicate jobs
   function normalizeString(str: string): string {
@@ -349,19 +374,122 @@ function calculateNextRunAt(recurrence: string): string | null {
   return nextRun.toISOString()
 }
 
+// Build parsed data from standard criteria (no CV)
+function buildFromStandardCriteria(body: any): ParsedCV {
+  const { job_title, location, seniority, brief, contract_types, remote_options } = body
+
+  // Extract skills from brief
+  const skills: string[] = []
+  if (brief) {
+    // Common tech skills to extract
+    const techKeywords = ['react', 'vue', 'angular', 'node', 'nodejs', 'python', 'java', 'javascript', 'typescript', 'php', 'ruby', 'go', 'rust', 'c++', 'c#', 'sql', 'aws', 'docker', 'kubernetes', 'git', 'graphql', 'mongodb', 'postgresql', 'mysql', 'redis', 'django', 'spring', 'express', 'nextjs', 'next.js', 'tailwind', 'sass', 'css', 'html', 'flutter', 'swift', 'kotlin', 'android', 'ios', 'figma', 'sketch', 'agile', 'scrum', 'devops', 'ci/cd', 'terraform', 'jenkins', 'linux', 'api', 'rest', 'microservices']
+
+    const briefLower = brief.toLowerCase()
+    techKeywords.forEach(skill => {
+      if (briefLower.includes(skill)) {
+        skills.push(skill)
+      }
+    })
+
+    // If no tech skills found, use brief words as skills
+    if (skills.length === 0) {
+      const words = brief.split(/[,;.\s]+/).filter((w: string) => w.length > 2)
+      skills.push(...words.slice(0, 10))
+    }
+  }
+
+  return {
+    target_roles: job_title ? [job_title] : ['developer'],
+    skills: skills,
+    experience_years: seniority === 'junior' ? 1 : seniority === 'confirmé' ? 3 : seniority === 'senior' ? 7 : seniority === 'expert' ? 12 : 3,
+    location: location || 'France',
+    seniority: seniority || 'confirmé',
+    education: '',
+    languages: ['Français']
+  }
+}
+
+// Build Adzuna URLs from standard criteria (more direct approach)
+function buildAdzunaUrlsFromCriteria(body: any): string[] {
+  const { job_title, location, contract_types, remote_options, brief } = body
+
+  const baseUrl = 'https://api.adzuna.com/v1/api/jobs/fr/search/1'
+  const locationParam = location || 'france'
+  const params = `?app_id=${adzunaAppId}&app_key=${adzunaAppKey}&results_per_page=100&where=${encodeURIComponent(locationParam)}&distance=50&max_days_old=30`
+
+  const urls: string[] = []
+
+  // Main search by job title
+  if (job_title) {
+    urls.push(baseUrl + params + `&what=${encodeURIComponent(job_title)}`)
+  }
+
+  // Check if it's a tech role
+  const techRoles = ['developer', 'développeur', 'dev', 'engineer', 'ingénieur', 'frontend', 'backend', 'fullstack', 'devops', 'data', 'product', 'designer', 'ux', 'ui']
+  const isTechRole = job_title && techRoles.some(role => job_title.toLowerCase().includes(role))
+
+  if (isTechRole || (!job_title && brief)) {
+    // Add IT category search
+    urls.push(baseUrl + params + '&category=it-jobs')
+  }
+
+  // Add searches based on brief/skills
+  if (brief) {
+    const topSkills = ['react', 'python', 'typescript', 'node', 'java', 'php', 'angular', 'vue', 'django', 'spring', 'devops', 'data']
+    const briefLower = brief.toLowerCase()
+    const matchedSkills = topSkills.filter(skill => briefLower.includes(skill)).slice(0, 2)
+
+    matchedSkills.forEach(skill => {
+      urls.push(baseUrl + params + `&what=${encodeURIComponent(skill)}`)
+    })
+  }
+
+  // Fallback if no URLs generated
+  if (urls.length === 0) {
+    urls.push(baseUrl + params + '&category=it-jobs')
+  }
+
+  return urls
+}
+
 // Main API handler
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { cv_text, user_id, name, search_type, filename, recurrence } = body
+    const { cv_text, user_id, name, search_type, filename, recurrence, job_title, location, seniority, brief, contract_types, remote_options, exclude_agencies } = body
 
-    if (!cv_text) {
-      return NextResponse.json({ error: 'CV text is required' }, { status: 400 })
+    // Validation: need either CV or standard criteria
+    const hasCV = cv_text && cv_text.trim().length > 0
+    const hasStandardCriteria = job_title || location || brief
+
+    if (!hasCV && !hasStandardCriteria) {
+      return NextResponse.json({ error: 'Veuillez fournir un CV ou des critères de recherche' }, { status: 400 })
     }
 
-    // 1. Parse CV with Claude
-    console.log('Parsing CV...')
-    const parsedData = await parseCV(cv_text)
+    let parsedData: ParsedCV
+
+    // Determine how to get parsed data based on search type
+    if (hasCV && (search_type === 'cv' || search_type === 'both')) {
+      // Parse CV with Claude
+      console.log('Parsing CV with Claude...')
+      parsedData = await parseCV(cv_text)
+
+      // If "both" mode, merge with standard criteria (standard criteria override CV data)
+      if (search_type === 'both' && hasStandardCriteria) {
+        console.log('Merging CV data with standard criteria...')
+        if (job_title) parsedData.target_roles = [job_title, ...parsedData.target_roles]
+        if (location) parsedData.location = location
+        if (seniority) parsedData.seniority = seniority
+        if (brief) {
+          const additionalSkills = brief.split(/[,;.\s]+/).filter((w: string) => w.length > 2)
+          parsedData.skills = [...new Set([...parsedData.skills, ...additionalSkills])]
+        }
+      }
+    } else {
+      // Standard search - build from criteria
+      console.log('Building search from standard criteria...')
+      parsedData = buildFromStandardCriteria(body)
+    }
 
     // Generate search name if not provided
     const searchName = name || `${parsedData.target_roles[0] || 'Profil'} - ${parsedData.location || 'France'}`
@@ -397,7 +525,12 @@ export async function POST(request: NextRequest) {
 
     // 3. Build Adzuna URLs and fetch jobs
     console.log('Fetching jobs from Adzuna...')
-    const urls = buildAdzunaUrls(parsedData)
+    // Use different URL building strategy based on search type
+    const urls = (search_type === 'standard' && !hasCV)
+      ? buildAdzunaUrlsFromCriteria(body)
+      : buildAdzunaUrls(parsedData)
+
+    console.log(`Built ${urls.length} search URLs for type: ${search_type}`)
     const allJobs = await fetchAdzunaJobs(urls)
 
     console.log(`Found ${allJobs.length} jobs`)
@@ -418,7 +551,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Prefilter jobs
     console.log('Prefiltering jobs...')
-    const top50Jobs = prefilterJobs(allJobs, parsedData, searchId)
+    const top50Jobs = prefilterJobs(allJobs, parsedData, searchId, exclude_agencies !== false)
 
     console.log(`Prefiltered to ${top50Jobs.length} relevant jobs`)
 
