@@ -543,7 +543,9 @@ export async function POST(request: NextRequest) {
 
     if (searchError) {
       console.error('Supabase search error:', searchError)
-      return NextResponse.json({ error: 'Failed to save search' }, { status: 500 })
+      return NextResponse.json({
+        error: `Failed to save search: ${searchError.message || searchError.code || 'Unknown error'}`
+      }, { status: 500 })
     }
 
     const searchId = searchData.id
