@@ -107,8 +107,21 @@ async function parseCV(cvText: string): Promise<ParsedCV> {
   })
 
   const data = await response.json()
+
+  // Handle Claude API errors
+  if (!response.ok || !data.content || !data.content[0]) {
+    console.error('Claude CV parsing API error:', data)
+    throw new Error(`Claude API error: ${data.error?.message || 'Failed to parse CV'}`)
+  }
+
   const cvDataText = cleanJsonResponse(data.content[0].text)
-  return JSON.parse(cvDataText)
+
+  try {
+    return JSON.parse(cvDataText)
+  } catch (parseError) {
+    console.error('Failed to parse CV JSON:', cvDataText)
+    throw new Error('Failed to parse CV data from Claude')
+  }
 }
 
 // 2. Build Adzuna search URLs
@@ -330,10 +343,22 @@ async function scoreTopJobsWithClaude(jobs: NormalizedJob[], cvData: ParsedCV): 
   })
 
   const data = await response.json()
+
+  // Handle Claude API errors
+  if (!response.ok || !data.content || !data.content[0]) {
+    console.error('Claude scoring API error:', data)
+    throw new Error(`Claude API error: ${data.error?.message || 'Unknown error'}`)
+  }
+
   let scoresText = data.content[0].text
   scoresText = scoresText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
 
-  return JSON.parse(scoresText)
+  try {
+    return JSON.parse(scoresText)
+  } catch (parseError) {
+    console.error('Failed to parse Claude scoring response:', scoresText)
+    throw new Error('Failed to parse job scores from Claude')
+  }
 }
 
 // Helper: Calculate next run date based on recurrence

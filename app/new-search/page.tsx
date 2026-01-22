@@ -169,11 +169,11 @@ export default function NewSearchPage() {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error('Erreur lors de l\'analyse')
-      }
-
       const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'analyse')
+      }
       
       // Redirection vers les résultats
       router.push(`/searches/${data.search_id}`)
