@@ -547,7 +547,7 @@ export async function POST(request: NextRequest) {
     const { data: searchData, error: searchError } = await supabase
       .from('searches')
       .insert({
-        user_id: user_id === 'anonymous' ? null : user_id,
+        user_id: user_id,
         name: searchName,
         search_type: search_type || 'cv',
         job_title: parsedData.target_roles[0] || null,

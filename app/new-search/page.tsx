@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import AppLayout from '@/components/AppLayout'
+import { supabase } from '@/lib/supabase'
 
 export default function NewSearchPage() {
   const router = useRouter()
@@ -140,6 +141,14 @@ export default function NewSearchPage() {
     setLoading(true)
 
     try {
+      // Récupérer l'utilisateur connecté
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('Vous devez être connecté pour lancer une recherche')
+        setLoading(false)
+        return
+      }
+
       const response = await fetch('/api/analyze-cv', {
         method: 'POST',
         headers: {
@@ -164,7 +173,7 @@ export default function NewSearchPage() {
           // Récurrence
           recurrence: recurrence !== 'none' ? recurrence : null,
 
-          user_id: 'anonymous', // Temporaire, sera remplacé par auth
+          user_id: session.user.id,
           filename: uploadedFile?.name || 'pasted_cv.txt',
         }),
       })
