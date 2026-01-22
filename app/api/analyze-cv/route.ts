@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY!
 const adzunaAppId = process.env.ADZUNA_APP_ID!
 const adzunaAppKey = process.env.ADZUNA_APP_KEY!
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+// Use service role key to bypass RLS in API routes
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 interface ParsedCV {
   target_roles: string[]
