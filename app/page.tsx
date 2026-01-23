@@ -34,15 +34,22 @@ export default function LandingPage() {
   useEffect(() => {
     // Vérifier la session existante
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session)
-      setCheckingAuth(false)
+      if (session) {
+        // Utilisateur connecté -> rediriger vers "Mon espace"
+        router.push('/searches')
+      } else {
+        setIsLoggedIn(false)
+        setCheckingAuth(false)
+      }
     })
 
-    // Écouter les événements d'authentification (notamment PASSWORD_RECOVERY)
+    // Écouter les événements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // Rediriger vers la page de reset password
         router.push('/reset-password')
+      } else if (event === 'SIGNED_IN' && session) {
+        // Rediriger après connexion
+        router.push('/searches')
       }
     })
 
