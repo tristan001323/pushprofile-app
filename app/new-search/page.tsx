@@ -326,10 +326,10 @@ export default function NewSearchPage() {
                                 : [...prev, type]
                             )
                           }}
-                          className={`px-3 py-1 text-sm rounded ${
+                          className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
                             contractTypes.includes(type)
-                              ? 'bg-accent text-white'
-                              : 'bg-gray-200'
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                           }`}
                         >
                           {type}
@@ -353,10 +353,10 @@ export default function NewSearchPage() {
                               : [...prev, option]
                           )
                         }}
-                        className={`px-3 py-1 text-sm rounded ${
+                        className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
                           remoteOptions.includes(option)
-                            ? 'bg-accent text-white'
-                            : 'bg-gray-200'
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                         }`}
                       >
                         {option}
