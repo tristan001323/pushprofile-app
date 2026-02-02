@@ -32,7 +32,7 @@ export default function NewSearchPage() {
   const [extracting, setExtracting] = useState(false)
   
   // Récurrence
-  const [recurrence, setRecurrence] = useState<'none' | '2days' | '4days' | 'weekly' | 'biweekly' | 'monthly'>('none')
+  const [recurrence, setRecurrence] = useState<'none' | '2days' | 'weekly' | 'monthly'>('none')
 
   // États UI
   const [loading, setLoading] = useState(false)
@@ -442,7 +442,7 @@ export default function NewSearchPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <button
                   type="button"
                   onClick={() => setRecurrence('none')}
@@ -465,19 +465,7 @@ export default function NewSearchPage() {
                   }`}
                 >
                   <p className="font-medium" style={{ color: recurrence === '2days' ? '#6366F1' : '#1D3557' }}>Tous les 2 jours</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~15 recherches/mois</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRecurrence('4days')}
-                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                    recurrence === '4days'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <p className="font-medium" style={{ color: recurrence === '4days' ? '#6366F1' : '#1D3557' }}>Tous les 4 jours</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~7 recherches/mois</p>
+                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~15/mois</p>
                 </button>
                 <button
                   type="button"
@@ -489,19 +477,7 @@ export default function NewSearchPage() {
                   }`}
                 >
                   <p className="font-medium" style={{ color: recurrence === 'weekly' ? '#6366F1' : '#1D3557' }}>Hebdomadaire</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~4 recherches/mois</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRecurrence('biweekly')}
-                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                    recurrence === 'biweekly'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <p className="font-medium" style={{ color: recurrence === 'biweekly' ? '#6366F1' : '#1D3557' }}>Bi-mensuel</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~2 recherches/mois</p>
+                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~4/mois</p>
                 </button>
                 <button
                   type="button"
@@ -513,7 +489,7 @@ export default function NewSearchPage() {
                   }`}
                 >
                   <p className="font-medium" style={{ color: recurrence === 'monthly' ? '#6366F1' : '#1D3557' }}>Mensuel</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>1 recherche/mois</p>
+                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>1/mois</p>
                 </button>
               </div>
 
@@ -521,9 +497,7 @@ export default function NewSearchPage() {
                 <p className="text-sm mt-4 p-3 rounded-lg" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
                   ⚡ Les nouvelles offres seront automatiquement ajoutées à cette recherche {
                     recurrence === '2days' ? 'tous les 2 jours' :
-                    recurrence === '4days' ? 'tous les 4 jours' :
                     recurrence === 'weekly' ? 'chaque semaine' :
-                    recurrence === 'biweekly' ? 'toutes les 2 semaines' :
                     'chaque mois'
                   }.
                 </p>
