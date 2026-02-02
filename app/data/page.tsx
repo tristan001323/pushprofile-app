@@ -96,7 +96,7 @@ export default function DataPage() {
 
   return (
     <AppLayout>
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>Data & Analytics</h1>
@@ -104,7 +104,7 @@ export default function DataPage() {
           </div>
 
           {/* Stats principales */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <Card className="p-6">
               <p className="text-sm font-medium" style={{ color: '#457B9D' }}>Recherches</p>
               <p className="text-3xl font-bold" style={{ color: '#1D3557' }}>{stats?.totalSearches || 0}</p>
@@ -201,7 +201,7 @@ export default function DataPage() {
           {/* Statuts */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-6" style={{ color: '#1D3557' }}>Répartition par statut</h3>
-            <div className="grid md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {stats && Object.entries(stats.statusCounts).map(([status, count]) => (
                 <div key={status} className="text-center p-4 rounded-xl" style={{ backgroundColor: `${getStatusColor(status)}15` }}>
                   <p className="text-3xl font-bold" style={{ color: getStatusColor(status) }}>{count}</p>
@@ -227,7 +227,7 @@ export default function DataPage() {
                     )
                   ))}
                 </div>
-                <div className="flex justify-between mt-2 text-xs" style={{ color: '#457B9D' }}>
+                <div className="flex flex-wrap justify-between mt-2 text-xs gap-1" style={{ color: '#457B9D' }}>
                   {stats && Object.entries(stats.statusCounts).map(([status, count]) => (
                     count > 0 && (
                       <span key={status} className="flex items-center gap-1">

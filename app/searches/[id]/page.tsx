@@ -182,13 +182,13 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <AppLayout>
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-8">
             <Button variant="outline" onClick={() => router.push('/searches')} className="mb-4">
               ← Retour aux recherches
             </Button>
-            <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>{searchName}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#1D3557' }}>{searchName}</h1>
             <p className="mt-2" style={{ color: '#457B9D' }}>{matches.length} opportunités trouvées</p>
 
             {/* Filtres */}
@@ -264,8 +264,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       </svg>
                     </button>
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold" style={{ color: '#1D3557' }}>
+                      <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
+                        <h3 className="text-lg md:text-xl font-semibold" style={{ color: '#1D3557' }}>
                           {match.job_title}
                         </h3>
                         {match.rank <= 10 && (
@@ -274,13 +274,13 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                           </span>
                         )}
                       </div>
-                      <div className="flex gap-4 text-sm" style={{ color: '#457B9D' }}>
+                      <div className="flex flex-wrap gap-2 md:gap-4 text-sm" style={{ color: '#457B9D' }}>
                         <span>🏢 {match.company_name}</span>
-                        <span>•</span>
+                        <span className="hidden md:inline">•</span>
                         <span>📍 {match.location}</span>
                         {match.posted_date && (
                           <>
-                            <span>•</span>
+                            <span className="hidden md:inline">•</span>
                             <span>📅 {new Date(match.posted_date).toLocaleDateString('fr-FR')}</span>
                           </>
                         )}
@@ -316,7 +316,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
           }`}
         >
           {selectedMatch && (
-            <div className="p-8">
+            <div className="p-4 md:p-8">
               {/* Header avec bouton fermer et favori */}
               <div className="flex justify-between items-start mb-4">
                 <button
@@ -373,7 +373,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
               </h2>
 
               {/* Infos principales */}
-              <div className="grid grid-cols-2 gap-4 mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F8F9FA' }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F8F9FA' }}>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#457B9D' }}>Entreprise</p>
                   <p className="font-medium" style={{ color: '#1D3557' }}>{selectedMatch.company_name}</p>

@@ -70,7 +70,7 @@ export default function SearchesPage() {
 
   return (
     <AppLayout>
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>Mes recherches</h1>

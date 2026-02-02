@@ -196,9 +196,9 @@ export default function NewSearchPage() {
 
   return (
     <AppLayout>
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <Card className="p-8">
+          <Card className="p-4 md:p-8">
           <h1 className="text-3xl font-bold text-text mb-2">Nouvelle Recherche</h1>
           <p className="mb-8" style={{ color: '#457B9D' }}>
             Trouvez les meilleures opportunités pour votre profil ou vos critères
@@ -243,7 +243,7 @@ export default function NewSearchPage() {
             {/* MODE DE RECHERCHE */}
             <div>
               <Label className="text-lg font-semibold mb-3 block">Mode de recherche</Label>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2 md:gap-3">
                 <Button
                   type="button"
                   variant={searchMode === 'cv' ? 'default' : 'outline'}
@@ -273,7 +273,7 @@ export default function NewSearchPage() {
               <div className="space-y-4 p-6 bg-secondary rounded-lg">
                 <h3 className="font-semibold text-lg">Critères de recherche (optionnel)</h3>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="jobTitle">Titre du job</Label>
                     <Input
@@ -314,7 +314,7 @@ export default function NewSearchPage() {
 
                   <div>
                     <Label>Type de contrat</Label>
-                    <div className="flex gap-2 mt-1">
+                    <div className="flex flex-wrap gap-2 mt-1">
                       {['CDI', 'CDD', 'Freelance', 'Stage'].map((type) => (
                         <button
                           key={type}
@@ -341,7 +341,7 @@ export default function NewSearchPage() {
 
                 <div>
                   <Label>Remote</Label>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex flex-wrap gap-2 mt-1">
                     {['On-site', 'Hybrid', 'Full remote'].map((option) => (
                       <button
                         key={option}
@@ -390,7 +390,7 @@ export default function NewSearchPage() {
                 {/* Upload fichier */}
                 <div>
                   <Label htmlFor="fileUpload" className="cursor-pointer">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-accent transition-colors">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 md:p-8 text-center hover:border-accent transition-colors">
                       {uploadedFile ? (
                         <div className="space-y-2">
                           <p className="text-sm font-medium">✅ {uploadedFile.name}</p>
@@ -442,7 +442,7 @@ export default function NewSearchPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setRecurrence('none')}
@@ -538,7 +538,7 @@ export default function NewSearchPage() {
             )}
 
             {/* Bouton submit */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button
                 type="button"
                 variant="outline"

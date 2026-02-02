@@ -188,7 +188,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#F8F9FA' }}>
-      <Card className="w-full max-w-lg p-8 shadow-lg">
+      <Card className="w-full max-w-lg p-4 md:p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-6">
           <Link href="/">

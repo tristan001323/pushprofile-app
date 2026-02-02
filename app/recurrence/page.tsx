@@ -95,7 +95,7 @@ export default function RecurrencePage() {
 
   return (
     <AppLayout>
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>Recherches récurrentes</h1>
@@ -120,7 +120,7 @@ export default function RecurrencePage() {
           ) : (
             <div className="space-y-4">
               {/* Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <Card className="p-4 text-center">
                   <p className="text-2xl font-bold" style={{ color: '#1D3557' }}>{searches.length}</p>
                   <p className="text-sm" style={{ color: '#457B9D' }}>Total récurrences</p>
@@ -148,8 +148,8 @@ export default function RecurrencePage() {
               {/* Liste des recherches récurrentes */}
               {searches.map((search) => (
                 <Card key={search.id} className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 md:gap-4">
                       <div
                         className="w-12 h-12 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: search.is_recurrence_active ? '#D1FAE5' : '#F3F4F6' }}
@@ -162,7 +162,7 @@ export default function RecurrencePage() {
                             {search.name}
                           </h3>
                         </Link>
-                        <div className="flex items-center gap-4 mt-1 text-sm" style={{ color: '#457B9D' }}>
+                        <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-1 text-sm" style={{ color: '#457B9D' }}>
                           <span className="flex items-center gap-1">
                             <span>🔁</span>
                             {getRecurrenceLabel(search.recurrence)}

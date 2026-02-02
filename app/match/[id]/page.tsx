@@ -72,23 +72,23 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="min-h-screen p-8" style={{ backgroundColor: '#F8F9FA' }}>
+    <div className="min-h-screen p-4 md:p-8" style={{ backgroundColor: '#F8F9FA' }}>
       <div className="max-w-4xl mx-auto">
         <Button variant="outline" onClick={() => router.push(`/searches/${match.search_id}`)} className="mb-6">
           ← Retour aux résultats
         </Button>
 
-        <Card className="p-8 shadow-lg mb-6">
-          <div className="flex justify-between items-start mb-6">
+        <Card className="p-4 md:p-8 shadow-lg mb-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2" style={{ color: '#1D3557' }}>{match.job_title}</h1>
-              <div className="flex gap-4 text-lg" style={{ color: '#457B9D' }}>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: '#1D3557' }}>{match.job_title}</h1>
+              <div className="flex flex-wrap gap-2 md:gap-4 text-base md:text-lg" style={{ color: '#457B9D' }}>
                 <span>🏢 {match.company_name}</span>
-                <span>•</span>
+                <span className="hidden md:inline">•</span>
                 <span>📍 {match.location}</span>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-left md:text-right">
               <div className="text-4xl font-bold mb-2" style={{ color: match.score >= 70 ? '#059669' : match.score >= 50 ? '#d97706' : '#6b7280' }}>
                 {match.score_display ? match.score_display.toFixed(1) : (match.score / 10).toFixed(1)}/10
               </div>
@@ -122,7 +122,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {match.posted_date && (
               <div>
                 <p className="text-sm font-semibold" style={{ color: '#1D3557' }}>Date de publication</p>

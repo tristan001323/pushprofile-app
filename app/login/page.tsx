@@ -68,7 +68,7 @@ export default function LoginPage() {
   if (resetMode) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#F8F9FA' }}>
-        <Card className="w-full max-w-md p-8 shadow-lg">
+        <Card className="w-full max-w-md p-6 md:p-8 shadow-lg">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>PushProfile</h1>
             <p className="text-sm mt-2" style={{ color: '#457B9D' }}>Réinitialiser votre mot de passe</p>
@@ -138,7 +138,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#F8F9FA' }}>
-      <Card className="w-full max-w-md p-8 shadow-lg">
+      <Card className="w-full max-w-md p-6 md:p-8 shadow-lg">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>PushProfile</h1>
           <p className="text-sm mt-2" style={{ color: '#457B9D' }}>Connectez-vous à votre compte</p>
