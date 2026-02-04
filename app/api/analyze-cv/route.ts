@@ -232,16 +232,17 @@ async function fetchAdzunaJobs(urls: string[]): Promise<Job[]> {
 // TEMPORARILY DISABLED - current actors are either too slow or too expensive
 // TODO: Find a better LinkedIn scraper
 async function searchLinkedInJobs(
-  jobTitle: string,
-  location: string,
-  remoteOptions?: string[],
-  contractTypes?: string[],
-  excludeAgencies: boolean = true
+  _jobTitle: string,
+  _location: string,
+  _remoteOptions?: string[],
+  _contractTypes?: string[],
+  _excludeAgencies: boolean = true
 ): Promise<NormalizedJob[]> {
   // Disabled for now - uncomment when we find a good actor
   console.log('LinkedIn search disabled (no suitable actor found)')
   return []
 
+  /* DISABLED CODE - uncomment when re-enabling LinkedIn
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
@@ -377,6 +378,7 @@ async function searchLinkedInJobs(
     }
     return []
   }
+  DISABLED CODE END */
 }
 
 // 4. Prefilter and score jobs
