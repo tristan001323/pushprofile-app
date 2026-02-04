@@ -229,6 +229,8 @@ async function fetchAdzunaJobs(urls: string[]): Promise<Job[]> {
 }
 
 // 3b. Fetch jobs from LinkedIn via Apify
+// TEMPORARILY DISABLED - current actors are either too slow or too expensive
+// TODO: Find a better LinkedIn scraper
 async function searchLinkedInJobs(
   jobTitle: string,
   location: string,
@@ -236,6 +238,10 @@ async function searchLinkedInJobs(
   contractTypes?: string[],
   excludeAgencies: boolean = true
 ): Promise<NormalizedJob[]> {
+  // Disabled for now - uncomment when we find a good actor
+  console.log('LinkedIn search disabled (no suitable actor found)')
+  return []
+
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
