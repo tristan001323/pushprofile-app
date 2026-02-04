@@ -403,7 +403,9 @@ async function searchLinkedInJobs(
           remote_type: remoteType,
           salary_min: salaryMin,
           salary_max: salaryMax,
-          full_description: job.description || ''
+          full_description: job.description || '',
+          recruiter_name: job.recruiterName || null,
+          recruiter_url: job.recruiterUrl || null
         },
         prefilter_score: 50 // Base score, will be recalculated
       }
