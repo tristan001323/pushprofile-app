@@ -270,7 +270,7 @@ async function searchLinkedInJobs(
   const requestBody: Record<string, any> = {
     title: jobTitle,
     location: location,
-    limit: 20,
+    limit: 35,
     datePosted: 'Past month'
   }
 
