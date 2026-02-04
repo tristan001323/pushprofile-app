@@ -23,6 +23,7 @@ type Match = {
   posted_date: string
   viewed_at: string | null
   is_favorite: boolean
+  source: string
   matching_details: {
     contract_type?: string
     remote_type?: string
@@ -40,7 +41,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites'>('all')
+  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna'>('all')
 
   useEffect(() => {
     loadMatches()
@@ -78,6 +79,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     if (filter === 'top10') return match.rank <= 10
     if (filter === 'others') return match.rank > 10
     if (filter === 'favorites') return match.is_favorite
+    if (filter === 'linkedin') return match.source === 'linkedin'
+    if (filter === 'adzuna') return match.source === 'adzuna'
     return true
   })
 
@@ -232,6 +235,28 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 </svg>
                 Favoris ({matches.filter(m => m.is_favorite).length})
               </button>
+              {matches.some(m => m.source === 'linkedin') && (
+                <button
+                  onClick={() => setFilter('linkedin')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    filter === 'linkedin' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  style={filter === 'linkedin' ? { backgroundColor: '#0A66C2' } : {}}
+                >
+                  LinkedIn ({matches.filter(m => m.source === 'linkedin').length})
+                </button>
+              )}
+              {matches.some(m => m.source === 'adzuna') && (
+                <button
+                  onClick={() => setFilter('adzuna')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    filter === 'adzuna' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  style={filter === 'adzuna' ? { backgroundColor: '#FF6B35' } : {}}
+                >
+                  Adzuna ({matches.filter(m => m.source === 'adzuna').length})
+                </button>
+              )}
             </div>
           </div>
 
@@ -271,6 +296,17 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                         {match.rank <= 10 && (
                           <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
                             TOP 10
+                          </span>
+                        )}
+                        {match.source && (
+                          <span
+                            className="px-2 py-1 rounded text-xs font-medium"
+                            style={{
+                              backgroundColor: match.source === 'linkedin' ? '#0A66C2' : '#FF6B35',
+                              color: 'white'
+                            }}
+                          >
+                            {match.source === 'linkedin' ? 'LinkedIn' : 'Adzuna'}
                           </span>
                         )}
                       </div>
@@ -349,6 +385,17 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   {selectedMatch.rank <= 10 && (
                     <span className="px-3 py-1 rounded text-sm font-semibold" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
                       TOP 10
+                    </span>
+                  )}
+                  {selectedMatch.source && (
+                    <span
+                      className="px-3 py-1 rounded text-sm font-medium"
+                      style={{
+                        backgroundColor: selectedMatch.source === 'linkedin' ? '#0A66C2' : '#FF6B35',
+                        color: 'white'
+                      }}
+                    >
+                      {selectedMatch.source === 'linkedin' ? 'LinkedIn' : 'Adzuna'}
                     </span>
                   )}
                 </div>
