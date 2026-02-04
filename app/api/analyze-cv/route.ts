@@ -287,12 +287,13 @@ async function searchLinkedInJobs(
   }
 
   // Map contract types to LinkedIn format
+  // Allowed values: F (Full-time), P (Part-time), C (Contract), T (Temporary), I (Internship), O (Other)
   let contractFilter: string | undefined
   if (contractTypes && contractTypes.length > 0) {
-    if (contractTypes.includes('CDI')) contractFilter = 'Full-time'
-    else if (contractTypes.includes('CDD')) contractFilter = 'Contract'
-    else if (contractTypes.includes('Stage')) contractFilter = 'Internship'
-    else if (contractTypes.includes('Freelance')) contractFilter = 'Contract'
+    if (contractTypes.includes('CDI')) contractFilter = 'F'
+    else if (contractTypes.includes('CDD')) contractFilter = 'C'
+    else if (contractTypes.includes('Stage')) contractFilter = 'I'
+    else if (contractTypes.includes('Freelance')) contractFilter = 'C'
   }
 
   // Build request body for actor RIGGeqD6RqKmlVoQU
