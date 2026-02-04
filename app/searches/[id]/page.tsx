@@ -41,7 +41,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna'>('all')
+  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna' | 'indeed'>('all')
 
   useEffect(() => {
     loadMatches()
@@ -81,6 +81,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     if (filter === 'favorites') return match.is_favorite
     if (filter === 'linkedin') return match.source === 'linkedin'
     if (filter === 'adzuna') return match.source === 'adzuna'
+    if (filter === 'indeed') return match.source === 'indeed'
     return true
   })
 
@@ -257,6 +258,17 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   Adzuna ({matches.filter(m => m.source === 'adzuna').length})
                 </button>
               )}
+              {matches.some(m => m.source === 'indeed') && (
+                <button
+                  onClick={() => setFilter('indeed')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    filter === 'indeed' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  style={filter === 'indeed' ? { backgroundColor: '#6B5CE7' } : {}}
+                >
+                  Indeed ({matches.filter(m => m.source === 'indeed').length})
+                </button>
+              )}
             </div>
           </div>
 
@@ -302,11 +314,11 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                           <span
                             className="px-2 py-1 rounded text-xs font-medium"
                             style={{
-                              backgroundColor: match.source === 'linkedin' ? '#0A66C2' : '#FF6B35',
+                              backgroundColor: match.source === 'linkedin' ? '#0A66C2' : match.source === 'indeed' ? '#6B5CE7' : '#FF6B35',
                               color: 'white'
                             }}
                           >
-                            {match.source === 'linkedin' ? 'LinkedIn' : 'Adzuna'}
+                            {match.source === 'linkedin' ? 'LinkedIn' : match.source === 'indeed' ? 'Indeed' : 'Adzuna'}
                           </span>
                         )}
                       </div>
@@ -391,11 +403,11 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                     <span
                       className="px-3 py-1 rounded text-sm font-medium"
                       style={{
-                        backgroundColor: selectedMatch.source === 'linkedin' ? '#0A66C2' : '#FF6B35',
+                        backgroundColor: selectedMatch.source === 'linkedin' ? '#0A66C2' : selectedMatch.source === 'indeed' ? '#6B5CE7' : '#FF6B35',
                         color: 'white'
                       }}
                     >
-                      {selectedMatch.source === 'linkedin' ? 'LinkedIn' : 'Adzuna'}
+                      {selectedMatch.source === 'linkedin' ? 'LinkedIn' : selectedMatch.source === 'indeed' ? 'Indeed' : 'Adzuna'}
                     </span>
                   )}
                 </div>

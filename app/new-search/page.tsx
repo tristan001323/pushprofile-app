@@ -15,6 +15,7 @@ const LOADING_MESSAGES = [
   { text: "Connexion aux jobboards...", icon: "🔌" },
   { text: "Recherche sur Adzuna...", icon: "🔍" },
   { text: "Recherche sur LinkedIn...", icon: "💼" },
+  { text: "Recherche sur Indeed...", icon: "🏢" },
   { text: "Analyse des offres trouvées...", icon: "📊" },
   { text: "Filtrage des cabinets de recrutement...", icon: "🚫" },
   { text: "Scoring des meilleures offres avec l'IA...", icon: "🤖" },

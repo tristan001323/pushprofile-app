@@ -45,6 +45,35 @@ interface LinkedInJob {
   descriptionHtml: string
 }
 
+// Indeed job format from Apify actor TrtlecxAsNRbKl1na
+interface IndeedJob {
+  key: string
+  url: string
+  title: string
+  jobUrl: string
+  datePublished: string
+  location: {
+    countryName: string
+    countryCode: string
+    city: string
+  }
+  employer: {
+    name: string
+    companyPageUrl: string
+  }
+  jobTypes: Record<string, string>
+  baseSalary?: {
+    min: number
+    max: number
+    unitOfWork: string
+    currencyCode: string
+  }
+  description: {
+    text: string
+    html: string
+  }
+}
+
 // Recruitment agencies to filter out
 const RECRUITMENT_AGENCIES = [
   'michael page', 'page personnel', 'pagegroup', 'robert half', 'hays', 'randstad', 'adecco', 'manpower',
@@ -384,9 +413,136 @@ async function searchLinkedInJobs(
 
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      console.log('LinkedIn search timed out after 60s, continuing with Adzuna only')
+      console.log('LinkedIn search timed out after 60s, continuing without LinkedIn')
     } else {
       console.error('Error fetching LinkedIn jobs:', error)
+    }
+    return []
+  }
+}
+
+// 3c. Fetch jobs from Indeed via Apify (actor TrtlecxAsNRbKl1na)
+// Price: $0.001 actor start + $0.1/1000 results = ~$0.005 per search (35 jobs)
+async function searchIndeedJobs(
+  jobTitle: string,
+  location: string,
+  excludeAgencies: boolean = true
+): Promise<NormalizedJob[]> {
+  const apiKey = getApifyApiKey()
+
+  if (!apiKey) {
+    console.log('No Apify API key, skipping Indeed search')
+    return []
+  }
+
+  // Build request body for actor TrtlecxAsNRbKl1na
+  const requestBody: Record<string, any> = {
+    title: jobTitle,
+    location: location,
+    maxResults: 35,
+    datePosted: '14 days'
+  }
+
+  console.log('Indeed search request:', JSON.stringify(requestBody, null, 2))
+
+  try {
+    // Use AbortController for timeout (60 seconds)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
+
+    const response = await fetch(
+      `https://api.apify.com/v2/acts/TrtlecxAsNRbKl1na/run-sync-get-dataset-items?token=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      }
+    )
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Indeed Apify API error:', response.status, errorText)
+      return []
+    }
+
+    const indeedJobs: IndeedJob[] = await response.json()
+    console.log(`Indeed returned ${indeedJobs.length} jobs`)
+
+    // Filter out recruitment agencies
+    let filteredJobs = indeedJobs
+    if (excludeAgencies) {
+      const beforeCount = filteredJobs.length
+      filteredJobs = indeedJobs.filter(job => {
+        const companyName = (job.employer?.name || '').toLowerCase()
+        const description = (job.description?.text || '').toLowerCase()
+        return !RECRUITMENT_AGENCIES.some(agency =>
+          companyName.includes(agency) || description.includes(agency)
+        )
+      })
+      console.log(`Filtered ${beforeCount - filteredJobs.length} Indeed jobs from recruitment agencies`)
+    }
+
+    // Normalize to our format
+    const normalizedJobs: NormalizedJob[] = filteredJobs.map(job => {
+      // Determine contract type from jobTypes
+      let contractType = 'permanent'
+      const jobTypesStr = Object.values(job.jobTypes || {}).join(' ').toLowerCase()
+      if (jobTypesStr.includes('contract') || jobTypesStr.includes('temporary')) {
+        contractType = 'contract'
+      } else if (jobTypesStr.includes('internship')) {
+        contractType = 'internship'
+      } else if (jobTypesStr.includes('part-time')) {
+        contractType = 'part_time'
+      }
+
+      // Determine remote type
+      let remoteType = 'on_site'
+      const locationStr = (job.location?.city || '') + ' ' + (job.title || '')
+      if (locationStr.toLowerCase().includes('remote')) {
+        remoteType = 'remote'
+      } else if (locationStr.toLowerCase().includes('hybrid')) {
+        remoteType = 'hybrid'
+      }
+
+      // Use direct job URL if available, otherwise Indeed URL
+      const finalUrl = job.jobUrl || job.url
+
+      // Format location string
+      const locationDisplay = job.location?.city
+        ? `${job.location.city}, ${job.location.countryCode || ''}`
+        : 'Remote'
+
+      return {
+        search_id: '', // Will be set later
+        external_id: `indeed_${job.key}`,
+        source: 'indeed',
+        job_url: finalUrl,
+        job_title: job.title,
+        company_name: job.employer?.name || 'Unknown',
+        location: locationDisplay,
+        description: (job.description?.text || '').substring(0, 2000),
+        posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
+        matching_details: {
+          contract_type: contractType,
+          remote_type: remoteType,
+          salary_min: job.baseSalary?.min || null,
+          salary_max: job.baseSalary?.max || null,
+          full_description: job.description?.text || ''
+        },
+        prefilter_score: 50 // Base score, will be recalculated
+      }
+    })
+
+    return normalizedJobs
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.log('Indeed search timed out after 60s, continuing without Indeed')
+    } else {
+      console.error('Error fetching Indeed jobs:', error)
     }
     return []
   }
@@ -760,8 +916,8 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 3. Fetch jobs from Adzuna and LinkedIn in parallel
-    console.log('Fetching jobs from Adzuna and LinkedIn...')
+    // 3. Fetch jobs from Adzuna, LinkedIn, and Indeed in parallel
+    console.log('Fetching jobs from Adzuna, LinkedIn, and Indeed...')
 
     // Build Adzuna URLs
     const urls = (search_type === 'standard' && !hasCV)
@@ -770,23 +926,32 @@ export async function POST(request: NextRequest) {
 
     console.log(`Built ${urls.length} Adzuna search URLs for type: ${search_type}`)
 
-    // Fetch from both sources in parallel
-    const [adzunaJobs, linkedInJobs] = await Promise.all([
+    const searchJobTitle = parsedData.target_roles[0] || job_title || 'developer'
+    const searchLocation = parsedData.location || location || 'France'
+
+    // Fetch from all 3 sources in parallel
+    const [adzunaJobs, linkedInJobs, indeedJobs] = await Promise.all([
       fetchAdzunaJobs(urls),
       searchLinkedInJobs(
-        parsedData.target_roles[0] || job_title || 'developer',
-        parsedData.location || location || 'France',
+        searchJobTitle,
+        searchLocation,
         remote_options,
         contract_types,
+        exclude_agencies !== false
+      ),
+      searchIndeedJobs(
+        searchJobTitle,
+        searchLocation,
         exclude_agencies !== false
       )
     ])
 
     console.log(`Found ${adzunaJobs.length} jobs from Adzuna`)
     console.log(`Found ${linkedInJobs.length} jobs from LinkedIn`)
+    console.log(`Found ${indeedJobs.length} jobs from Indeed`)
     console.log('Parsed CV data:', JSON.stringify(parsedData, null, 2))
 
-    const totalJobsFound = adzunaJobs.length + linkedInJobs.length
+    const totalJobsFound = adzunaJobs.length + linkedInJobs.length + indeedJobs.length
 
     if (totalJobsFound === 0) {
       // Update search status to completed with no results
@@ -812,10 +977,10 @@ export async function POST(request: NextRequest) {
     const prefilteredAdzuna = prefilterJobs(adzunaJobs, parsedData, searchId, exclude_agencies !== false)
     console.log(`Prefiltered Adzuna to ${prefilteredAdzuna.length} relevant jobs`)
 
-    // 4b. Score LinkedIn jobs
-    linkedInJobs.forEach(job => {
+    // 4b. Score LinkedIn and Indeed jobs
+    const scoreExternalJob = (job: NormalizedJob) => {
       job.search_id = searchId
-      let score = 50 // Base score for LinkedIn
+      let score = 50 // Base score
 
       const jobText = (job.job_title + ' ' + job.description).toLowerCase()
       const cvSkills = (parsedData.skills || []).map(s => s.toLowerCase())
@@ -836,10 +1001,13 @@ export async function POST(request: NextRequest) {
       }
 
       job.prefilter_score = Math.round(score)
-    })
+    }
 
-    // 4c. Combine and deduplicate jobs from both sources
-    const combinedJobs = [...prefilteredAdzuna, ...linkedInJobs]
+    linkedInJobs.forEach(scoreExternalJob)
+    indeedJobs.forEach(scoreExternalJob)
+
+    // 4c. Combine and deduplicate jobs from all sources
+    const combinedJobs = [...prefilteredAdzuna, ...linkedInJobs, ...indeedJobs]
 
     // Deduplicate across sources
     const seen = new Map<string, boolean>()
@@ -857,7 +1025,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`Combined and deduplicated to ${top50Jobs.length} jobs (${prefilteredAdzuna.length} Adzuna + ${linkedInJobs.length} LinkedIn)`)
+    console.log(`Combined and deduplicated to ${top50Jobs.length} jobs (${prefilteredAdzuna.length} Adzuna + ${linkedInJobs.length} LinkedIn + ${indeedJobs.length} Indeed)`)
 
     if (top50Jobs.length === 0) {
       await supabase
@@ -873,6 +1041,7 @@ export async function POST(request: NextRequest) {
           reason: 'All jobs filtered out by prefilter',
           total_from_adzuna: adzunaJobs.length,
           total_from_linkedin: linkedInJobs.length,
+          total_from_indeed: indeedJobs.length,
           parsed_cv: parsedData
         }
       })
