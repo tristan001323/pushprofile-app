@@ -118,6 +118,7 @@ async function searchLinkedInJobs(filters: LinkedInSearchFilters): Promise<{ job
   console.log('LinkedIn search disabled (cost optimization)')
   return { jobs: [], meta: { total_scraped: 0, after_filters: 0, excluded_agencies: 0 } }
 
+  /* DISABLED - LinkedIn integration code below
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
@@ -262,7 +263,7 @@ async function searchLinkedInJobs(filters: LinkedInSearchFilters): Promise<{ job
   } catch (error) {
     console.error('Error fetching LinkedIn jobs:', error)
     return { jobs: [], meta: { total_scraped: 0, after_filters: 0, excluded_agencies: 0 } }
-  }
+  */
 }
 
 interface ParsedCV {
