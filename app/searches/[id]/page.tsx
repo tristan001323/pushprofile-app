@@ -71,7 +71,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
       .order('rank', { ascending: true })
 
     if (data) {
-      const sorted = data.sort((a: Match, b: Match) => b.score - a.score)
+      // Sort by rank (TOP 10 first, then others)
+      const sorted = data.sort((a: Match, b: Match) => a.rank - b.rank)
       setMatches(sorted)
     }
     setLoading(false)
