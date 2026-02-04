@@ -111,7 +111,13 @@ function mapRemoteToLinkedIn(remoteOptions?: string[]): string[] {
 }
 
 // Fetch jobs from LinkedIn via Apify
+// TEMPORARILY DISABLED - Current actor (2rJKkhh7vjpX7pvjg) has minimum 150 items = $0.10/search
+// TODO: Find a cheaper LinkedIn scraper or use a different approach
 async function searchLinkedInJobs(filters: LinkedInSearchFilters): Promise<{ jobs: NormalizedJob[], meta: { total_scraped: number, after_filters: number, excluded_agencies: number } }> {
+  // Disabled for cost reasons - uncomment when we find a better actor
+  console.log('LinkedIn search disabled (cost optimization)')
+  return { jobs: [], meta: { total_scraped: 0, after_filters: 0, excluded_agencies: 0 } }
+
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
