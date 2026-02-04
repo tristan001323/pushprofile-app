@@ -264,7 +264,7 @@ async function searchLinkedInJobs(
   const requestBody: Record<string, any> = {
     jobTitles: [jobTitle],
     jobLocations: [location],
-    totalRows: 15, // Reduced for speed (was 30)
+    totalRows: 10, // Reduced for speed
     proxy: '{"useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"]}'
   }
 
@@ -274,9 +274,9 @@ async function searchLinkedInJobs(
   console.log('LinkedIn search request:', JSON.stringify(requestBody, null, 2))
 
   try {
-    // Use AbortController for timeout (45 seconds max)
+    // Use AbortController for timeout (90 seconds max - LinkedIn scraping is slow)
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 45000)
+    const timeoutId = setTimeout(() => controller.abort(), 90000)
 
     const response = await fetch(
       `https://api.apify.com/v2/acts/rKGG0CTP4Cg8hH1j1/run-sync-get-dataset-items?token=${apiKey}`,
@@ -365,7 +365,7 @@ async function searchLinkedInJobs(
 
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      console.log('LinkedIn search timed out after 45s, continuing with Adzuna only')
+      console.log('LinkedIn search timed out after 90s, continuing with Adzuna only')
     } else {
       console.error('Error fetching LinkedIn jobs:', error)
     }

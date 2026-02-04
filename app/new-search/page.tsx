@@ -14,7 +14,8 @@ import { supabase } from '@/lib/supabase'
 const LOADING_MESSAGES = [
   { text: "Connexion aux jobboards...", icon: "🔌" },
   { text: "Recherche sur Adzuna...", icon: "🔍" },
-  { text: "Recherche sur LinkedIn...", icon: "💼" },
+  { text: "Recherche sur LinkedIn (peut prendre 1-2 min)...", icon: "💼" },
+  { text: "Scraping des offres LinkedIn en cours...", icon: "⏳" },
   { text: "Analyse des offres trouvées...", icon: "📊" },
   { text: "Filtrage des cabinets de recrutement...", icon: "🚫" },
   { text: "Scoring des meilleures offres avec l'IA...", icon: "🤖" },
@@ -61,7 +62,7 @@ export default function NewSearchPage() {
       setLoadingMessageIndex(prev =>
         prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev
       )
-    }, 3000)
+    }, 8000) // 8 seconds per message (LinkedIn can take up to 90s)
 
     return () => clearInterval(interval)
   }, [loading])
