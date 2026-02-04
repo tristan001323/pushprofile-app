@@ -180,7 +180,22 @@ async function parseCV(cvText: string): Promise<ParsedCV> {
       max_tokens: 2000,
       messages: [{
         role: 'user',
-        content: `Parse ce CV et retourne UNIQUEMENT le JSON (sans backticks, sans markdown).\n\nCV:\n${cvText}\n\nFormat:\n{"target_roles":[],"skills":[],"experience_years":0,"location":"","seniority":"","education":"","languages":[]}`
+        content: `Analyse ce CV et extrais les informations clés. Retourne UNIQUEMENT le JSON (sans backticks, sans markdown).
+
+Instructions:
+- target_roles: les postes recherchés ou le dernier poste occupé (ex: "Product Manager", "Développeur React")
+- skills: compétences techniques ET méthodologiques (outils, langages, frameworks, méthodes)
+- experience_years: nombre total d'années d'expérience professionnelle
+- location: la VILLE mentionnée dans le CV (Paris, Lyon, etc.), ou "Remote" si télétravail mentionné
+- seniority: Junior (0-2 ans), Confirmé (3-5 ans), Senior (6-10 ans), Expert (10+ ans)
+- education: dernier diplôme
+- languages: langues parlées
+
+CV:
+${cvText}
+
+Format:
+{"target_roles":[],"skills":[],"experience_years":0,"location":"","seniority":"","education":"","languages":[]}`
       }]
     }),
   })
@@ -570,23 +585,32 @@ function prefilterJobs(jobs: Job[], cvData: ParsedCV, searchId: string, excludeA
     console.log(`Filtered ${jobs.length - filteredJobs.length} jobs from recruitment agencies`)
   }
 
-  // Filter out business/sales roles for tech profiles
-  const isTechProfile = cvData.skills.some(skill => {
-    const techSkills = ['javascript', 'python', 'java', 'react', 'typescript', 'node', 'php', 'ruby', 'go', 'rust', 'c++', 'c#', 'sql', 'aws', 'docker', 'git', 'angular', 'vue', 'next', 'redux', 'graphql', 'mongodb', 'postgresql']
-    return techSkills.includes(skill.toLowerCase())
-  })
+  // Filter out irrelevant roles based on profile type
+  const techSkills = ['javascript', 'python', 'java', 'react', 'typescript', 'node', 'php', 'ruby', 'go', 'rust', 'c++', 'c#', 'sql', 'aws', 'docker', 'git', 'angular', 'vue', 'next', 'redux', 'graphql', 'mongodb', 'postgresql']
+  const productSkills = ['product', 'scrum', 'agile', 'jira', 'confluence', 'figma', 'ux', 'ui', 'discovery', 'roadmap', 'backlog', 'sprint', 'kanban', 'safe', 'okr']
 
-  filteredJobs = isTechProfile
-    ? filteredJobs.filter(job => {
-        const title = job.title.toLowerCase()
-        return !(
-          title.includes('business developer') ||
-          title.includes('business development') ||
-          title.includes('account manager') ||
-          title.includes('sales')
-        )
-      })
-    : filteredJobs
+  const isTechProfile = cvData.skills.some(skill => techSkills.includes(skill.toLowerCase()))
+  const isProductProfile = cvData.skills.some(skill => productSkills.some(ps => skill.toLowerCase().includes(ps))) ||
+    cvData.target_roles.some(role => role.toLowerCase().includes('product'))
+
+  // Filter out sales/marketing/unrelated jobs for tech and product profiles
+  if (isTechProfile || isProductProfile) {
+    filteredJobs = filteredJobs.filter(job => {
+      const title = job.title.toLowerCase()
+      return !(
+        title.includes('business developer') ||
+        title.includes('business development') ||
+        title.includes('account manager') ||
+        title.includes('sales') ||
+        title.includes('vendeur') ||
+        title.includes('commercial') ||
+        title.includes('marketing manager') ||
+        title.includes('chargé de clientèle') ||
+        title.includes('conseiller client') ||
+        title.includes('responsable commercial')
+      )
+    })
+  }
 
   // Deduplicate jobs
   function normalizeString(str: string): string {
