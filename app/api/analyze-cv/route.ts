@@ -441,10 +441,11 @@ async function searchIndeedJobs(
   // Build request body for actor TrtlecxAsNRbKl1na
   // datePosted values: "" (any), "1", "3", "7", "14" (days)
   const requestBody: Record<string, any> = {
-    title: jobTitle,
+    position: jobTitle,
+    country: 'fr',
     location: location,
-    maxResults: 35,
-    datePosted: '14'
+    maxItems: 35,
+    parseCompanyDetails: false
   }
 
   console.log('Indeed search request:', JSON.stringify(requestBody, null, 2))
