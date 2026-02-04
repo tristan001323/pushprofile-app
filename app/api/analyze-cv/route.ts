@@ -304,8 +304,8 @@ async function searchLinkedInJobs(
     datePosted: 'r2592000'
   }
 
-  if (remoteFilter) requestBody.remoteType = remoteFilter
-  if (contractFilter) requestBody.contractType = contractFilter
+  if (remoteFilter) requestBody.remoteType = [remoteFilter]
+  if (contractFilter) requestBody.contractType = [contractFilter]
 
   console.log('LinkedIn search request:', JSON.stringify(requestBody, null, 2))
 
