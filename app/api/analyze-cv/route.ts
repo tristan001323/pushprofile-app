@@ -425,18 +425,12 @@ async function searchLinkedInJobs(
 }
 
 // 3c. Fetch jobs from Indeed via Apify (actor TrtlecxAsNRbKl1na)
-// TEMPORARILY DISABLED - need correct input schema
 // Price: $0.001 actor start + $0.1/1000 results = ~$0.005 per search (35 jobs)
 async function searchIndeedJobs(
-  _jobTitle: string,
-  _location: string,
-  _excludeAgencies: boolean = true
+  jobTitle: string,
+  location: string,
+  excludeAgencies: boolean = true
 ): Promise<NormalizedJob[]> {
-  // Disabled until we have correct input format
-  console.log('Indeed search disabled temporarily')
-  return []
-
-  /* Original code - needs correct field names
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
@@ -445,13 +439,13 @@ async function searchIndeedJobs(
   }
 
   // Build request body for actor TrtlecxAsNRbKl1na
-  // TODO: Need correct input schema from Apify
+  // Fields: country (fr), title, location, limit (max 1000), datePosted (1,3,7,14)
   const requestBody: Record<string, any> = {
-    position: _jobTitle,
     country: 'fr',
-    location: _location,
-    maxItems: 35,
-    parseCompanyDetails: false
+    title: jobTitle,
+    location: location,
+    limit: 35,
+    datePosted: '14'
   }
 
   console.log('Indeed search request:', JSON.stringify(requestBody, null, 2))
@@ -557,7 +551,6 @@ async function searchIndeedJobs(
     }
     return []
   }
-  */
 }
 
 // 4. Prefilter and score jobs
