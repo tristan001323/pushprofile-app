@@ -223,54 +223,6 @@ export default function NewSearchPage() {
 
   return (
     <AppLayout>
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
-            <div className="text-center">
-              {/* Animated icon */}
-              <div className="text-6xl mb-6 animate-bounce">
-                {LOADING_MESSAGES[loadingMessageIndex].icon}
-              </div>
-
-              {/* Progress bar */}
-              <div className="w-full h-2 bg-gray-200 rounded-full mb-6 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100}%`
-                  }}
-                />
-              </div>
-
-              {/* Current message */}
-              <p className="text-lg font-semibold text-gray-800 mb-2">
-                {LOADING_MESSAGES[loadingMessageIndex].text}
-              </p>
-
-              {/* Patience message */}
-              <p className="text-sm text-gray-500">
-                Un peu de patience, on cherche les meilleures offres pour vous...
-              </p>
-
-              {/* Steps indicator */}
-              <div className="flex justify-center gap-1.5 mt-6">
-                {LOADING_MESSAGES.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                      index <= loadingMessageIndex
-                        ? 'bg-indigo-500'
-                        : 'bg-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <Card className="p-4 md:p-8">
@@ -592,6 +544,7 @@ export default function NewSearchPage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.push('/searches')}
+                disabled={loading}
               >
                 Annuler
               </Button>
@@ -603,6 +556,51 @@ export default function NewSearchPage() {
                 {loading ? '⏳ Analyse en cours...' : '🚀 Lancer l\'analyse'}
               </Button>
             </div>
+
+            {/* Barre de progression inline */}
+            {loading && (
+              <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="text-3xl animate-bounce">
+                    {LOADING_MESSAGES[loadingMessageIndex].icon}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-800">
+                      {LOADING_MESSAGES[loadingMessageIndex].text}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Un instant, on trouve les meilleures offres...
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar animée */}
+                <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                    style={{
+                      width: `${((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100}%`
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Steps dots */}
+                <div className="flex justify-center gap-2 mt-4">
+                  {LOADING_MESSAGES.map((_, index) => (
+                    <div
+                      key={index}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        index <= loadingMessageIndex
+                          ? 'bg-indigo-500 scale-110'
+                          : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </form>
           </Card>
         </div>
