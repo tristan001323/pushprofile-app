@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,9 +10,20 @@ import { Card } from '@/components/ui/card'
 import AppLayout from '@/components/AppLayout'
 import { supabase } from '@/lib/supabase'
 
+// Messages de chargement
+const LOADING_MESSAGES = [
+  { text: "Connexion aux jobboards...", icon: "🔌" },
+  { text: "Recherche sur Adzuna...", icon: "🔍" },
+  { text: "Recherche sur LinkedIn...", icon: "💼" },
+  { text: "Analyse des offres trouvées...", icon: "📊" },
+  { text: "Filtrage des cabinets de recrutement...", icon: "🚫" },
+  { text: "Scoring des meilleures offres avec l'IA...", icon: "🤖" },
+  { text: "Préparation de vos résultats...", icon: "✨" },
+]
+
 export default function NewSearchPage() {
   const router = useRouter()
-  
+
   // États du formulaire
   const [searchTitle, setSearchTitle] = useState('')
   const [excludeAgencies, setExcludeAgencies] = useState(true)
@@ -37,6 +48,23 @@ export default function NewSearchPage() {
   // États UI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+
+  // Cycle through loading messages
+  useEffect(() => {
+    if (!loading) {
+      setLoadingMessageIndex(0)
+      return
+    }
+
+    const interval = setInterval(() => {
+      setLoadingMessageIndex(prev =>
+        prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev
+      )
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [loading])
 
   // Extraction texte PDF
   const extractPdfText = async (file: File): Promise<string> => {
@@ -196,6 +224,54 @@ export default function NewSearchPage() {
 
   return (
     <AppLayout>
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="text-center">
+              {/* Animated icon */}
+              <div className="text-6xl mb-6 animate-bounce">
+                {LOADING_MESSAGES[loadingMessageIndex].icon}
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full h-2 bg-gray-200 rounded-full mb-6 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100}%`
+                  }}
+                />
+              </div>
+
+              {/* Current message */}
+              <p className="text-lg font-semibold text-gray-800 mb-2">
+                {LOADING_MESSAGES[loadingMessageIndex].text}
+              </p>
+
+              {/* Patience message */}
+              <p className="text-sm text-gray-500">
+                Un peu de patience, on cherche les meilleures offres pour vous...
+              </p>
+
+              {/* Steps indicator */}
+              <div className="flex justify-center gap-1.5 mt-6">
+                {LOADING_MESSAGES.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      index <= loadingMessageIndex
+                        ? 'bg-indigo-500'
+                        : 'bg-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <Card className="p-4 md:p-8">
