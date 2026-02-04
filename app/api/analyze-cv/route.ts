@@ -296,11 +296,12 @@ async function searchLinkedInJobs(
   }
 
   // Build request body for actor RIGGeqD6RqKmlVoQU
+  // datePosted values: "" (any), "r2592000" (30 days), "r604800" (7 days), "r86400" (24h)
   const requestBody: Record<string, any> = {
     title: jobTitle,
     location: location,
     limit: 35,
-    datePosted: 'Past month'
+    datePosted: 'r2592000'
   }
 
   if (remoteFilter) requestBody.remoteType = remoteFilter
@@ -438,11 +439,12 @@ async function searchIndeedJobs(
   }
 
   // Build request body for actor TrtlecxAsNRbKl1na
+  // datePosted values: "" (any), "1", "3", "7", "14" (days)
   const requestBody: Record<string, any> = {
     title: jobTitle,
     location: location,
     maxResults: 35,
-    datePosted: '14 days'
+    datePosted: '14'
   }
 
   console.log('Indeed search request:', JSON.stringify(requestBody, null, 2))
