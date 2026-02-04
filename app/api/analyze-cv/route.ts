@@ -19,6 +19,26 @@ const getAdzunaCredentials = () => ({
   appId: process.env.ADZUNA_APP_ID || '',
   appKey: process.env.ADZUNA_APP_KEY || ''
 })
+const getApifyApiKey = () => process.env.APIFY_API_KEY || ''
+
+// LinkedIn job format from Apify actor rKGG0CTP4Cg8hH1j1
+interface LinkedInJob {
+  title: string
+  location: string
+  postedTime: string
+  applyUrl: string
+  companyName: string
+  companyUrl: string
+  description: string
+  applicationsCount: string
+  contractType: string
+  experienceLevel: string
+  sector: string
+  salary: string
+  jobUrl: string
+  applyType: string
+  benefits: string
+}
 
 // Recruitment agencies to filter out
 const RECRUITMENT_AGENCIES = [
@@ -206,6 +226,140 @@ async function fetchAdzunaJobs(urls: string[]): Promise<Job[]> {
   }
 
   return allJobs
+}
+
+// 3b. Fetch jobs from LinkedIn via Apify
+async function searchLinkedInJobs(
+  jobTitle: string,
+  location: string,
+  remoteOptions?: string[],
+  contractTypes?: string[],
+  excludeAgencies: boolean = true
+): Promise<NormalizedJob[]> {
+  const apiKey = getApifyApiKey()
+
+  if (!apiKey) {
+    console.log('No Apify API key, skipping LinkedIn search')
+    return []
+  }
+
+  // Map remote options to LinkedIn workType
+  let workType: string | undefined
+  if (remoteOptions && remoteOptions.length > 0) {
+    if (remoteOptions.includes('Full remote')) workType = 'remote'
+    else if (remoteOptions.includes('Hybrid')) workType = 'hybrid'
+    else if (remoteOptions.includes('On-site')) workType = 'on-site'
+  }
+
+  // Map contract types to LinkedIn employmentType
+  let employmentType: string | undefined
+  if (contractTypes && contractTypes.length > 0) {
+    if (contractTypes.includes('CDI')) employmentType = 'full-time'
+    else if (contractTypes.includes('CDD')) employmentType = 'contract'
+    else if (contractTypes.includes('Stage')) employmentType = 'internship'
+    else if (contractTypes.includes('Freelance')) employmentType = 'contract'
+  }
+
+  // Build request body for actor rKGG0CTP4Cg8hH1j1
+  const requestBody: Record<string, any> = {
+    jobTitles: [jobTitle],
+    jobLocations: [location],
+    totalRows: 30,
+    proxy: '{"useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"]}'
+  }
+
+  if (workType) requestBody.workType = workType
+  if (employmentType) requestBody.employmentType = employmentType
+
+  console.log('LinkedIn search request:', JSON.stringify(requestBody, null, 2))
+
+  try {
+    const response = await fetch(
+      `https://api.apify.com/v2/acts/rKGG0CTP4Cg8hH1j1/run-sync-get-dataset-items?token=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Apify API error:', response.status, errorText)
+      return []
+    }
+
+    const linkedInJobs: LinkedInJob[] = await response.json()
+    console.log(`LinkedIn returned ${linkedInJobs.length} jobs`)
+
+    // Filter out recruitment agencies
+    let filteredJobs = linkedInJobs
+    if (excludeAgencies) {
+      const beforeCount = filteredJobs.length
+      filteredJobs = linkedInJobs.filter(job => {
+        const companyName = (job.companyName || '').toLowerCase()
+        const description = (job.description || '').toLowerCase()
+        return !RECRUITMENT_AGENCIES.some(agency =>
+          companyName.includes(agency) || description.includes(agency)
+        )
+      })
+      console.log(`Filtered ${beforeCount - filteredJobs.length} LinkedIn jobs from recruitment agencies`)
+    }
+
+    // Normalize to our format
+    const normalizedJobs: NormalizedJob[] = filteredJobs.map(job => {
+      // Parse contract type
+      let contractType = 'permanent'
+      if (job.contractType) {
+        const ct = job.contractType.toLowerCase()
+        if (ct.includes('contract') || ct.includes('freelance') || ct.includes('temporary')) {
+          contractType = 'contract'
+        } else if (ct.includes('internship') || ct.includes('stage')) {
+          contractType = 'internship'
+        } else if (ct.includes('part-time') || ct.includes('part time')) {
+          contractType = 'part_time'
+        }
+      }
+
+      // Determine remote type from job data
+      let remoteType = 'on_site'
+      const jobText = (job.title + ' ' + job.location + ' ' + (job.description || '')).toLowerCase()
+      if (jobText.includes('remote') || jobText.includes('télétravail')) {
+        remoteType = 'remote'
+      } else if (jobText.includes('hybrid') || jobText.includes('hybride')) {
+        remoteType = 'hybrid'
+      }
+
+      // Use applyUrl if available, otherwise jobUrl
+      const finalUrl = job.applyUrl || job.jobUrl
+
+      return {
+        search_id: '', // Will be set later
+        external_id: `linkedin_${job.jobUrl?.split('view/')[1]?.split('?')[0] || Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        source: 'linkedin',
+        job_url: finalUrl,
+        job_title: job.title,
+        company_name: job.companyName || 'Unknown',
+        location: job.location || 'Remote',
+        description: (job.description || '').substring(0, 2000),
+        posted_date: null, // postedTime is like "2 weeks ago", not a date
+        matching_details: {
+          contract_type: contractType,
+          remote_type: remoteType,
+          salary_min: null,
+          salary_max: null,
+          full_description: job.description || ''
+        },
+        prefilter_score: 50 // Base score, will be recalculated
+      }
+    })
+
+    return normalizedJobs
+
+  } catch (error) {
+    console.error('Error fetching LinkedIn jobs:', error)
+    return []
+  }
 }
 
 // 4. Prefilter and score jobs
@@ -576,8 +730,8 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 3. Fetch jobs from Adzuna
-    console.log('Fetching jobs from Adzuna...')
+    // 3. Fetch jobs from Adzuna and LinkedIn in parallel
+    console.log('Fetching jobs from Adzuna and LinkedIn...')
 
     // Build Adzuna URLs
     const urls = (search_type === 'standard' && !hasCV)
@@ -586,13 +740,23 @@ export async function POST(request: NextRequest) {
 
     console.log(`Built ${urls.length} Adzuna search URLs for type: ${search_type}`)
 
-    const adzunaJobs = await fetchAdzunaJobs(urls)
+    // Fetch from both sources in parallel
+    const [adzunaJobs, linkedInJobs] = await Promise.all([
+      fetchAdzunaJobs(urls),
+      searchLinkedInJobs(
+        parsedData.target_roles[0] || job_title || 'developer',
+        parsedData.location || location || 'France',
+        remote_options,
+        contract_types,
+        exclude_agencies !== false
+      )
+    ])
 
     console.log(`Found ${adzunaJobs.length} jobs from Adzuna`)
+    console.log(`Found ${linkedInJobs.length} jobs from LinkedIn`)
     console.log('Parsed CV data:', JSON.stringify(parsedData, null, 2))
-    console.log('Search URLs:', urls)
 
-    const totalJobsFound = adzunaJobs.length
+    const totalJobsFound = adzunaJobs.length + linkedInJobs.length
 
     if (totalJobsFound === 0) {
       // Update search status to completed with no results
@@ -613,10 +777,57 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 4. Prefilter jobs
-    console.log('Prefiltering jobs...')
-    const top50Jobs = prefilterJobs(adzunaJobs, parsedData, searchId, exclude_agencies !== false)
-    console.log(`Prefiltered to ${top50Jobs.length} relevant jobs`)
+    // 4. Prefilter Adzuna jobs
+    console.log('Prefiltering Adzuna jobs...')
+    const prefilteredAdzuna = prefilterJobs(adzunaJobs, parsedData, searchId, exclude_agencies !== false)
+    console.log(`Prefiltered Adzuna to ${prefilteredAdzuna.length} relevant jobs`)
+
+    // 4b. Score LinkedIn jobs
+    linkedInJobs.forEach(job => {
+      job.search_id = searchId
+      let score = 50 // Base score for LinkedIn
+
+      const jobText = (job.job_title + ' ' + job.description).toLowerCase()
+      const cvSkills = (parsedData.skills || []).map(s => s.toLowerCase())
+
+      // Skill matching
+      let skillMatches = 0
+      cvSkills.forEach(skill => {
+        if (jobText.includes(skill)) skillMatches++
+      })
+      if (cvSkills.length > 0) {
+        score += (skillMatches / cvSkills.length) * 30
+      }
+
+      // Location matching
+      const cvLocation = (parsedData.location || '').toLowerCase()
+      if (job.location.toLowerCase().includes(cvLocation) || cvLocation.includes(job.location.toLowerCase().split(',')[0])) {
+        score += 10
+      }
+
+      job.prefilter_score = Math.round(score)
+    })
+
+    // 4c. Combine and deduplicate jobs from both sources
+    const combinedJobs = [...prefilteredAdzuna, ...linkedInJobs]
+
+    // Deduplicate across sources
+    const seen = new Map<string, boolean>()
+    const top50Jobs: NormalizedJob[] = []
+
+    for (const job of combinedJobs.sort((a, b) => (b.prefilter_score || 0) - (a.prefilter_score || 0))) {
+      const normalizedTitle = job.job_title.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const normalizedCompany = job.company_name.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const key = `${normalizedTitle}_${normalizedCompany}`
+
+      if (!seen.has(key)) {
+        seen.set(key, true)
+        top50Jobs.push(job)
+        if (top50Jobs.length >= 50) break
+      }
+    }
+
+    console.log(`Combined and deduplicated to ${top50Jobs.length} jobs (${prefilteredAdzuna.length} Adzuna + ${linkedInJobs.length} LinkedIn)`)
 
     if (top50Jobs.length === 0) {
       await supabase
@@ -631,17 +842,21 @@ export async function POST(request: NextRequest) {
         debug: {
           reason: 'All jobs filtered out by prefilter',
           total_from_adzuna: adzunaJobs.length,
+          total_from_linkedin: linkedInJobs.length,
           parsed_cv: parsedData
         }
       })
     }
 
-    // 4b. Résoudre les URLs directes (en parallèle pour les 20 premiers)
-    console.log('Resolving direct job URLs...')
-    const urlPromises = top50Jobs.slice(0, 20).map(async (job) => {
-      const directUrl = await getDirectJobUrl(job.job_url)
-      job.job_url = directUrl
-    })
+    // 4d. Résoudre les URLs directes pour Adzuna seulement (en parallèle pour les 20 premiers)
+    console.log('Resolving direct job URLs for Adzuna jobs...')
+    const urlPromises = top50Jobs
+      .filter(job => job.source === 'adzuna')
+      .slice(0, 20)
+      .map(async (job) => {
+        const directUrl = await getDirectJobUrl(job.job_url)
+        job.job_url = directUrl
+      })
     await Promise.all(urlPromises)
 
     // 5. Score top 10 with Claude
