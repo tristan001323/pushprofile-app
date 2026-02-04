@@ -22,20 +22,21 @@ const getAdzunaCredentials = () => ({
 
 const getApifyApiKey = () => process.env.APIFY_API_KEY || ''
 
-// LinkedIn Jobs Apify integration
+// LinkedIn Jobs Apify integration - Actor 2rJKkhh7vjpX7pvjg response format
 interface LinkedInJob {
-  id?: string
-  title: string
+  jobId?: string
+  jobTitle: string
   companyName: string
   location: string
-  description?: string
-  descriptionHtml?: string
-  url: string
-  postedAt?: string
-  contractType?: string
-  workplaceType?: string // "remote", "hybrid", "on_site"
-  experienceLevel?: string
-  salary?: string
+  jobDescription?: string
+  jobUrl: string
+  publishedAt?: string
+  postedTime?: string
+  contractType?: string // "Full-time", "Part-time", "Contract", etc.
+  experienceLevel?: string // "Entry level", "Associate", "Mid-Senior level", etc.
+  salaryInfo?: any[]
+  workType?: string
+  sector?: string
 }
 
 interface LinkedInSearchFilters {
@@ -118,56 +119,44 @@ async function searchLinkedInJobs(filters: LinkedInSearchFilters): Promise<{ job
     return { jobs: [], meta: { total_scraped: 0, after_filters: 0, excluded_agencies: 0 } }
   }
 
-  // Build search queries
-  const searchQueries: string[] = []
+  // Build search keywords array
+  const keywords: string[] = []
+
+  // Combine job title with location for better search
   if (filters.jobTitle) {
-    searchQueries.push(filters.jobTitle)
-  }
-  if (filters.skills && filters.skills.length > 0) {
-    // Add top skills to search
-    const topSkills = filters.skills.slice(0, 3)
+    const searchTerm = filters.location
+      ? `${filters.jobTitle} - ${filters.location}`
+      : filters.jobTitle
+    keywords.push(searchTerm)
+  } else if (filters.skills && filters.skills.length > 0) {
+    // Use skills if no job title
+    const topSkills = filters.skills.slice(0, 2)
     topSkills.forEach(skill => {
-      if (!searchQueries.some(q => q.toLowerCase().includes(skill.toLowerCase()))) {
-        searchQueries.push(skill)
-      }
+      const searchTerm = filters.location
+        ? `${skill} - ${filters.location}`
+        : skill
+      keywords.push(searchTerm)
     })
   }
 
-  if (searchQueries.length === 0) {
-    searchQueries.push('developer') // Fallback
+  if (keywords.length === 0) {
+    keywords.push(filters.location ? `developer - ${filters.location}` : 'developer - France')
   }
 
-  // Build Apify request body
+  // Build Apify request body - actor ID: 2rJKkhh7vjpX7pvjg
+  // Required: keyword (array), maxItems (min 150)
   const requestBody: Record<string, any> = {
-    searchQueries: searchQueries,
+    keyword: keywords,
     location: filters.location || 'France',
-    maxItems: 30,
-    language: 'fr'
-  }
-
-  // Add experience level filter
-  const experienceLevels = mapSeniorityToLinkedIn(filters.seniority)
-  if (experienceLevels.length > 0) {
-    requestBody.experienceLevel = experienceLevels
-  }
-
-  // Add job type filter
-  const jobTypes = mapContractToLinkedIn(filters.contractTypes)
-  if (jobTypes.length > 0) {
-    requestBody.jobType = jobTypes
-  }
-
-  // Add workplace type filter
-  const workplaceTypes = mapRemoteToLinkedIn(filters.remoteOptions)
-  if (workplaceTypes.length > 0) {
-    requestBody.workplaceType = workplaceTypes
+    maxItems: 150 // Minimum required by this actor
   }
 
   console.log('LinkedIn search request:', JSON.stringify(requestBody, null, 2))
 
   try {
+    // Use correct actor ID: 2rJKkhh7vjpX7pvjg
     const response = await fetch(
-      `https://api.apify.com/v2/acts/cheap_scraper~linkedin-jobs-scraper/run-sync-get-dataset-items?token=${apiKey}`,
+      `https://api.apify.com/v2/acts/2rJKkhh7vjpX7pvjg/run-sync-get-dataset-items?token=${apiKey}`,
       {
         method: 'POST',
         headers: {
@@ -194,7 +183,7 @@ async function searchLinkedInJobs(filters: LinkedInSearchFilters): Promise<{ job
     if (filters.excludeAgencies !== false) {
       filteredJobs = linkedInJobs.filter(job => {
         const companyName = (job.companyName || '').toLowerCase()
-        const description = (job.description || job.descriptionHtml || '').toLowerCase()
+        const description = (job.jobDescription || '').toLowerCase()
 
         const isAgency = RECRUITMENT_AGENCIES.some(agency =>
           companyName.includes(agency) || description.includes(agency)
@@ -213,35 +202,37 @@ async function searchLinkedInJobs(filters: LinkedInSearchFilters): Promise<{ job
       // Extract contract type from LinkedIn data
       let contractType = 'permanent'
       if (job.contractType) {
-        if (job.contractType.toLowerCase().includes('contract') || job.contractType.toLowerCase().includes('freelance')) {
+        const ct = job.contractType.toLowerCase()
+        if (ct.includes('contract') || ct.includes('freelance') || ct.includes('temporary')) {
           contractType = 'contract'
-        } else if (job.contractType.toLowerCase().includes('internship') || job.contractType.toLowerCase().includes('stage')) {
+        } else if (ct.includes('internship') || ct.includes('stage')) {
           contractType = 'internship'
+        } else if (ct.includes('part-time') || ct.includes('part time')) {
+          contractType = 'part_time'
         }
       }
 
-      // Extract remote type
+      // Extract remote type from job title/description (LinkedIn doesn't always have workplace type)
       let remoteType = 'on_site'
-      if (job.workplaceType) {
-        if (job.workplaceType.toLowerCase().includes('remote')) {
-          remoteType = 'remote'
-        } else if (job.workplaceType.toLowerCase().includes('hybrid')) {
-          remoteType = 'hybrid'
-        }
+      const jobText = (job.jobTitle + ' ' + (job.jobDescription || '')).toLowerCase()
+      if (jobText.includes('remote') || jobText.includes('télétravail') || jobText.includes('full remote')) {
+        remoteType = 'remote'
+      } else if (jobText.includes('hybrid') || jobText.includes('hybride')) {
+        remoteType = 'hybrid'
       }
 
-      const description = job.description || job.descriptionHtml?.replace(/<[^>]*>/g, ' ') || ''
+      const description = job.jobDescription || ''
 
       return {
         search_id: '', // Will be set later
-        external_id: `linkedin_${job.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        external_id: `linkedin_${job.jobId || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         source: 'linkedin',
-        job_url: job.url,
-        job_title: job.title,
+        job_url: job.jobUrl,
+        job_title: job.jobTitle,
         company_name: job.companyName || 'Unknown',
         location: job.location || 'France',
         description: description.substring(0, 2000),
-        posted_date: job.postedAt ? new Date(job.postedAt).toISOString().split('T')[0] : null,
+        posted_date: job.publishedAt ? new Date(job.publishedAt).toISOString().split('T')[0] : null,
         matching_details: {
           contract_type: contractType,
           remote_type: remoteType,
