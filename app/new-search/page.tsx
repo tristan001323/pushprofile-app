@@ -13,7 +13,8 @@ import { supabase } from '@/lib/supabase'
 // Messages de chargement
 const LOADING_MESSAGES = [
   { text: "Connexion aux jobboards...", icon: "🔌" },
-  { text: "Recherche des meilleures offres...", icon: "🔍" },
+  { text: "Recherche sur Adzuna...", icon: "🔍" },
+  { text: "Recherche sur LinkedIn...", icon: "💼" },
   { text: "Analyse des offres trouvées...", icon: "📊" },
   { text: "Filtrage des cabinets de recrutement...", icon: "🚫" },
   { text: "Scoring des meilleures offres avec l'IA...", icon: "🤖" },

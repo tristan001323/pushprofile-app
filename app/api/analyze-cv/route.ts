@@ -21,23 +21,28 @@ const getAdzunaCredentials = () => ({
 })
 const getApifyApiKey = () => process.env.APIFY_API_KEY || ''
 
-// LinkedIn job format from Apify actor rKGG0CTP4Cg8hH1j1
+// LinkedIn job format from Apify actor RIGGeqD6RqKmlVoQU
 interface LinkedInJob {
+  id: string
+  url: string
   title: string
   location: string
-  postedTime: string
-  applyUrl: string
   companyName: string
   companyUrl: string
-  description: string
-  applicationsCount: string
-  contractType: string
+  recruiterName: string
+  recruiterUrl: string
   experienceLevel: string
+  contractType: string
+  workType: string
   sector: string
   salary: string
-  jobUrl: string
   applyType: string
-  benefits: string
+  applyUrl: string
+  postedTimeAgo: string
+  postedDate: string
+  applicationsCount: string
+  description: string
+  descriptionHtml: string
 }
 
 // Recruitment agencies to filter out
@@ -228,21 +233,15 @@ async function fetchAdzunaJobs(urls: string[]): Promise<Job[]> {
   return allJobs
 }
 
-// 3b. Fetch jobs from LinkedIn via Apify
-// TEMPORARILY DISABLED - current actors are either too slow or too expensive
-// TODO: Find a better LinkedIn scraper
+// 3b. Fetch jobs from LinkedIn via Apify (actor RIGGeqD6RqKmlVoQU)
+// Price: $0.40/1000 results + $0.001 actor start = ~$0.01 per search (20 jobs)
 async function searchLinkedInJobs(
-  _jobTitle: string,
-  _location: string,
-  _remoteOptions?: string[],
-  _contractTypes?: string[],
-  _excludeAgencies: boolean = true
+  jobTitle: string,
+  location: string,
+  remoteOptions?: string[],
+  contractTypes?: string[],
+  excludeAgencies: boolean = true
 ): Promise<NormalizedJob[]> {
-  // Disabled for now - uncomment when we find a good actor
-  console.log('LinkedIn search disabled (no suitable actor found)')
-  return []
-
-  /* DISABLED CODE - uncomment when re-enabling LinkedIn
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
@@ -250,43 +249,43 @@ async function searchLinkedInJobs(
     return []
   }
 
-  // Map remote options to LinkedIn workType
-  let workType: string | undefined
+  // Map remote options to LinkedIn format
+  let remoteFilter: string | undefined
   if (remoteOptions && remoteOptions.length > 0) {
-    if (remoteOptions.includes('Full remote')) workType = 'remote'
-    else if (remoteOptions.includes('Hybrid')) workType = 'hybrid'
-    else if (remoteOptions.includes('On-site')) workType = 'on-site'
+    if (remoteOptions.includes('Full remote')) remoteFilter = 'Remote'
+    else if (remoteOptions.includes('Hybrid')) remoteFilter = 'Hybrid'
+    else if (remoteOptions.includes('On-site')) remoteFilter = 'On-site'
   }
 
-  // Map contract types to LinkedIn employmentType
-  let employmentType: string | undefined
+  // Map contract types to LinkedIn format
+  let contractFilter: string | undefined
   if (contractTypes && contractTypes.length > 0) {
-    if (contractTypes.includes('CDI')) employmentType = 'full-time'
-    else if (contractTypes.includes('CDD')) employmentType = 'contract'
-    else if (contractTypes.includes('Stage')) employmentType = 'internship'
-    else if (contractTypes.includes('Freelance')) employmentType = 'contract'
+    if (contractTypes.includes('CDI')) contractFilter = 'Full-time'
+    else if (contractTypes.includes('CDD')) contractFilter = 'Contract'
+    else if (contractTypes.includes('Stage')) contractFilter = 'Internship'
+    else if (contractTypes.includes('Freelance')) contractFilter = 'Contract'
   }
 
-  // Build request body for actor rKGG0CTP4Cg8hH1j1
+  // Build request body for actor RIGGeqD6RqKmlVoQU
   const requestBody: Record<string, any> = {
-    jobTitles: [jobTitle],
-    jobLocations: [location],
-    totalRows: 10, // Reduced for speed
-    proxy: '{"useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"]}'
+    title: jobTitle,
+    location: location,
+    limit: 20,
+    datePosted: 'Past month'
   }
 
-  if (workType) requestBody.workType = workType
-  if (employmentType) requestBody.employmentType = employmentType
+  if (remoteFilter) requestBody.remoteType = remoteFilter
+  if (contractFilter) requestBody.contractType = contractFilter
 
   console.log('LinkedIn search request:', JSON.stringify(requestBody, null, 2))
 
   try {
-    // Use AbortController for timeout (90 seconds max - LinkedIn scraping is slow)
+    // Use AbortController for timeout (60 seconds)
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 90000)
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
 
     const response = await fetch(
-      `https://api.apify.com/v2/acts/rKGG0CTP4Cg8hH1j1/run-sync-get-dataset-items?token=${apiKey}`,
+      `https://api.apify.com/v2/acts/RIGGeqD6RqKmlVoQU/run-sync-get-dataset-items?token=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -326,42 +325,55 @@ async function searchLinkedInJobs(
       let contractType = 'permanent'
       if (job.contractType) {
         const ct = job.contractType.toLowerCase()
-        if (ct.includes('contract') || ct.includes('freelance') || ct.includes('temporary')) {
+        if (ct.includes('contract') || ct.includes('temporary')) {
           contractType = 'contract'
-        } else if (ct.includes('internship') || ct.includes('stage')) {
+        } else if (ct.includes('internship')) {
           contractType = 'internship'
-        } else if (ct.includes('part-time') || ct.includes('part time')) {
+        } else if (ct.includes('part-time')) {
           contractType = 'part_time'
         }
       }
 
       // Determine remote type from job data
       let remoteType = 'on_site'
-      const jobText = (job.title + ' ' + job.location + ' ' + (job.description || '')).toLowerCase()
+      const jobText = (job.title + ' ' + job.location + ' ' + (job.workType || '')).toLowerCase()
       if (jobText.includes('remote') || jobText.includes('télétravail')) {
         remoteType = 'remote'
       } else if (jobText.includes('hybrid') || jobText.includes('hybride')) {
         remoteType = 'hybrid'
       }
 
-      // Use applyUrl if available, otherwise jobUrl
-      const finalUrl = job.applyUrl || job.jobUrl
+      // Parse salary if available
+      let salaryMin: number | null = null
+      let salaryMax: number | null = null
+      if (job.salary) {
+        const salaryMatch = job.salary.match(/\$?([\d,]+)/g)
+        if (salaryMatch && salaryMatch.length >= 1) {
+          salaryMin = parseInt(salaryMatch[0].replace(/[,$]/g, ''))
+          if (salaryMatch.length >= 2) {
+            salaryMax = parseInt(salaryMatch[1].replace(/[,$]/g, ''))
+          }
+        }
+      }
+
+      // Use applyUrl or url
+      const finalUrl = job.applyUrl || job.url
 
       return {
         search_id: '', // Will be set later
-        external_id: `linkedin_${job.jobUrl?.split('view/')[1]?.split('?')[0] || Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        external_id: `linkedin_${job.id}`,
         source: 'linkedin',
         job_url: finalUrl,
         job_title: job.title,
         company_name: job.companyName || 'Unknown',
         location: job.location || 'Remote',
         description: (job.description || '').substring(0, 2000),
-        posted_date: null, // postedTime is like "2 weeks ago", not a date
+        posted_date: job.postedDate || null,
         matching_details: {
           contract_type: contractType,
           remote_type: remoteType,
-          salary_min: null,
-          salary_max: null,
+          salary_min: salaryMin,
+          salary_max: salaryMax,
           full_description: job.description || ''
         },
         prefilter_score: 50 // Base score, will be recalculated
@@ -372,13 +384,12 @@ async function searchLinkedInJobs(
 
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      console.log('LinkedIn search timed out after 90s, continuing with Adzuna only')
+      console.log('LinkedIn search timed out after 60s, continuing with Adzuna only')
     } else {
       console.error('Error fetching LinkedIn jobs:', error)
     }
     return []
   }
-  DISABLED CODE END */
 }
 
 // 4. Prefilter and score jobs
