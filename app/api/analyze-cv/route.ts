@@ -20,6 +20,254 @@ const getAdzunaCredentials = () => ({
   appKey: process.env.ADZUNA_APP_KEY || ''
 })
 
+const getApifyApiKey = () => process.env.APIFY_API_KEY || ''
+
+// LinkedIn Jobs Apify integration
+interface LinkedInJob {
+  id?: string
+  title: string
+  companyName: string
+  location: string
+  description?: string
+  descriptionHtml?: string
+  url: string
+  postedAt?: string
+  contractType?: string
+  workplaceType?: string // "remote", "hybrid", "on_site"
+  experienceLevel?: string
+  salary?: string
+}
+
+interface LinkedInSearchFilters {
+  jobTitle?: string
+  location?: string
+  seniority?: string
+  contractTypes?: string[]
+  remoteOptions?: string[]
+  skills?: string[]
+  excludeAgencies?: boolean
+}
+
+// Extended recruitment agencies list for LinkedIn
+const RECRUITMENT_AGENCIES = [
+  'michael page', 'page personnel', 'pagegroup', 'robert half', 'hays', 'randstad', 'adecco', 'manpower',
+  'kelly services', 'experis', 'akkodis', 'modis', 'spring', 'lhh', 'expectra', 'synergie', 'crit',
+  'proman', 'actual', 'partnaire', 'temporis', 'interaction', 'start people', 'menway', 'lynx rh',
+  'free-work', 'free work', 'externatic', 'urban linker', 'talent.io', 'hired', 'triplebyte',
+  'lincoln', 'jp associates', 'freelance.com', 'malt', 'side', 'coopaname', 'keljob', 'jobteaser',
+  'le collectif', 'skillwise', 'happy to meet you', 'htmy', 'ignition program', 'mobiskill',
+  'silkhom', 'altaide', 'mybeautifuljob', 'hunteed', 'opensourcing', 'nexten', 'kicklox',
+  'welovedevs', 'chooseyourboss', 'lesjeudis', 'club freelance', 'comet', 'xor talents',
+  'mindquest', 'wenabi', 'approach people', 'blue coding', 'wesley', 'sthree', 'computer futures',
+  'progressive recruitment', 'real staffing', 'nigel frank', 'jefferson wells', 'aston carter'
+]
+
+// Map seniority to LinkedIn experienceLevel
+function mapSeniorityToLinkedIn(seniority?: string): string[] {
+  if (!seniority) return []
+
+  switch (seniority.toLowerCase()) {
+    case 'junior':
+      return ['internship', 'entry_level']
+    case 'confirmé':
+      return ['associate', 'mid_senior_level']
+    case 'senior':
+      return ['mid_senior_level']
+    case 'lead':
+    case 'manager':
+    case 'expert':
+      return ['director', 'executive']
+    default:
+      return []
+  }
+}
+
+// Map contract types to LinkedIn jobType
+function mapContractToLinkedIn(contractTypes?: string[]): string[] {
+  if (!contractTypes || contractTypes.length === 0) return []
+
+  const mapping: Record<string, string> = {
+    'CDI': 'full_time',
+    'CDD': 'contract',
+    'Freelance': 'contract',
+    'Stage': 'internship'
+  }
+
+  return contractTypes.map(ct => mapping[ct]).filter(Boolean)
+}
+
+// Map remote options to LinkedIn workplaceType
+function mapRemoteToLinkedIn(remoteOptions?: string[]): string[] {
+  if (!remoteOptions || remoteOptions.length === 0) return []
+
+  const mapping: Record<string, string> = {
+    'On-site': 'on_site',
+    'Hybrid': 'hybrid',
+    'Full remote': 'remote'
+  }
+
+  return remoteOptions.map(ro => mapping[ro]).filter(Boolean)
+}
+
+// Fetch jobs from LinkedIn via Apify
+async function searchLinkedInJobs(filters: LinkedInSearchFilters): Promise<{ jobs: NormalizedJob[], meta: { total_scraped: number, after_filters: number, excluded_agencies: number } }> {
+  const apiKey = getApifyApiKey()
+
+  if (!apiKey) {
+    console.log('No Apify API key, skipping LinkedIn search')
+    return { jobs: [], meta: { total_scraped: 0, after_filters: 0, excluded_agencies: 0 } }
+  }
+
+  // Build search queries
+  const searchQueries: string[] = []
+  if (filters.jobTitle) {
+    searchQueries.push(filters.jobTitle)
+  }
+  if (filters.skills && filters.skills.length > 0) {
+    // Add top skills to search
+    const topSkills = filters.skills.slice(0, 3)
+    topSkills.forEach(skill => {
+      if (!searchQueries.some(q => q.toLowerCase().includes(skill.toLowerCase()))) {
+        searchQueries.push(skill)
+      }
+    })
+  }
+
+  if (searchQueries.length === 0) {
+    searchQueries.push('developer') // Fallback
+  }
+
+  // Build Apify request body
+  const requestBody: Record<string, any> = {
+    searchQueries: searchQueries,
+    location: filters.location || 'France',
+    maxItems: 30,
+    language: 'fr'
+  }
+
+  // Add experience level filter
+  const experienceLevels = mapSeniorityToLinkedIn(filters.seniority)
+  if (experienceLevels.length > 0) {
+    requestBody.experienceLevel = experienceLevels
+  }
+
+  // Add job type filter
+  const jobTypes = mapContractToLinkedIn(filters.contractTypes)
+  if (jobTypes.length > 0) {
+    requestBody.jobType = jobTypes
+  }
+
+  // Add workplace type filter
+  const workplaceTypes = mapRemoteToLinkedIn(filters.remoteOptions)
+  if (workplaceTypes.length > 0) {
+    requestBody.workplaceType = workplaceTypes
+  }
+
+  console.log('LinkedIn search request:', JSON.stringify(requestBody, null, 2))
+
+  try {
+    const response = await fetch(
+      `https://api.apify.com/v2/acts/cheap_scraper~linkedin-jobs-scraper/run-sync-get-dataset-items?token=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Apify API error:', response.status, errorText)
+      return { jobs: [], meta: { total_scraped: 0, after_filters: 0, excluded_agencies: 0 } }
+    }
+
+    const linkedInJobs: LinkedInJob[] = await response.json()
+    console.log(`LinkedIn returned ${linkedInJobs.length} jobs`)
+
+    const totalScraped = linkedInJobs.length
+    let excludedAgencies = 0
+
+    // Filter out recruitment agencies if enabled
+    let filteredJobs = linkedInJobs
+    if (filters.excludeAgencies !== false) {
+      filteredJobs = linkedInJobs.filter(job => {
+        const companyName = (job.companyName || '').toLowerCase()
+        const description = (job.description || job.descriptionHtml || '').toLowerCase()
+
+        const isAgency = RECRUITMENT_AGENCIES.some(agency =>
+          companyName.includes(agency) || description.includes(agency)
+        )
+
+        if (isAgency) {
+          excludedAgencies++
+          return false
+        }
+        return true
+      })
+    }
+
+    // Normalize jobs to our format
+    const normalizedJobs: NormalizedJob[] = filteredJobs.map(job => {
+      // Extract contract type from LinkedIn data
+      let contractType = 'permanent'
+      if (job.contractType) {
+        if (job.contractType.toLowerCase().includes('contract') || job.contractType.toLowerCase().includes('freelance')) {
+          contractType = 'contract'
+        } else if (job.contractType.toLowerCase().includes('internship') || job.contractType.toLowerCase().includes('stage')) {
+          contractType = 'internship'
+        }
+      }
+
+      // Extract remote type
+      let remoteType = 'on_site'
+      if (job.workplaceType) {
+        if (job.workplaceType.toLowerCase().includes('remote')) {
+          remoteType = 'remote'
+        } else if (job.workplaceType.toLowerCase().includes('hybrid')) {
+          remoteType = 'hybrid'
+        }
+      }
+
+      const description = job.description || job.descriptionHtml?.replace(/<[^>]*>/g, ' ') || ''
+
+      return {
+        search_id: '', // Will be set later
+        external_id: `linkedin_${job.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        source: 'linkedin',
+        job_url: job.url,
+        job_title: job.title,
+        company_name: job.companyName || 'Unknown',
+        location: job.location || 'France',
+        description: description.substring(0, 2000),
+        posted_date: job.postedAt ? new Date(job.postedAt).toISOString().split('T')[0] : null,
+        matching_details: {
+          contract_type: contractType,
+          remote_type: remoteType,
+          salary_min: null,
+          salary_max: null,
+          full_description: description
+        },
+        prefilter_score: 50 // Default score, will be recalculated
+      }
+    })
+
+    return {
+      jobs: normalizedJobs,
+      meta: {
+        total_scraped: totalScraped,
+        after_filters: normalizedJobs.length,
+        excluded_agencies: excludedAgencies
+      }
+    }
+
+  } catch (error) {
+    console.error('Error fetching LinkedIn jobs:', error)
+    return { jobs: [], meta: { total_scraped: 0, after_filters: 0, excluded_agencies: 0 } }
+  }
+}
+
 interface ParsedCV {
   target_roles: string[]
   skills: string[]
@@ -196,27 +444,16 @@ async function fetchAdzunaJobs(urls: string[]): Promise<Job[]> {
 
 // 4. Prefilter and score jobs
 function prefilterJobs(jobs: Job[], cvData: ParsedCV, searchId: string, excludeAgencies: boolean = true): NormalizedJob[] {
-  // List of recruitment agencies to filter out
-  const recruitmentAgencies = [
-    'michael page', 'robert half', 'hays', 'randstad', 'adecco', 'manpower',
-    'kelly services', 'page personnel', 'expectra', 'synergie', 'crit',
-    'proman', 'actual', 'start people', 'supplay', 'interaction', 'adequat',
-    'spring', 'lhh', 'lincoln', 'jp associates', 'freelance.com', 'malt',
-    'talent.io', 'hired', 'side', 'coopaname', 'keljob', 'jobteaser',
-    'externatic', 'urban linker', 'free-work', 'free work', 'le collectif',
-    'skillwise', 'happy to meet you', 'htmy', 'ignition program', 'mobiskill',
-    'silkhom', 'altaide', 'mybeautifuljob', 'hunteed', 'opensourcing',
-    'cadremploi', 'apec', 'meteojob', 'indeed', 'linkedin', 'monster',
-    'nexten', 'kicklox', 'welovedevs', 'chooseyourboss', 'lesjeudis',
-    'club freelance', 'comet', 'xor talents', 'mindquest', 'wenabi'
-  ]
-
-  // Filter out recruitment agencies if enabled
+  // Filter out recruitment agencies if enabled (using shared list)
   let filteredJobs = jobs
   if (excludeAgencies) {
     filteredJobs = jobs.filter(job => {
       const companyName = (job.company?.display_name || '').toLowerCase()
-      return !recruitmentAgencies.some(agency => companyName.includes(agency))
+      const description = (job.description || '').toLowerCase()
+      // Check both company name and description for agencies
+      return !RECRUITMENT_AGENCIES.some(agency =>
+        companyName.includes(agency) || description.includes(agency)
+      )
     })
     console.log(`Filtered ${jobs.length - filteredJobs.length} jobs from recruitment agencies`)
   }
@@ -573,21 +810,47 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 3. Build Adzuna URLs and fetch jobs
-    console.log('Fetching jobs from Adzuna...')
-    // Use different URL building strategy based on search type
+    // 3. Fetch jobs from both Adzuna and LinkedIn in parallel
+    console.log('Fetching jobs from Adzuna and LinkedIn...')
+
+    // Build Adzuna URLs
     const urls = (search_type === 'standard' && !hasCV)
       ? buildAdzunaUrlsFromCriteria(body)
       : buildAdzunaUrls(parsedData)
 
-    console.log(`Built ${urls.length} search URLs for type: ${search_type}`)
-    const allJobs = await fetchAdzunaJobs(urls)
+    console.log(`Built ${urls.length} Adzuna search URLs for type: ${search_type}`)
 
-    console.log(`Found ${allJobs.length} jobs from Adzuna`)
+    // Build LinkedIn filters
+    const linkedInFilters: LinkedInSearchFilters = {
+      jobTitle: parsedData.target_roles[0] || job_title,
+      location: parsedData.location || location,
+      seniority: parsedData.seniority || seniority,
+      contractTypes: contract_types,
+      remoteOptions: remote_options,
+      skills: parsedData.skills,
+      excludeAgencies: exclude_agencies !== false
+    }
+
+    // Fetch from both sources in parallel
+    const [adzunaJobs, linkedInResult] = await Promise.all([
+      fetchAdzunaJobs(urls),
+      searchLinkedInJobs(linkedInFilters)
+    ])
+
+    console.log(`Found ${adzunaJobs.length} jobs from Adzuna`)
+    console.log(`Found ${linkedInResult.jobs.length} jobs from LinkedIn (${linkedInResult.meta.excluded_agencies} agencies excluded)`)
+
+    // Set search_id on LinkedIn jobs
+    linkedInResult.jobs.forEach(job => {
+      job.search_id = searchId
+    })
+
     console.log('Parsed CV data:', JSON.stringify(parsedData, null, 2))
     console.log('Search URLs:', urls)
 
-    if (allJobs.length === 0) {
+    const totalJobsFound = adzunaJobs.length + linkedInResult.jobs.length
+
+    if (totalJobsFound === 0) {
       // Update search status to completed with no results
       await supabase
         .from('searches')
@@ -599,18 +862,64 @@ export async function POST(request: NextRequest) {
         search_id: searchId,
         matches_inserted: 0,
         debug: {
-          reason: 'Adzuna returned 0 jobs',
+          reason: 'No jobs found from any source',
           parsed_cv: parsedData,
           urls_tried: urls
         }
       })
     }
 
-    // 4. Prefilter jobs
-    console.log('Prefiltering jobs...')
-    const top50Jobs = prefilterJobs(allJobs, parsedData, searchId, exclude_agencies !== false)
+    // 4. Prefilter Adzuna jobs
+    console.log('Prefiltering Adzuna jobs...')
+    const prefiltered50Jobs = prefilterJobs(adzunaJobs, parsedData, searchId, exclude_agencies !== false)
+    console.log(`Prefiltered Adzuna to ${prefiltered50Jobs.length} relevant jobs`)
 
-    console.log(`Prefiltered to ${top50Jobs.length} relevant jobs`)
+    // 4b. Score LinkedIn jobs with basic scoring
+    console.log('Scoring LinkedIn jobs...')
+    linkedInResult.jobs.forEach(job => {
+      let score = 50 // Base score for LinkedIn (since it's already filtered by API)
+
+      const jobText = (job.job_title + ' ' + job.description).toLowerCase()
+      const cvSkills = (parsedData.skills || []).map(s => s.toLowerCase())
+
+      // Skill matching
+      let skillMatches = 0
+      cvSkills.forEach(skill => {
+        if (jobText.includes(skill)) skillMatches++
+      })
+      if (cvSkills.length > 0) {
+        score += (skillMatches / cvSkills.length) * 30
+      }
+
+      // Location matching
+      const cvLocation = (parsedData.location || '').toLowerCase()
+      if (job.location.toLowerCase().includes(cvLocation) || cvLocation.includes(job.location.toLowerCase().split(',')[0])) {
+        score += 10
+      }
+
+      job.prefilter_score = Math.round(score)
+    })
+
+    // 4c. Combine and deduplicate jobs from both sources
+    const combinedJobs = [...prefiltered50Jobs, ...linkedInResult.jobs]
+
+    // Deduplicate across sources
+    const seen = new Map<string, boolean>()
+    const top50Jobs: NormalizedJob[] = []
+
+    for (const job of combinedJobs.sort((a, b) => (b.prefilter_score || 0) - (a.prefilter_score || 0))) {
+      const normalizedTitle = job.job_title.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const normalizedCompany = job.company_name.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const key = `${normalizedTitle}_${normalizedCompany}`
+
+      if (!seen.has(key)) {
+        seen.set(key, true)
+        top50Jobs.push(job)
+        if (top50Jobs.length >= 50) break
+      }
+    }
+
+    console.log(`Combined and deduplicated to ${top50Jobs.length} jobs (${prefiltered50Jobs.length} Adzuna + ${linkedInResult.jobs.length} LinkedIn)`)
 
     if (top50Jobs.length === 0) {
       await supabase
@@ -624,18 +933,21 @@ export async function POST(request: NextRequest) {
         matches_inserted: 0,
         debug: {
           reason: 'All jobs filtered out by prefilter',
-          total_from_adzuna: allJobs.length,
+          total_from_adzuna: adzunaJobs.length,
+          total_from_linkedin: linkedInResult.jobs.length,
           parsed_cv: parsedData
         }
       })
     }
 
-    // 4b. Résoudre les URLs directes (en parallèle pour les 20 premiers)
-    console.log('Resolving direct job URLs...')
-    const urlPromises = top50Jobs.slice(0, 20).map(async (job, index) => {
-      const directUrl = await getDirectJobUrl(job.job_url)
-      top50Jobs[index].job_url = directUrl
-    })
+    // 4d. Résoudre les URLs directes pour Adzuna jobs seulement (en parallèle pour les 20 premiers)
+    console.log('Resolving direct job URLs for Adzuna jobs...')
+    const urlPromises = top50Jobs.slice(0, 20)
+      .filter(job => job.source === 'adzuna')
+      .map(async (job) => {
+        const directUrl = await getDirectJobUrl(job.job_url)
+        job.job_url = directUrl
+      })
     await Promise.all(urlPromises)
 
     // 5. Score top 10 with Claude
