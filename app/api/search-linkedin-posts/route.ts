@@ -71,56 +71,42 @@ interface ParsedJobPost {
   score: number
 }
 
-// Build short LinkedIn search queries (LinkedIn limits to ~85 chars per query)
-function buildLinkedInPostQueries(
+// Build a single broad LinkedIn search query
+function buildLinkedInPostQuery(
   keywords: string,
-  contractType: string[],
+  contractTypes: string[],
   location: string
-): string[] {
-  const queries: string[] = []
+): string {
+  // Keep it simple and broad - the actor example shows: "hiring engineer" OR "looking for job"
+  const parts: string[] = []
 
-  // Recruitment terms in French and English
-  const recruitTermsFr = ['recrute', 'on recrute', 'je recrute', 'recherche']
-  const recruitTermsEn = ['hiring', '#hiring', 'we are hiring']
+  // Add recruitment intent + keywords
+  // Use OR to be broad: French and English terms
+  const keyword = keywords.trim()
 
-  // Contract type terms
-  const contractTermsMap: Record<string, string[]> = {
-    'CDI': ['CDI', 'temps plein', 'full-time'],
-    'CDD': ['CDD', 'contrat'],
-    'Freelance': ['freelance', 'mission', 'TJM'],
-    'Stage': ['stage', 'internship', 'stagiaire'],
+  if (location) {
+    parts.push(`recrute ${keyword} ${location}`)
+  } else {
+    parts.push(`recrute ${keyword}`)
   }
 
-  // Short keywords (first word or two)
-  const shortKeyword = keywords.split(' ').slice(0, 2).join(' ')
-
-  // Build a few complementary queries to stay under 85 chars
-  // Query 1: French recruit term + keyword + location
-  const q1Parts = [`recrute "${shortKeyword}"`]
-  if (contractType.length > 0) q1Parts.push(contractType[0])
-  if (location) q1Parts.push(location)
-  queries.push(q1Parts.join(' '))
-
-  // Query 2: English recruit term + keyword + location
-  const q2Parts = [`hiring "${shortKeyword}"`]
-  if (contractType.length > 0) {
-    const enTerms = contractTermsMap[contractType[0]]
-    if (enTerms && enTerms.length > 1) q2Parts.push(enTerms[enTerms.length - 1])
+  // Add contract type if specified
+  if (contractTypes.length > 0) {
+    parts.push(contractTypes[0])
   }
-  if (location) q2Parts.push(location)
-  queries.push(q2Parts.join(' '))
 
-  // Query 3: Alternative French term + keyword
-  const q3Parts = [`"on recrute" "${shortKeyword}"`]
-  if (location) q3Parts.push(location)
-  queries.push(q3Parts.join(' '))
+  let query = parts.join(' ')
 
-  // Ensure all queries are under 85 chars
-  return queries.map(q => q.length > 85 ? q.substring(0, 85) : q)
+  // Keep under 85 chars
+  if (query.length > 85) {
+    query = query.substring(0, 85)
+  }
+
+  return query
 }
 
 // Search LinkedIn posts via Apify actor 29VKGPinaGwpfxTrv
-async function searchLinkedInPosts(queries: string[], limitPerQuery: number = 20): Promise<LinkedInPost[]> {
+async function searchLinkedInPosts(query: string): Promise<LinkedInPost[]> {
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
@@ -128,75 +114,82 @@ async function searchLinkedInPosts(queries: string[], limitPerQuery: number = 20
     return []
   }
 
-  const allPosts: LinkedInPost[] = []
+  console.log(`LinkedIn posts search query: "${query}"`)
 
-  for (const query of queries) {
-    try {
-      console.log(`LinkedIn posts search query: "${query}"`)
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 55000) // 55s to stay under Vercel 60s
 
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 90000)
-
-      const response = await fetch(
-        `https://api.apify.com/v2/acts/29VKGPinaGwpfxTrv/run-sync-get-dataset-items?token=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            keywords: query,
-            datePosted: 'past-week',
-            limit: limitPerQuery
-          }),
-          signal: controller.signal
-        }
-      )
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Apify LinkedIn Posts API error:', response.status, errorText)
-        continue
+    const response = await fetch(
+      `https://api.apify.com/v2/acts/29VKGPinaGwpfxTrv/run-sync-get-dataset-items?token=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywords: query,
+          datePosted: 'past-month',
+          limit: 50
+        }),
+        signal: controller.signal
       }
+    )
 
-      const rawData = await response.json()
+    clearTimeout(timeoutId)
 
-      // Response can be a single object { success, posts: [...] } or an array of such objects
-      const results: ApifyPostsResponse[] = Array.isArray(rawData) ? rawData : [rawData]
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Apify LinkedIn Posts API error:', response.status, errorText)
+      return []
+    }
 
-      for (const result of results) {
-        if (result.success === false) {
-          console.error('Apify actor error:', result.error)
-          continue
+    const rawData = await response.json()
+    console.log('Apify raw response type:', typeof rawData, Array.isArray(rawData) ? `array[${rawData.length}]` : 'object')
+
+    // run-sync-get-dataset-items returns dataset items as an array
+    // Each item is a { success, posts: [...] } object
+    const allPosts: LinkedInPost[] = []
+
+    if (Array.isArray(rawData)) {
+      for (const item of rawData) {
+        // Could be the wrapper object with posts array
+        if (item.posts && Array.isArray(item.posts)) {
+          allPosts.push(...item.posts)
         }
-        if (result.posts && result.posts.length > 0) {
-          console.log(`LinkedIn posts query "${query}" returned ${result.posts.length} posts`)
-          allPosts.push(...result.posts)
+        // Or could be a flat post object itself (if actor pushes posts individually)
+        else if (item.content || item.url || item.postUrn) {
+          allPosts.push(item as LinkedInPost)
         }
       }
-
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log(`LinkedIn posts query "${query}" timed out after 90s`)
-      } else {
-        console.error('Error fetching LinkedIn posts:', error)
+    } else if (rawData && typeof rawData === 'object') {
+      if (rawData.posts && Array.isArray(rawData.posts)) {
+        allPosts.push(...rawData.posts)
       }
     }
-  }
 
-  // Deduplicate by url or postUrn
-  const seen = new Set<string>()
-  const uniquePosts: LinkedInPost[] = []
-  for (const post of allPosts) {
-    const key = post.url || post.postUrn || post.content?.substring(0, 100) || ''
-    if (!seen.has(key)) {
-      seen.add(key)
-      uniquePosts.push(post)
+    console.log(`LinkedIn posts: extracted ${allPosts.length} posts`)
+
+    // Deduplicate by url or postUrn
+    const seen = new Set<string>()
+    const uniquePosts: LinkedInPost[] = []
+    for (const post of allPosts) {
+      const key = post.url || post.postUrn || post.content?.substring(0, 100) || ''
+      if (key && !seen.has(key)) {
+        seen.add(key)
+        uniquePosts.push(post)
+      }
     }
-  }
 
-  console.log(`Total unique LinkedIn posts: ${uniquePosts.length}`)
-  return uniquePosts
+    console.log(`LinkedIn posts: ${uniquePosts.length} unique posts after dedup`)
+    return uniquePosts
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.log('LinkedIn posts search timed out after 55s')
+    } else {
+      console.error('Error fetching LinkedIn posts:', error)
+    }
+    return []
+  }
 }
 
 // Parse posts with Claude to extract structured job info
@@ -289,7 +282,6 @@ Retourne UNIQUEMENT un JSON array (sans backticks, sans markdown):
           const postIndex = item.post_index - 1
           if (postIndex >= 0 && postIndex < batch.length) {
             const post = batch[postIndex]
-            // Attach post metadata to parsed result
             ;(allParsed[allParsed.length - 1] as any)._post = post
           }
         }
@@ -342,17 +334,17 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 2. Build search queries
-    const queries = buildLinkedInPostQueries(
+    // 2. Build ONE broad query (stay under Vercel 60s timeout)
+    const query = buildLinkedInPostQuery(
       keywords,
       contract_types || [],
       location || ''
     )
-    console.log('LinkedIn posts queries:', queries)
+    console.log('LinkedIn posts query:', query)
 
-    // 3. Search LinkedIn posts
+    // 3. Search LinkedIn posts (single call)
     console.log('Searching LinkedIn posts...')
-    const posts = await searchLinkedInPosts(queries, 20)
+    const posts = await searchLinkedInPosts(query)
 
     if (posts.length === 0) {
       await supabase
@@ -378,7 +370,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Parse posts with Claude
-    console.log('Parsing posts with Claude...')
+    console.log(`Parsing ${filteredPosts.length} posts with Claude...`)
     const parsedJobs = await parsePostsWithClaude(filteredPosts)
     console.log(`Claude identified ${parsedJobs.length} job posts out of ${filteredPosts.length} posts`)
 
@@ -432,7 +424,6 @@ export async function POST(request: NextRequest) {
 
     // Sort by score
     matches.sort((a, b) => b.score - a.score)
-    // Update ranks after sorting
     matches.forEach((m, i) => { m.rank = i + 1 })
 
     // 7. Deduplicate against existing matches
