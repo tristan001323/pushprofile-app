@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Allow up to 300s on Vercel Pro (60s on Hobby)
+export const maxDuration = 300
+
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -100,7 +103,12 @@ function buildSearchQueries(
   return queries
 }
 
-// Search LinkedIn posts via Apify actor buIWk2uOUzTmcLsuB
+// Helper: wait for ms
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+// Search LinkedIn posts via Apify actor buIWk2uOUzTmcLsuB (async with polling)
 // Price: $2/1000 posts. maxPosts=25 per query x 2 queries = 50 posts max = $0.10 max
 async function searchLinkedInPosts(queries: string[]): Promise<LinkedInPost[]> {
   const apiKey = getApifyApiKey()
@@ -112,14 +120,13 @@ async function searchLinkedInPosts(queries: string[]): Promise<LinkedInPost[]> {
 
   console.log('LinkedIn posts search queries:', queries)
 
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 55000)
+  const MAX_WAIT_MS = 270000 // 4.5 minutes max wait (leave room for Claude parsing)
 
+  try {
     const requestBody = {
       searchQueries: queries,
       postedLimit: 'month',
-      maxPosts: 25,
+      maxPosts: 20,
       sortBy: 'relevance',
       scrapeReactions: false,
       scrapeComments: false,
@@ -127,32 +134,84 @@ async function searchLinkedInPosts(queries: string[]): Promise<LinkedInPost[]> {
 
     console.log('Apify request body:', JSON.stringify(requestBody))
 
-    const response = await fetch(
-      `https://api.apify.com/v2/acts/buIWk2uOUzTmcLsuB/run-sync-get-dataset-items?token=${apiKey}`,
+    // Step 1: Start the actor run (async)
+    const startResponse = await fetch(
+      `https://api.apify.com/v2/acts/buIWk2uOUzTmcLsuB/runs?token=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
-        signal: controller.signal
       }
     )
 
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Apify LinkedIn Posts API error:', response.status, errorText)
+    if (!startResponse.ok) {
+      const errorText = await startResponse.text()
+      console.error('Apify start run error:', startResponse.status, errorText)
       return []
     }
 
-    const rawData = await response.json()
-    console.log('Apify raw response type:', typeof rawData, Array.isArray(rawData) ? `array[${rawData.length}]` : 'object')
+    const runData = await startResponse.json()
+    const runId = runData.data?.id
+    const datasetId = runData.data?.defaultDatasetId
 
-    // run-sync-get-dataset-items returns a flat array of posts
+    if (!runId || !datasetId) {
+      console.error('Apify run missing id or datasetId:', JSON.stringify(runData).substring(0, 500))
+      return []
+    }
+
+    console.log(`Apify run started: ${runId}, dataset: ${datasetId}`)
+
+    // Step 2: Poll for completion
+    const startTime = Date.now()
+    let status = runData.data?.status || 'RUNNING'
+
+    while (status === 'RUNNING' || status === 'READY') {
+      if (Date.now() - startTime > MAX_WAIT_MS) {
+        console.log(`Apify run ${runId} still running after ${MAX_WAIT_MS / 1000}s, aborting wait`)
+        // Try to abort the run
+        await fetch(`https://api.apify.com/v2/actor-runs/${runId}/abort?token=${apiKey}`, { method: 'POST' }).catch(() => {})
+        return []
+      }
+
+      await sleep(5000) // Poll every 5 seconds
+
+      const pollResponse = await fetch(
+        `https://api.apify.com/v2/actor-runs/${runId}?token=${apiKey}`
+      )
+
+      if (!pollResponse.ok) {
+        console.error('Apify poll error:', pollResponse.status)
+        continue
+      }
+
+      const pollData = await pollResponse.json()
+      status = pollData.data?.status || 'UNKNOWN'
+      console.log(`Apify run ${runId} status: ${status} (${Math.round((Date.now() - startTime) / 1000)}s elapsed)`)
+    }
+
+    if (status !== 'SUCCEEDED') {
+      console.error(`Apify run ${runId} ended with status: ${status}`)
+      return []
+    }
+
+    // Step 3: Fetch dataset items
+    console.log(`Fetching dataset items from ${datasetId}...`)
+    const itemsResponse = await fetch(
+      `https://api.apify.com/v2/datasets/${datasetId}/items?token=${apiKey}`
+    )
+
+    if (!itemsResponse.ok) {
+      const errorText = await itemsResponse.text()
+      console.error('Apify dataset fetch error:', itemsResponse.status, errorText)
+      return []
+    }
+
+    const rawData = await itemsResponse.json()
+    console.log('Apify dataset items:', typeof rawData, Array.isArray(rawData) ? `array[${rawData.length}]` : 'object')
+
     let posts: LinkedInPost[] = []
 
     if (Array.isArray(rawData)) {
-      // Filter to only "post" type items (ignore reactions/comments if any)
       posts = rawData.filter((item: any) => !item.type || item.type === 'post')
       console.log(`LinkedIn posts: ${posts.length} posts extracted (${rawData.length} total items)`)
     } else {
@@ -174,11 +233,7 @@ async function searchLinkedInPosts(queries: string[]): Promise<LinkedInPost[]> {
     return uniquePosts
 
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      console.log('LinkedIn posts search timed out after 55s')
-    } else {
-      console.error('Error fetching LinkedIn posts:', error)
-    }
+    console.error('Error in LinkedIn posts search:', error)
     return []
   }
 }
@@ -321,7 +376,7 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 2. Build search queries (2 queries x 25 posts = 50 max = $0.10 max)
+    // 2. Build search queries (2 queries x 20 posts = 40 max = $0.08 max)
     const queries = buildSearchQueries(
       keywords,
       contract_types || [],

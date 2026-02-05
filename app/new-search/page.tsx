@@ -25,9 +25,13 @@ const LOADING_MESSAGES = [
 const LINKEDIN_POSTS_LOADING_MESSAGES = [
   { text: "Construction des requêtes de recherche...", icon: "🔧" },
   { text: "Recherche de posts LinkedIn...", icon: "🔍" },
-  { text: "Analyse des publications de recruteurs...", icon: "📝" },
-  { text: "Extraction des offres d'emploi avec l'IA...", icon: "🤖" },
+  { text: "Scraping des publications en cours...", icon: "📡" },
+  { text: "Collecte des posts pertinents...", icon: "📥" },
+  { text: "Analyse des publications avec l'IA...", icon: "📝" },
+  { text: "Extraction des offres d'emploi...", icon: "🤖" },
+  { text: "Identification des postes ouverts...", icon: "🎯" },
   { text: "Filtrage et scoring des résultats...", icon: "📊" },
+  { text: "Encore quelques instants...", icon: "⏳" },
   { text: "Préparation de vos résultats...", icon: "✨" },
 ]
 
@@ -94,10 +98,12 @@ export default function NewSearchPage() {
     }
 
     const interval = setInterval(() => {
-      setLpLoadingMessageIndex(prev =>
-        prev < LINKEDIN_POSTS_LOADING_MESSAGES.length - 1 ? prev + 1 : prev
-      )
-    }, 5000)
+      setLpLoadingMessageIndex(prev => {
+        // When reaching the end, cycle back to message 4 (AI analysis phase)
+        if (prev >= LINKEDIN_POSTS_LOADING_MESSAGES.length - 1) return 4
+        return prev + 1
+      })
+    }, 10000)
 
     return () => clearInterval(interval)
   }, [lpLoading])
