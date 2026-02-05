@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 
 type MatchData = {
   id: string
+  search_id: string
   rank: number
   status: string
   viewed_at: string | null
@@ -93,10 +94,14 @@ export default function DataPage() {
     }
 
     // Charger les recherches du user
-    const { data: searchesData } = await supabase
+    const { data: searchesData, error: searchError } = await supabase
       .from('searches')
       .select('id, is_favorite')
       .eq('user_id', session.user.id)
+
+    if (searchError) {
+      console.error('Error loading searches:', searchError)
+    }
 
     if (!searchesData || searchesData.length === 0) {
       setSearches([])
@@ -106,16 +111,21 @@ export default function DataPage() {
     }
 
     setSearches(searchesData)
-    const searchIds = searchesData.map(s => s.id)
+    const searchIds = new Set(searchesData.map(s => s.id))
 
-    // Charger les matches liés aux recherches du user
-    const { data: matchesData } = await supabase
+    // Charger tous les matches et filtrer côté client
+    const { data: matchesData, error: matchError } = await supabase
       .from('matches')
-      .select('id, rank, status, viewed_at, is_favorite, source, score, company_name')
-      .in('search_id', searchIds)
+      .select('id, search_id, rank, status, viewed_at, is_favorite, source, score, company_name')
+
+    if (matchError) {
+      console.error('Error loading matches:', matchError)
+    }
 
     if (matchesData) {
-      setAllMatches(matchesData)
+      // Filtrer par les recherches du user
+      const userMatches = matchesData.filter(m => searchIds.has(m.search_id))
+      setAllMatches(userMatches)
     }
     setLoading(false)
   }
