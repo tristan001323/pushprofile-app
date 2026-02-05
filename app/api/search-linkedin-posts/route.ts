@@ -77,14 +77,10 @@ function buildLinkedInPostQuery(
   contractTypes: string[],
   location: string
 ): string {
-  // The actor example: "hiring engineer" OR "looking for job"
-  // Use OR with French + English recruitment synonyms for maximum coverage
   const keyword = keywords.trim()
 
-  // Build: (recrute OR hiring OR ...) AND keyword [AND location]
-  const recruitTerms = '(recrute OR hiring OR hire OR "on recrute" OR "we are hiring" OR recherche OR recruiter OR recrutement OR #hiring)'
-
-  let query = `${recruitTerms} ${keyword}`
+  // Simple and direct - like the actor example: "hiring engineer" OR "looking for job"
+  let query = `"hiring ${keyword}" OR "recrute ${keyword}"`
 
   if (location) {
     query += ` ${location}`
@@ -94,17 +90,9 @@ function buildLinkedInPostQuery(
     query += ` ${contractTypes[0]}`
   }
 
-  // Keep under 85 chars - if too long, simplify
+  // Keep under 85 chars
   if (query.length > 85) {
-    // Shorter version with fewer recruit terms
-    query = `(recrute OR hiring OR "on recrute") ${keyword}`
-    if (location) query += ` ${location}`
-    if (contractTypes.length > 0) query += ` ${contractTypes[0]}`
-  }
-
-  // Still too long? Minimal version
-  if (query.length > 85) {
-    query = `recrute OR hiring ${keyword}`
+    query = `hiring OR recrute ${keyword}`
     if (location) query += ` ${location}`
   }
 
@@ -155,12 +143,19 @@ async function searchLinkedInPosts(query: string): Promise<LinkedInPost[]> {
     const rawData = await response.json()
     console.log('Apify raw response type:', typeof rawData, Array.isArray(rawData) ? `array[${rawData.length}]` : 'object')
 
+    // Log the actual content to debug
+    const debugStr = JSON.stringify(rawData).substring(0, 1000)
+    console.log('Apify raw response preview:', debugStr)
+
     // run-sync-get-dataset-items returns dataset items as an array
     // Each item is a { success, posts: [...] } object
     const allPosts: LinkedInPost[] = []
 
     if (Array.isArray(rawData)) {
       for (const item of rawData) {
+        console.log('Item keys:', Object.keys(item).join(', '))
+        console.log('Item success:', item.success, 'totalPosts:', item.totalPosts, 'posts length:', item.posts?.length, 'error:', item.error)
+
         // Could be the wrapper object with posts array
         if (item.posts && Array.isArray(item.posts)) {
           allPosts.push(...item.posts)
@@ -171,6 +166,7 @@ async function searchLinkedInPosts(query: string): Promise<LinkedInPost[]> {
         }
       }
     } else if (rawData && typeof rawData === 'object') {
+      console.log('Object keys:', Object.keys(rawData).join(', '))
       if (rawData.posts && Array.isArray(rawData.posts)) {
         allPosts.push(...rawData.posts)
       }
