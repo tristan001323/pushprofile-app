@@ -79,9 +79,9 @@ interface ParsedJobPost {
 
 // Build search queries for the actor
 // Each query must be under 85 chars (LinkedIn limit)
-// Strategy: 1 broad query (just keywords) + 2 targeted queries with recruitment terms
-// Claude does the heavy lifting to filter real job posts from noise
-// 3 queries x 25 posts = 75 max = ~$0.15 Apify
+// Strategy: diverse recruitment terms + user keyword
+// The recruitment terms are the CORE of the search, the user keyword narrows it down
+// 4 queries x 25 posts = 100 max = ~$0.20 Apify + ~$0.005 Haiku = ~$0.21 total
 function buildSearchQueries(
   keywords: string,
   contractTypes: string[],
@@ -96,18 +96,21 @@ function buildSearchQueries(
     queries.push(q)
   }
 
-  // Query 1: BROAD - just keywords + location (catches all formulations)
-  if (contractTypes.length > 0) {
-    addQuery(loc ? `${keyword} ${contractTypes[0]} ${loc}` : `${keyword} ${contractTypes[0]}`)
-  } else {
-    addQuery(loc ? `${keyword} ${loc}` : keyword)
-  }
-
-  // Query 2: French recruitment terms
+  // Query 1: French - "recrute {keyword} {location}"
   addQuery(loc ? `recrute ${keyword} ${loc}` : `recrute ${keyword}`)
 
-  // Query 3: English recruitment terms
-  addQuery(loc ? `hiring ${keyword} ${loc}` : `hiring ${keyword}`)
+  // Query 2: English - "#hiring {keyword}" (no location = broader international reach)
+  addQuery(`#hiring ${keyword}`)
+
+  // Query 3: French variation - "recherche {keyword} {location}"
+  addQuery(loc ? `recherche ${keyword} ${loc}` : `recherche ${keyword}`)
+
+  // Query 4: Contract type or hashtag based
+  if (contractTypes.length > 0) {
+    addQuery(loc ? `${contractTypes[0]} ${keyword} ${loc}` : `${contractTypes[0]} ${keyword}`)
+  } else {
+    addQuery(loc ? `#recrutement ${keyword} ${loc}` : `#recrutement ${keyword}`)
+  }
 
   return queries
 }
@@ -287,7 +290,7 @@ async function searchLinkedInPosts(queries: string[], postedLimit: string): Prom
 async function parsePostsWithClaude(posts: LinkedInPost[], userLocation: string): Promise<ParsedJobPost[]> {
   if (posts.length === 0) return []
 
-  const batchSize = 15
+  const batchSize = 20
   const allParsed: ParsedJobPost[] = []
 
   const locationFilter = userLocation
@@ -433,7 +436,7 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 2. Build search queries (3 queries x 25 posts = 75 max = ~$0.15 max)
+    // 2. Build search queries (4 queries x 25 posts = 100 max = ~$0.21 total)
     const queries = buildSearchQueries(
       keywords,
       contract_types || [],
