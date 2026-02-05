@@ -77,27 +77,37 @@ function buildLinkedInPostQuery(
   contractTypes: string[],
   location: string
 ): string {
-  // Keep it simple and broad - the actor example shows: "hiring engineer" OR "looking for job"
-  const parts: string[] = []
-
-  // Add recruitment intent + keywords
-  // Use OR to be broad: French and English terms
+  // The actor example: "hiring engineer" OR "looking for job"
+  // Use OR with French + English recruitment synonyms for maximum coverage
   const keyword = keywords.trim()
 
+  // Build: (recrute OR hiring OR ...) AND keyword [AND location]
+  const recruitTerms = '(recrute OR hiring OR hire OR "on recrute" OR "we are hiring" OR recherche OR recruiter OR recrutement OR #hiring)'
+
+  let query = `${recruitTerms} ${keyword}`
+
   if (location) {
-    parts.push(`recrute ${keyword} ${location}`)
-  } else {
-    parts.push(`recrute ${keyword}`)
+    query += ` ${location}`
   }
 
-  // Add contract type if specified
   if (contractTypes.length > 0) {
-    parts.push(contractTypes[0])
+    query += ` ${contractTypes[0]}`
   }
 
-  let query = parts.join(' ')
+  // Keep under 85 chars - if too long, simplify
+  if (query.length > 85) {
+    // Shorter version with fewer recruit terms
+    query = `(recrute OR hiring OR "on recrute") ${keyword}`
+    if (location) query += ` ${location}`
+    if (contractTypes.length > 0) query += ` ${contractTypes[0]}`
+  }
 
-  // Keep under 85 chars
+  // Still too long? Minimal version
+  if (query.length > 85) {
+    query = `recrute OR hiring ${keyword}`
+    if (location) query += ` ${location}`
+  }
+
   if (query.length > 85) {
     query = query.substring(0, 85)
   }
