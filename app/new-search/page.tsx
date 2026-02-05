@@ -65,6 +65,7 @@ export default function NewSearchPage() {
   const [lpLocation, setLpLocation] = useState('')
   const [lpContractTypes, setLpContractTypes] = useState<string[]>([])
   const [lpExcludeAgencies, setLpExcludeAgencies] = useState(true)
+  const [lpPostedLimit, setLpPostedLimit] = useState<string>('week')
   const [lpLoading, setLpLoading] = useState(false)
   const [lpError, setLpError] = useState('')
   const [lpLoadingMessageIndex, setLpLoadingMessageIndex] = useState(0)
@@ -228,6 +229,7 @@ export default function NewSearchPage() {
           keywords: lpKeywords,
           location: lpLocation || null,
           contract_types: lpContractTypes.length > 0 ? lpContractTypes : null,
+          posted_limit: lpPostedLimit,
           exclude_agencies: lpExcludeAgencies,
           user_id: session.user.id,
         }),
@@ -772,6 +774,33 @@ export default function NewSearchPage() {
                       style={lpContractTypes.includes(type) ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
                     >
                       {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filtre date de publication */}
+              <div>
+                <Label>Publie il y a</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {[
+                    { value: '24h', label: '- 24h' },
+                    { value: '3days', label: '- 3 jours' },
+                    { value: 'week', label: '- 1 semaine' },
+                    { value: 'older_week', label: '+ 1 semaine' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setLpPostedLimit(opt.value)}
+                      className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                        lpPostedLimit === opt.value
+                          ? 'text-white'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      }`}
+                      style={lpPostedLimit === opt.value ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
+                    >
+                      {opt.label}
                     </button>
                   ))}
                 </div>

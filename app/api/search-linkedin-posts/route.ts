@@ -108,9 +108,45 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// Map user posted_limit to Apify's postedLimit parameter
+// LinkedIn only supports: day, week, month
+function getApifyPostedLimit(userLimit: string): string {
+  switch (userLimit) {
+    case '24h': return 'day'
+    case '3days': return 'week'    // fetch a week, filter to 3 days client-side
+    case 'week': return 'week'
+    case 'older_week': return 'month' // fetch a month, filter to >7 days client-side
+    default: return 'week'
+  }
+}
+
+// Filter posts by date based on the user's posted_limit choice
+function filterPostsByDate(posts: LinkedInPost[], userLimit: string): LinkedInPost[] {
+  if (userLimit !== '3days' && userLimit !== 'older_week') return posts
+
+  const now = Date.now()
+  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+
+  return posts.filter(post => {
+    const timestamp = post.postedAt?.timestamp
+    if (!timestamp) return true // keep posts without date info
+
+    const ageMs = now - timestamp
+
+    if (userLimit === '3days') {
+      return ageMs <= THREE_DAYS_MS
+    }
+    if (userLimit === 'older_week') {
+      return ageMs > SEVEN_DAYS_MS
+    }
+    return true
+  })
+}
+
 // Search LinkedIn posts via Apify actor buIWk2uOUzTmcLsuB (async with polling)
-// Price: $2/1000 posts. maxPosts=25 per query x 2 queries = 50 posts max = $0.10 max
-async function searchLinkedInPosts(queries: string[]): Promise<LinkedInPost[]> {
+// Price: $2/1000 posts. maxPosts=20 per query x 2 queries = 40 posts max = $0.08 max
+async function searchLinkedInPosts(queries: string[], postedLimit: string): Promise<LinkedInPost[]> {
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
@@ -125,7 +161,7 @@ async function searchLinkedInPosts(queries: string[]): Promise<LinkedInPost[]> {
   try {
     const requestBody = {
       searchQueries: queries,
-      postedLimit: 'month',
+      postedLimit: postedLimit,
       maxPosts: 20,
       sortBy: 'relevance',
       scrapeReactions: false,
@@ -340,7 +376,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase()
     const body = await request.json()
-    const { name, keywords, location, contract_types, exclude_agencies, user_id } = body
+    const { name, keywords, location, contract_types, posted_limit, exclude_agencies, user_id } = body
 
     if (!keywords || !keywords.trim()) {
       return NextResponse.json({ error: 'Les mots-cles sont obligatoires' }, { status: 400 })
@@ -384,8 +420,17 @@ export async function POST(request: NextRequest) {
     )
 
     // 3. Search LinkedIn posts
-    console.log('Searching LinkedIn posts...')
-    const posts = await searchLinkedInPosts(queries)
+    const userPostedLimit = posted_limit || 'week'
+    const apifyPostedLimit = getApifyPostedLimit(userPostedLimit)
+    console.log(`Searching LinkedIn posts (postedLimit: ${apifyPostedLimit}, userFilter: ${userPostedLimit})...`)
+    let posts = await searchLinkedInPosts(queries, apifyPostedLimit)
+
+    // 3b. Apply client-side date filtering for 3days / older_week
+    if (userPostedLimit === '3days' || userPostedLimit === 'older_week') {
+      const beforeFilter = posts.length
+      posts = filterPostsByDate(posts, userPostedLimit)
+      console.log(`Date filter (${userPostedLimit}): ${beforeFilter} → ${posts.length} posts`)
+    }
 
     if (posts.length === 0) {
       await supabase
