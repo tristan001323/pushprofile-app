@@ -96,11 +96,12 @@ function buildSearchQueries(
     queries.push(q)
   }
 
+  // All queries include location when provided to avoid international noise
   // Query 1: French - "recrute {keyword} {location}"
   addQuery(loc ? `recrute ${keyword} ${loc}` : `recrute ${keyword}`)
 
-  // Query 2: English - "#hiring {keyword}" (no location = broader international reach)
-  addQuery(`#hiring ${keyword}`)
+  // Query 2: English - "#hiring {keyword} {location}"
+  addQuery(loc ? `#hiring ${keyword} ${loc}` : `#hiring ${keyword}`)
 
   // Query 3: French variation - "recherche {keyword} {location}"
   addQuery(loc ? `recherche ${keyword} ${loc}` : `recherche ${keyword}`)
@@ -109,7 +110,7 @@ function buildSearchQueries(
   if (contractTypes.length > 0) {
     addQuery(loc ? `${contractTypes[0]} ${keyword} ${loc}` : `${contractTypes[0]} ${keyword}`)
   } else {
-    addQuery(loc ? `#recrutement ${keyword} ${loc}` : `#recrutement ${keyword}`)
+    addQuery(loc ? `${keyword} recrutement ${loc}` : `${keyword} recrutement`)
   }
 
   return queries
