@@ -174,7 +174,7 @@ async function searchLinkedInPosts(queries: string[], postedLimit: string): Prom
     const requestBody = {
       searchQueries: queries,
       postedLimit: postedLimit,
-      maxPosts: 25,
+      maxPosts: 10,
       sortBy: 'relevance',
       scrapeReactions: false,
       scrapeComments: false,
@@ -436,7 +436,7 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 2. Build search queries (4 queries x 25 posts = 100 max = ~$0.21 total)
+    // 2. Build search queries (4 queries x 10 posts = 40 max = ~$0.08 Apify + ~$0.002 Haiku)
     const queries = buildSearchQueries(
       keywords,
       contract_types || [],
