@@ -1007,37 +1007,72 @@ export async function POST(request: NextRequest) {
     const prefilteredAdzuna = prefilterJobs(adzunaJobs, parsedData, searchId, exclude_agencies !== false)
     console.log(`Prefiltered Adzuna to ${prefilteredAdzuna.length} relevant jobs`)
 
-    // 4b. Score LinkedIn and Indeed jobs
-    const scoreExternalJob = (job: NormalizedJob) => {
+    // 4b. Score and filter LinkedIn and Indeed jobs (same logic as Adzuna)
+    const scoreExternalJob = (job: NormalizedJob): number => {
       job.search_id = searchId
-      let score = 50 // Base score
+      let score = 0
 
       const jobText = (job.job_title + ' ' + job.description).toLowerCase()
+      const jobTitle = (job.job_title || '').toLowerCase()
       const cvSkills = (parsedData.skills || []).map(s => s.toLowerCase())
+      const targetRoles = (parsedData.target_roles || []).map(r => r.toLowerCase())
 
-      // Skill matching
+      // Role matching (25 points) - check if job title matches target roles
+      let roleMatch = false
+      targetRoles.forEach(role => {
+        const roleWords = role.split(/\s+/)
+        // Check if any meaningful word from target role is in job title
+        if (roleWords.some(word => word.length > 2 && jobTitle.includes(word))) {
+          roleMatch = true
+        }
+      })
+      score += roleMatch ? 25 : 0
+
+      // If no role match AND no skills match, this job is likely irrelevant
+      // Skill matching (up to 60 points)
       let skillMatches = 0
       cvSkills.forEach(skill => {
         if (jobText.includes(skill)) skillMatches++
       })
+
       if (cvSkills.length > 0) {
-        score += (skillMatches / cvSkills.length) * 30
+        if (skillMatches === 0 && !roleMatch) {
+          // No skills and no role match = irrelevant
+          job.prefilter_score = 0
+          return 0
+        }
+        score += (skillMatches / cvSkills.length) * 60
+      } else if (!roleMatch) {
+        // No skills defined and no role match = irrelevant
+        job.prefilter_score = 0
+        return 0
       }
 
-      // Location matching
+      // Location matching (10 points)
       const cvLocation = (parsedData.location || '').toLowerCase()
-      if (job.location.toLowerCase().includes(cvLocation) || cvLocation.includes(job.location.toLowerCase().split(',')[0])) {
+      if (cvLocation && (job.location.toLowerCase().includes(cvLocation) || cvLocation.includes(job.location.toLowerCase().split(',')[0]))) {
         score += 10
       }
 
+      // Contract type bonus (5 points)
+      if (job.matching_details?.contract_type === 'permanent') {
+        score += 5
+      }
+
       job.prefilter_score = Math.round(score)
+      return score
     }
 
+    // Score and filter out irrelevant jobs (score = 0)
     linkedInJobs.forEach(scoreExternalJob)
     indeedJobs.forEach(scoreExternalJob)
+    const filteredLinkedIn = linkedInJobs.filter(j => (j.prefilter_score || 0) > 0)
+    const filteredIndeed = indeedJobs.filter(j => (j.prefilter_score || 0) > 0)
+    console.log(`Filtered LinkedIn: ${linkedInJobs.length} → ${filteredLinkedIn.length} relevant`)
+    console.log(`Filtered Indeed: ${indeedJobs.length} → ${filteredIndeed.length} relevant`)
 
     // 4c. Combine and deduplicate jobs from all sources
-    const combinedJobs = [...prefilteredAdzuna, ...linkedInJobs, ...indeedJobs]
+    const combinedJobs = [...prefilteredAdzuna, ...filteredLinkedIn, ...filteredIndeed]
 
     // Deduplicate across sources
     const seen = new Map<string, boolean>()
@@ -1055,7 +1090,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`Combined and deduplicated to ${top50Jobs.length} jobs (${prefilteredAdzuna.length} Adzuna + ${linkedInJobs.length} LinkedIn + ${indeedJobs.length} Indeed)`)
+    console.log(`Combined and deduplicated to ${top50Jobs.length} jobs (${prefilteredAdzuna.length} Adzuna + ${filteredLinkedIn.length} LinkedIn + ${filteredIndeed.length} Indeed)`)
 
     if (top50Jobs.length === 0) {
       await supabase
