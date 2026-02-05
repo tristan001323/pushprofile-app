@@ -222,12 +222,12 @@ Texte: ${(post.content || '').substring(0, 800)}
 ---`
     ).join('\n')
 
-    const prompt = `Analyse ces posts LinkedIn de recruteurs. Pour chaque post qui contient une offre d'emploi ou une annonce de recrutement, extrais les informations structurees.
+    const prompt = `Analyse ces posts LinkedIn. Pour chaque post qui contient une offre d'emploi, une annonce de recrutement ou une recherche de profil, extrais les informations structurees. L'auteur du post peut etre n'importe qui : CTO, manager, fondateur, RH, recruteur, collegue...
 
 IMPORTANT:
-- Seuls les posts qui sont VRAIMENT des offres d'emploi ou annonces de recrutement doivent avoir is_job_post=true
-- Ignore les posts qui sont du contenu marketing, des articles, des temoignages, etc.
-- Le score (0-100) represente la qualite/completude de l'offre (salaire mentionne, description detaillee, etc.)
+- Seuls les posts qui annoncent VRAIMENT un poste a pourvoir ou une recherche de profil doivent avoir is_job_post=true
+- Ignore les posts qui sont du contenu marketing, des articles, des temoignages, des conseils carriere, etc.
+- Le score (0-100) represente la qualite/completude de l'offre (salaire mentionne, description detaillee, poste clair, etc.)
 
 Posts:
 ${postsText}
