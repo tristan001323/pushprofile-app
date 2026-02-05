@@ -79,7 +79,9 @@ interface ParsedJobPost {
 
 // Build search queries for the actor
 // Each query must be under 85 chars (LinkedIn limit)
-// 3 queries x 15 posts = 45 posts max = ~$0.09 Apify
+// Strategy: 1 broad query (just keywords) + 2 targeted queries with recruitment terms
+// Claude does the heavy lifting to filter real job posts from noise
+// 3 queries x 25 posts = 75 max = ~$0.15 Apify
 function buildSearchQueries(
   keywords: string,
   contractTypes: string[],
@@ -94,19 +96,18 @@ function buildSearchQueries(
     queries.push(q)
   }
 
-  // Query 1: French - "recrute {keyword}" with location
+  // Query 1: BROAD - just keywords + location (catches all formulations)
+  if (contractTypes.length > 0) {
+    addQuery(loc ? `${keyword} ${contractTypes[0]} ${loc}` : `${keyword} ${contractTypes[0]}`)
+  } else {
+    addQuery(loc ? `${keyword} ${loc}` : keyword)
+  }
+
+  // Query 2: French recruitment terms
   addQuery(loc ? `recrute ${keyword} ${loc}` : `recrute ${keyword}`)
 
-  // Query 2: English - "hiring {keyword}" with location
+  // Query 3: English recruitment terms
   addQuery(loc ? `hiring ${keyword} ${loc}` : `hiring ${keyword}`)
-
-  // Query 3: French - "recherche {keyword}" with location + contract type if any
-  const q3Base = loc ? `recherche ${keyword} ${loc}` : `recherche ${keyword}`
-  if (contractTypes.length > 0 && (q3Base + ` ${contractTypes[0]}`).length <= 85) {
-    addQuery(`${q3Base} ${contractTypes[0]}`)
-  } else {
-    addQuery(q3Base)
-  }
 
   return queries
 }
@@ -170,7 +171,7 @@ async function searchLinkedInPosts(queries: string[], postedLimit: string): Prom
     const requestBody = {
       searchQueries: queries,
       postedLimit: postedLimit,
-      maxPosts: 15,
+      maxPosts: 25,
       sortBy: 'relevance',
       scrapeReactions: false,
       scrapeComments: false,
@@ -432,7 +433,7 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 2. Build search queries (3 queries x 15 posts = 45 max = ~$0.09 max)
+    // 2. Build search queries (3 queries x 25 posts = 75 max = ~$0.15 max)
     const queries = buildSearchQueries(
       keywords,
       contract_types || [],
