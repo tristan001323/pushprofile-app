@@ -315,35 +315,49 @@ export default function NewSearchPage() {
           </p>
 
           {/* Segmented Control */}
-          <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+          <div className="flex bg-gray-100 rounded-xl p-1.5 mb-6 gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('standard')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
+              className={`flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-lg transition-all duration-300 ${
                 activeTab === 'standard'
-                  ? 'bg-white shadow-sm text-indigo-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white shadow-sm'
+                  : 'hover:bg-gray-50'
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              Recherche standard
+              <div className="flex items-center gap-2">
+                <svg className={`w-4 h-4 ${activeTab === 'standard' ? 'text-indigo-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span className={`text-sm font-semibold ${activeTab === 'standard' ? 'text-indigo-600' : 'text-gray-500'}`}>
+                  Recherche standard
+                </span>
+              </div>
+              <span className={`text-xs ${activeTab === 'standard' ? 'text-gray-500' : 'text-gray-400'}`}>
+                LinkedIn, Indeed et autres jobboards
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('linkedin')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
+              className={`flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-lg transition-all duration-300 ${
                 activeTab === 'linkedin'
                   ? 'bg-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'hover:bg-gray-50'
               }`}
-              style={activeTab === 'linkedin' ? { color: '#0A66C2' } : {}}
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-              </svg>
-              Recherche LinkedIn
+              <div className="flex items-center gap-2">
+                <svg className={`w-4 h-4 ${activeTab === 'linkedin' ? '' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 24 24" style={activeTab === 'linkedin' ? { color: '#0A66C2' } : {}}>
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+                <span className={`text-sm font-semibold`} style={activeTab === 'linkedin' ? { color: '#0A66C2' } : { color: '#9CA3AF' }}>
+                  Posts LinkedIn
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: '#0A66C2' }}>BETA</span>
+              </div>
+              <span className={`text-xs ${activeTab === 'linkedin' ? 'text-gray-500' : 'text-gray-400'}`}>
+                Offres publiees directement par les recruteurs
+              </span>
             </button>
           </div>
 
@@ -373,7 +387,11 @@ export default function NewSearchPage() {
 
                 {/* CV Upload */}
                 <div className="p-5 bg-secondary rounded-lg">
-                  <h3 className="font-semibold text-base mb-3">CV (optionnel)</h3>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-semibold text-base">CV</h3>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600">BETA</span>
+                    <span className="text-xs text-muted">- optionnel</span>
+                  </div>
                   <Label htmlFor="fileUpload" className="cursor-pointer">
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-accent transition-colors">
                       {uploadedFile ? (
@@ -671,7 +689,7 @@ export default function NewSearchPage() {
                   <div>
                     <h2 className="text-lg font-bold" style={{ color: '#1D3557' }}>Recherche LinkedIn</h2>
                     <p className="text-sm" style={{ color: '#457B9D' }}>
-                      Trouvez des offres directement depuis les posts LinkedIn
+                      Scanne les posts LinkedIn pour trouver les personnes qui publient activement des offres d&apos;embauche (CDI, freelance, alternance...). Identifiez les opportunites avant tout le monde.
                     </p>
                   </div>
                 </div>
