@@ -79,26 +79,36 @@ interface ParsedJobPost {
 
 // Build search queries for the actor
 // Each query must be under 85 chars (LinkedIn limit)
+// More queries = better coverage. 4 queries x 25 posts = 100 posts = $0.20 max
 function buildSearchQueries(
   keywords: string,
   contractTypes: string[],
   location: string
 ): string[] {
   const keyword = keywords.trim()
+  const loc = location.trim()
   const queries: string[] = []
 
+  function addQuery(q: string) {
+    if (q.length > 85) q = q.substring(0, 85)
+    queries.push(q)
+  }
+
   // Query 1: French - "recrute {keyword}" with location
-  let q1 = `recrute ${keyword}`
-  if (location) q1 += ` ${location}`
-  if (contractTypes.length > 0) q1 += ` ${contractTypes[0]}`
-  if (q1.length > 85) q1 = q1.substring(0, 85)
-  queries.push(q1)
+  addQuery(loc ? `recrute ${keyword} ${loc}` : `recrute ${keyword}`)
 
   // Query 2: English - "hiring {keyword}" with location
-  let q2 = `hiring ${keyword}`
-  if (location) q2 += ` ${location}`
-  if (q2.length > 85) q2 = q2.substring(0, 85)
-  queries.push(q2)
+  addQuery(loc ? `hiring ${keyword} ${loc}` : `hiring ${keyword}`)
+
+  // Query 3: French - "recherche {keyword}" with location
+  addQuery(loc ? `recherche ${keyword} ${loc}` : `recherche ${keyword}`)
+
+  // Query 4: Contract type specific or "poste {keyword}"
+  if (contractTypes.length > 0) {
+    addQuery(loc ? `${contractTypes[0]} ${keyword} ${loc}` : `${contractTypes[0]} ${keyword}`)
+  } else {
+    addQuery(loc ? `poste ${keyword} ${loc}` : `poste ${keyword}`)
+  }
 
   return queries
 }
@@ -162,7 +172,7 @@ async function searchLinkedInPosts(queries: string[], postedLimit: string): Prom
     const requestBody = {
       searchQueries: queries,
       postedLimit: postedLimit,
-      maxPosts: 20,
+      maxPosts: 25,
       sortBy: 'relevance',
       scrapeReactions: false,
       scrapeComments: false,
@@ -275,11 +285,15 @@ async function searchLinkedInPosts(queries: string[], postedLimit: string): Prom
 }
 
 // Parse posts with Claude to extract structured job info
-async function parsePostsWithClaude(posts: LinkedInPost[]): Promise<ParsedJobPost[]> {
+async function parsePostsWithClaude(posts: LinkedInPost[], userLocation: string): Promise<ParsedJobPost[]> {
   if (posts.length === 0) return []
 
   const batchSize = 15
   const allParsed: ParsedJobPost[] = []
+
+  const locationFilter = userLocation
+    ? `\n- FILTRE LOCALISATION: L'utilisateur cherche en "${userLocation}". Mets is_job_post=false pour les postes qui sont clairement dans un autre pays ou une autre region (ex: Inde, USA, UK, Allemagne... si l'utilisateur cherche en France). En cas de doute, garde le post.`
+    : ''
 
   for (let i = 0; i < posts.length; i += batchSize) {
     const batch = posts.slice(i, i + batchSize)
@@ -289,30 +303,38 @@ async function parsePostsWithClaude(posts: LinkedInPost[]): Promise<ParsedJobPos
 Auteur: ${post.author?.name || 'Inconnu'} (${post.author?.info || ''})
 Profil: ${post.author?.linkedinUrl || ''}
 Date: ${post.postedAt?.date || post.postedAt?.postedAgoText || 'Inconnue'}
-Texte: ${(post.content || '').substring(0, 800)}
+Texte: ${(post.content || '').substring(0, 1000)}
 ---`
     ).join('\n')
 
-    const prompt = `Analyse ces posts LinkedIn. Pour chaque post qui contient une offre d'emploi, une annonce de recrutement ou une recherche de profil, extrais les informations structurees. L'auteur du post peut etre n'importe qui : CTO, manager, fondateur, RH, recruteur, collegue...
+    const prompt = `Analyse ces posts LinkedIn. Pour chaque post, determine s'il contient une VRAIE offre d'emploi (quelqu'un qui PROPOSE un poste). L'auteur peut etre n'importe qui : CTO, manager, fondateur, RH, recruteur, collegue...
 
-IMPORTANT:
-- Seuls les posts qui annoncent VRAIMENT un poste a pourvoir ou une recherche de profil doivent avoir is_job_post=true
-- Ignore les posts qui sont du contenu marketing, des articles, des temoignages, des conseils carriere, etc.
-- Le score (0-100) represente la qualite/completude de l'offre (salaire mentionne, description detaillee, poste clair, etc.)
+REGLES STRICTES - is_job_post=true UNIQUEMENT si:
+- Le post annonce un poste OUVERT a pourvoir (recrutement actif)
+- L'auteur PROPOSE un emploi/mission/stage (pas quelqu'un qui en CHERCHE un)
+
+is_job_post=false obligatoirement pour:
+- Quelqu'un qui CHERCHE un emploi ou une mission ("je suis disponible", "ma mission se termine", "open to work")
+- Quelqu'un qui raconte avoir FINI ou QUITTE un poste/mission
+- Du contenu marketing, articles, temoignages, retours d'experience
+- Des conseils carriere, formations, evenements
+- Des annonces de levee de fonds, produits, partenariats sans recrutement${locationFilter}
+
+Score (0-100): qualite de l'offre (salaire mentionne +20, description detaillee +20, poste clair +20, entreprise nommee +20, localisation precise +20)
 
 Posts:
 ${postsText}
 
-Retourne UNIQUEMENT un JSON array (sans backticks, sans markdown):
+Retourne UNIQUEMENT un JSON array (sans backticks, sans markdown). Inclus TOUS les posts avec is_job_post true OU false:
 [
   {
     "post_index": 1,
-    "job_title": "titre du poste",
-    "company_name": "entreprise qui recrute",
+    "job_title": "titre du poste ou 'N/A'",
+    "company_name": "entreprise ou 'N/A'",
     "location": "ville/lieu ou 'Non specifie'",
     "contract_type": "CDI/CDD/Freelance/Stage ou 'Non specifie'",
     "salary": "salaire si mentionne ou null",
-    "description": "resume de l'offre en 2-3 phrases",
+    "description": "resume en 2-3 phrases",
     "is_job_post": true,
     "score": 75
   }
@@ -412,7 +434,7 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 2. Build search queries (2 queries x 20 posts = 40 max = $0.08 max)
+    // 2. Build search queries (4 queries x 25 posts = 100 max = $0.20 max)
     const queries = buildSearchQueries(
       keywords,
       contract_types || [],
@@ -455,9 +477,9 @@ export async function POST(request: NextRequest) {
       console.log(`Filtered ${posts.length - filteredPosts.length} posts from recruitment agencies`)
     }
 
-    // 5. Parse posts with Claude
+    // 5. Parse posts with Claude (pass location for geo-filtering)
     console.log(`Parsing ${filteredPosts.length} posts with Claude...`)
-    const parsedJobs = await parsePostsWithClaude(filteredPosts)
+    const parsedJobs = await parsePostsWithClaude(filteredPosts, location || '')
     console.log(`Claude identified ${parsedJobs.length} job posts out of ${filteredPosts.length} posts`)
 
     if (parsedJobs.length === 0) {
