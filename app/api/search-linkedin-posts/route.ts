@@ -351,7 +351,7 @@ Retourne UNIQUEMENT un JSON array (sans backticks, sans markdown). Inclus TOUS l
           'x-api-key': getAnthropicKey(),
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-20250414',
+          model: 'claude-3-5-haiku-20241022',
           max_tokens: 4000,
           messages: [{
             role: 'user',
