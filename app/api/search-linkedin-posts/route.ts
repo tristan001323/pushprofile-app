@@ -79,7 +79,7 @@ interface ParsedJobPost {
 
 // Build search queries for the actor
 // Each query must be under 85 chars (LinkedIn limit)
-// More queries = better coverage. 4 queries x 25 posts = 100 posts = $0.20 max
+// 3 queries x 15 posts = 45 posts max = ~$0.09 Apify
 function buildSearchQueries(
   keywords: string,
   contractTypes: string[],
@@ -100,14 +100,12 @@ function buildSearchQueries(
   // Query 2: English - "hiring {keyword}" with location
   addQuery(loc ? `hiring ${keyword} ${loc}` : `hiring ${keyword}`)
 
-  // Query 3: French - "recherche {keyword}" with location
-  addQuery(loc ? `recherche ${keyword} ${loc}` : `recherche ${keyword}`)
-
-  // Query 4: Contract type specific or "poste {keyword}"
-  if (contractTypes.length > 0) {
-    addQuery(loc ? `${contractTypes[0]} ${keyword} ${loc}` : `${contractTypes[0]} ${keyword}`)
+  // Query 3: French - "recherche {keyword}" with location + contract type if any
+  const q3Base = loc ? `recherche ${keyword} ${loc}` : `recherche ${keyword}`
+  if (contractTypes.length > 0 && (q3Base + ` ${contractTypes[0]}`).length <= 85) {
+    addQuery(`${q3Base} ${contractTypes[0]}`)
   } else {
-    addQuery(loc ? `poste ${keyword} ${loc}` : `poste ${keyword}`)
+    addQuery(q3Base)
   }
 
   return queries
@@ -172,7 +170,7 @@ async function searchLinkedInPosts(queries: string[], postedLimit: string): Prom
     const requestBody = {
       searchQueries: queries,
       postedLimit: postedLimit,
-      maxPosts: 25,
+      maxPosts: 15,
       sortBy: 'relevance',
       scrapeReactions: false,
       scrapeComments: false,
@@ -434,7 +432,7 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 2. Build search queries (4 queries x 25 posts = 100 max = $0.20 max)
+    // 2. Build search queries (3 queries x 15 posts = 45 max = ~$0.09 max)
     const queries = buildSearchQueries(
       keywords,
       contract_types || [],
