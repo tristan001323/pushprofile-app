@@ -38,24 +38,26 @@ const LINKEDIN_POSTS_LOADING_MESSAGES = [
 export default function NewSearchPage() {
   const router = useRouter()
 
-  // États du formulaire
+  // Onglet actif
+  const [activeTab, setActiveTab] = useState<'standard' | 'linkedin'>('standard')
+
+  // États du formulaire standard
   const [searchTitle, setSearchTitle] = useState('')
   const [excludeAgencies, setExcludeAgencies] = useState(true)
-  const [searchMode, setSearchMode] = useState<'cv' | 'standard' | 'both'>('cv')
-  
-  // Champs Standard (optionnels)
+
+  // Champs Standard
   const [jobTitle, setJobTitle] = useState('')
   const [location, setLocation] = useState('')
   const [contractTypes, setContractTypes] = useState<string[]>([])
   const [remoteOptions, setRemoteOptions] = useState<string[]>([])
   const [seniority, setSeniority] = useState('')
   const [brief, setBrief] = useState('')
-  
+
   // Champs CV
   const [cvText, setCvText] = useState('')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
-  
+
   // Récurrence
   const [recurrence, setRecurrence] = useState<'none' | '2days' | 'weekly' | 'monthly'>('none')
 
@@ -86,7 +88,7 @@ export default function NewSearchPage() {
       setLoadingMessageIndex(prev =>
         prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev
       )
-    }, 4000) // 4 seconds per message
+    }, 4000)
 
     return () => clearInterval(interval)
   }, [loading])
@@ -100,7 +102,6 @@ export default function NewSearchPage() {
 
     const interval = setInterval(() => {
       setLpLoadingMessageIndex(prev => {
-        // When reaching the end, cycle back to message 4 (AI analysis phase)
         if (prev >= LINKEDIN_POSTS_LOADING_MESSAGES.length - 1) return 4
         return prev + 1
       })
@@ -112,15 +113,10 @@ export default function NewSearchPage() {
   // Extraction texte PDF
   const extractPdfText = async (file: File): Promise<string> => {
     const pdfjsLib = await import('pdfjs-dist')
-
-    // Worker URL pour pdfjs-dist v5.x (utilise jsdelivr qui est plus fiable)
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
-
     const arrayBuffer = await file.arrayBuffer()
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-
     let fullText = ''
-
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i)
       const textContent = await page.getTextContent()
@@ -129,7 +125,6 @@ export default function NewSearchPage() {
         .join(' ')
       fullText += pageText + '\n'
     }
-
     return fullText
   }
 
@@ -193,7 +188,6 @@ export default function NewSearchPage() {
       return false
     }
 
-    // Au moins un champ doit être rempli
     if (!cvText && !jobTitle && !location && !brief) {
       setError('Remplissez au moins un champ (CV ou critères de recherche)')
       return false
@@ -249,7 +243,7 @@ export default function NewSearchPage() {
     }
   }
 
-  // Soumission du formulaire
+  // Soumission du formulaire standard
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -259,7 +253,6 @@ export default function NewSearchPage() {
     setLoading(true)
 
     try {
-      // Récupérer l'utilisateur connecté
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         setError('Vous devez être connecté pour lancer une recherche')
@@ -274,10 +267,9 @@ export default function NewSearchPage() {
         },
         body: JSON.stringify({
           name: searchTitle,
-          search_type: searchMode,
+          search_type: 'both',
           exclude_agencies: excludeAgencies,
 
-          // Champs Standard (optionnels)
           job_title: jobTitle || null,
           location: location || null,
           contract_types: contractTypes.length > 0 ? contractTypes : null,
@@ -285,10 +277,8 @@ export default function NewSearchPage() {
           seniority: seniority || null,
           brief: brief || null,
 
-          // CV
           cv_text: cvText || null,
 
-          // Récurrence
           recurrence: recurrence !== 'none' ? recurrence : null,
 
           user_id: session.user.id,
@@ -301,10 +291,9 @@ export default function NewSearchPage() {
       if (!response.ok) {
         throw new Error(data.error || 'Erreur lors de l\'analyse')
       }
-      
-      // Redirection vers les résultats
+
       router.push(`/searches/${data.search_id}`)
-      
+
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue')
     } finally {
@@ -312,203 +301,81 @@ export default function NewSearchPage() {
     }
   }
 
+  const accentColor = activeTab === 'standard' ? '#6366F1' : '#0A66C2'
+
   return (
     <AppLayout>
       <div className="p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <Card className="p-4 md:p-8">
+
+          {/* Page Header */}
           <h1 className="text-3xl font-bold text-text mb-2">Nouvelle Recherche</h1>
-          <p className="mb-8" style={{ color: '#457B9D' }}>
+          <p className="mb-6" style={{ color: '#457B9D' }}>
             Trouvez les meilleures opportunités pour votre profil ou vos critères
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* TITRE DE LA RECHERCHE (OBLIGATOIRE) */}
-            <div>
-              <Label htmlFor="searchTitle" className="text-lg font-semibold">
-                Titre de la recherche <span className="text-accent">*</span>
-              </Label>
-              <Input
-                id="searchTitle"
-                value={searchTitle}
-                onChange={(e) => setSearchTitle(e.target.value)}
-                placeholder="Ex: Dev React Senior - Janvier 2026"
-                className="mt-2"
-                required
-              />
-            </div>
+          {/* Segmented Control */}
+          <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+            <button
+              type="button"
+              onClick={() => setActiveTab('standard')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
+                activeTab === 'standard'
+                  ? 'bg-white shadow-sm text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Recherche standard
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('linkedin')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
+                activeTab === 'linkedin'
+                  ? 'bg-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              style={activeTab === 'linkedin' ? { color: '#0A66C2' } : {}}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+              Recherche LinkedIn
+            </button>
+          </div>
 
-            {/* TOGGLE EXCLURE CABINETS */}
-            <div className="flex items-center space-x-3 p-4 bg-secondary rounded-lg">
-              <input
-                type="checkbox"
-                id="excludeAgencies"
-                checked={excludeAgencies}
-                onChange={(e) => setExcludeAgencies(e.target.checked)}
-                className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-accent"
-              />
-              <label htmlFor="excludeAgencies" className="text-sm">
-                <span className="font-medium">Exclure les cabinets de recrutement</span>
-                <span className="text-muted block text-xs mt-1">
-                  (Michael Page, Robert Half, Hays, etc.)
-                </span>
-              </label>
-            </div>
+          {/* Card unique avec accent top border */}
+          <Card
+            className="p-4 md:p-8 border-t-4 transition-colors duration-300"
+            style={{ borderTopColor: accentColor }}
+          >
+            {activeTab === 'standard' ? (
+              /* ========== FORMULAIRE STANDARD ========== */
+              <form onSubmit={handleSubmit} className="space-y-6">
 
-            <div className="border-t pt-6" />
-
-            {/* MODE DE RECHERCHE */}
-            <div>
-              <Label className="text-lg font-semibold mb-3 block">Mode de recherche</Label>
-              <div className="flex flex-wrap gap-2 md:gap-3">
-                <Button
-                  type="button"
-                  variant={searchMode === 'cv' ? 'default' : 'outline'}
-                  onClick={() => setSearchMode('cv')}
-                >
-                  Recherche par CV
-                </Button>
-                <Button
-                  type="button"
-                  variant={searchMode === 'standard' ? 'default' : 'outline'}
-                  onClick={() => setSearchMode('standard')}
-                >
-                  Recherche Standard
-                </Button>
-                <Button
-                  type="button"
-                  variant={searchMode === 'both' ? 'default' : 'outline'}
-                  onClick={() => setSearchMode('both')}
-                >
-                  Les deux
-                </Button>
-              </div>
-            </div>
-
-            {/* SECTION STANDARD (si mode standard ou both) */}
-            {(searchMode === 'standard' || searchMode === 'both') && (
-              <div className="space-y-4 p-6 bg-secondary rounded-lg">
-                <h3 className="font-semibold text-lg">Critères de recherche (optionnel)</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="jobTitle">Titre du job</Label>
-                    <Input
-                      id="jobTitle"
-                      value={jobTitle}
-                      onChange={(e) => setJobTitle(e.target.value)}
-                      placeholder="Ex: Product Owner"
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="location">Lieu</Label>
-                    <Input
-                      id="location"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Ex: Paris"
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="seniority">Séniorité</Label>
-                    <select
-                      id="seniority"
-                      value={seniority}
-                      onChange={(e) => setSeniority(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 border rounded-md"
-                    >
-                      <option value="">Choisir...</option>
-                      <option value="junior">Junior (0-2 ans)</option>
-                      <option value="confirmé">Confirmé (2-5 ans)</option>
-                      <option value="senior">Senior (5+ ans)</option>
-                      <option value="expert">Expert (10+ ans)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <Label>Type de contrat</Label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {['CDI', 'CDD', 'Freelance', 'Stage'].map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => {
-                            setContractTypes(prev =>
-                              prev.includes(type)
-                                ? prev.filter(t => t !== type)
-                                : [...prev, type]
-                            )
-                          }}
-                          className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                            contractTypes.includes(type)
-                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                          }`}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
+                {/* Titre de la recherche */}
                 <div>
-                  <Label>Remote</Label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {['On-site', 'Hybrid', 'Full remote'].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => {
-                          setRemoteOptions(prev =>
-                            prev.includes(option)
-                              ? prev.filter(o => o !== option)
-                              : [...prev, option]
-                          )
-                        }}
-                        className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                          remoteOptions.includes(option)
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="brief">Infos/Brief rapide (compétences, stacks...)</Label>
-                  <Textarea
-                    id="brief"
-                    value={brief}
-                    onChange={(e) => setBrief(e.target.value)}
-                    placeholder="Ex: React, TypeScript, Node.js, expérience startup, etc."
-                    rows={3}
-                    className="mt-1"
+                  <Label htmlFor="searchTitle" className="text-lg font-semibold">
+                    Titre de la recherche <span className="text-accent">*</span>
+                  </Label>
+                  <Input
+                    id="searchTitle"
+                    value={searchTitle}
+                    onChange={(e) => setSearchTitle(e.target.value)}
+                    placeholder="Ex: Dev React Senior - Janvier 2026"
+                    className="mt-2"
+                    required
                   />
                 </div>
-              </div>
-            )}
 
-            {/* SECTION CV (si mode cv ou both) */}
-            {(searchMode === 'cv' || searchMode === 'both') && (
-              <div className="space-y-4 p-6 bg-secondary rounded-lg">
-                <h3 className="font-semibold text-lg">CV (optionnel)</h3>
-                <p className="text-sm text-muted">
-                  Uploadez un fichier ou collez le texte de votre CV
-                </p>
-
-                {/* Upload fichier */}
-                <div>
+                {/* CV Upload */}
+                <div className="p-5 bg-secondary rounded-lg">
+                  <h3 className="font-semibold text-base mb-3">CV (optionnel)</h3>
                   <Label htmlFor="fileUpload" className="cursor-pointer">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 md:p-8 text-center hover:border-accent transition-colors">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-accent transition-colors">
                       {uploadedFile ? (
                         <div className="space-y-2">
                           <p className="text-sm font-medium">✅ {uploadedFile.name}</p>
@@ -545,345 +412,443 @@ export default function NewSearchPage() {
                     <p className="text-sm text-muted mt-2">⏳ Extraction en cours...</p>
                   )}
                 </div>
-              </div>
-            )}
 
-            {/* Récurrence */}
-            <div className="p-6 bg-secondary rounded-lg">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A8DADC' }}>
-                  <span className="text-xl">🔄</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">Recherche récurrente</h3>
-                  <p className="text-sm text-muted">Relancer automatiquement cette recherche</p>
-                </div>
-              </div>
+                {/* Critères de recherche */}
+                <div className="p-5 bg-secondary rounded-lg space-y-4">
+                  <h3 className="font-semibold text-base">Critères de recherche (optionnel)</h3>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setRecurrence('none')}
-                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                    recurrence === 'none'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <p className="font-medium" style={{ color: recurrence === 'none' ? '#6366F1' : '#1D3557' }}>Une seule fois</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>Pas de récurrence</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRecurrence('2days')}
-                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                    recurrence === '2days'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <p className="font-medium" style={{ color: recurrence === '2days' ? '#6366F1' : '#1D3557' }}>Tous les 2 jours</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~15/mois</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRecurrence('weekly')}
-                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                    recurrence === 'weekly'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <p className="font-medium" style={{ color: recurrence === 'weekly' ? '#6366F1' : '#1D3557' }}>Hebdomadaire</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>~4/mois</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRecurrence('monthly')}
-                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                    recurrence === 'monthly'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <p className="font-medium" style={{ color: recurrence === 'monthly' ? '#6366F1' : '#1D3557' }}>Mensuel</p>
-                  <p className="text-xs mt-1" style={{ color: '#457B9D' }}>1/mois</p>
-                </button>
-              </div>
-
-              {recurrence !== 'none' && (
-                <p className="text-sm mt-4 p-3 rounded-lg" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
-                  ⚡ Les nouvelles offres seront automatiquement ajoutées à cette recherche {
-                    recurrence === '2days' ? 'tous les 2 jours' :
-                    recurrence === 'weekly' ? 'chaque semaine' :
-                    'chaque mois'
-                  }.
-                </p>
-              )}
-            </div>
-
-            {/* Messages d'erreur */}
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">❌ {error}</p>
-              </div>
-            )}
-
-            {/* Bouton submit */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push('/searches')}
-                disabled={loading}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || extracting}
-                className="flex-1"
-              >
-                {loading ? '⏳ Analyse en cours...' : '🚀 Lancer l\'analyse'}
-              </Button>
-            </div>
-
-            {/* Barre de progression inline */}
-            {loading && (
-              <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="text-3xl animate-bounce">
-                    {LOADING_MESSAGES[loadingMessageIndex].icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-800">
-                      {LOADING_MESSAGES[loadingMessageIndex].text}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Un instant, on trouve les meilleures offres...
-                    </p>
-                  </div>
-                </div>
-
-                {/* Progress bar animée */}
-                <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
-                    style={{
-                      width: `${((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100}%`
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
-                  </div>
-                </div>
-
-                {/* Steps dots */}
-                <div className="flex justify-center gap-2 mt-4">
-                  {LOADING_MESSAGES.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        index <= loadingMessageIndex
-                          ? 'bg-indigo-500 scale-110'
-                          : 'bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </form>
-          </Card>
-
-          {/* LINKEDIN POSTS SEARCH SECTION */}
-          <Card className="p-4 md:p-8 mt-8 border-2" style={{ borderColor: '#0A66C2' }}>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#0A66C2' }}>
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Recherche approfondie LinkedIn</h2>
-                <p className="text-sm" style={{ color: '#457B9D' }}>
-                  Scrape les posts de recruteurs sur LinkedIn pour trouver des offres cachees
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4 mt-6">
-              {/* Nom de la recherche */}
-              <div>
-                <Label htmlFor="lpSearchTitle">Nom de la recherche</Label>
-                <Input
-                  id="lpSearchTitle"
-                  value={lpSearchTitle}
-                  onChange={(e) => setLpSearchTitle(e.target.value)}
-                  placeholder="Ex: Posts recruteurs React Paris"
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Mots-cles */}
-              <div>
-                <Label htmlFor="lpKeywords">
-                  Mots-cles / Titre du poste <span className="text-accent">*</span>
-                </Label>
-                <Input
-                  id="lpKeywords"
-                  value={lpKeywords}
-                  onChange={(e) => setLpKeywords(e.target.value)}
-                  placeholder="Ex: developpeur react, data engineer, product manager..."
-                  className="mt-1"
-                  required
-                />
-              </div>
-
-              {/* Localisation */}
-              <div>
-                <Label htmlFor="lpLocation">Localisation</Label>
-                <Input
-                  id="lpLocation"
-                  value={lpLocation}
-                  onChange={(e) => setLpLocation(e.target.value)}
-                  placeholder="Ex: Paris, Lyon, Remote..."
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Type de contrat */}
-              <div>
-                <Label>Type de contrat</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {['CDI', 'CDD', 'Freelance', 'Stage'].map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => {
-                        setLpContractTypes(prev =>
-                          prev.includes(type)
-                            ? prev.filter(t => t !== type)
-                            : [...prev, type]
-                        )
-                      }}
-                      className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                        lpContractTypes.includes(type)
-                          ? 'text-white'
-                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                      }`}
-                      style={lpContractTypes.includes(type) ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Filtre date de publication */}
-              <div>
-                <Label>Publie il y a</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {[
-                    { value: '24h', label: '- 24h' },
-                    { value: '3days', label: '- 3 jours' },
-                    { value: 'week', label: '- 1 semaine' },
-                    { value: 'older_week', label: '+ 1 semaine' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setLpPostedLimit(opt.value)}
-                      className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                        lpPostedLimit === opt.value
-                          ? 'text-white'
-                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                      }`}
-                      style={lpPostedLimit === opt.value ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Exclure cabinets */}
-              <div className="flex items-center space-x-3 p-3 bg-secondary rounded-lg">
-                <input
-                  type="checkbox"
-                  id="lpExcludeAgencies"
-                  checked={lpExcludeAgencies}
-                  onChange={(e) => setLpExcludeAgencies(e.target.checked)}
-                  className="w-5 h-5 rounded focus:ring-2"
-                  style={{ accentColor: '#0A66C2' }}
-                />
-                <label htmlFor="lpExcludeAgencies" className="text-sm">
-                  <span className="font-medium">Exclure les cabinets de recrutement</span>
-                </label>
-              </div>
-
-              {/* Error */}
-              {lpError && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{lpError}</p>
-                </div>
-              )}
-
-              {/* Submit button */}
-              <Button
-                type="button"
-                onClick={handleLinkedInPostsSubmit}
-                disabled={lpLoading || !lpKeywords.trim()}
-                className="w-full"
-                style={{ backgroundColor: '#0A66C2', color: 'white' }}
-              >
-                {lpLoading ? 'Recherche en cours...' : 'Lancer la recherche LinkedIn'}
-              </Button>
-
-              {/* Loading progress */}
-              {lpLoading && (
-                <div className="p-6 rounded-xl border" style={{ backgroundColor: '#F0F7FF', borderColor: '#0A66C2' }}>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="text-3xl animate-bounce">
-                      {LINKEDIN_POSTS_LOADING_MESSAGES[lpLoadingMessageIndex].icon}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800">
-                        {LINKEDIN_POSTS_LOADING_MESSAGES[lpLoadingMessageIndex].text}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Analyse des posts de recruteurs LinkedIn...
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
-                    <div
-                      className="h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden"
-                      style={{
-                        backgroundColor: '#0A66C2',
-                        width: `${((lpLoadingMessageIndex + 1) / LINKEDIN_POSTS_LOADING_MESSAGES.length) * 100}%`
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-center gap-2 mt-4">
-                    {LINKEDIN_POSTS_LOADING_MESSAGES.map((_, index) => (
-                      <div
-                        key={index}
-                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                          index <= lpLoadingMessageIndex
-                            ? 'scale-110'
-                            : 'bg-gray-300'
-                        }`}
-                        style={index <= lpLoadingMessageIndex ? { backgroundColor: '#0A66C2' } : {}}
+                  {/* Grille 3 colonnes */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="jobTitle">Titre du job</Label>
+                      <Input
+                        id="jobTitle"
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                        placeholder="Ex: Product Owner"
+                        className="mt-1"
                       />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="location">Lieu</Label>
+                      <Input
+                        id="location"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Ex: Paris"
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="seniority">Séniorité</Label>
+                      <select
+                        id="seniority"
+                        value={seniority}
+                        onChange={(e) => setSeniority(e.target.value)}
+                        className="mt-1 w-full px-3 py-2 border rounded-md"
+                      >
+                        <option value="">Choisir...</option>
+                        <option value="junior">Junior (0-2 ans)</option>
+                        <option value="confirmé">Confirmé (2-5 ans)</option>
+                        <option value="senior">Senior (5+ ans)</option>
+                        <option value="expert">Expert (10+ ans)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Type de contrat */}
+                  <div>
+                    <Label>Type de contrat</Label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {['CDI', 'CDD', 'Freelance', 'Stage'].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            setContractTypes(prev =>
+                              prev.includes(type)
+                                ? prev.filter(t => t !== type)
+                                : [...prev, type]
+                            )
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                            contractTypes.includes(type)
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Remote */}
+                  <div>
+                    <Label>Remote</Label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {['On-site', 'Hybrid', 'Full remote'].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => {
+                            setRemoteOptions(prev =>
+                              prev.includes(option)
+                                ? prev.filter(o => o !== option)
+                                : [...prev, option]
+                            )
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                            remoteOptions.includes(option)
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Brief */}
+                  <div>
+                    <Label htmlFor="brief">Infos/Brief rapide (compétences, stacks...)</Label>
+                    <Textarea
+                      id="brief"
+                      value={brief}
+                      onChange={(e) => setBrief(e.target.value)}
+                      placeholder="Ex: React, TypeScript, Node.js, expérience startup, etc."
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                {/* Exclure cabinets */}
+                <div className="flex items-center space-x-3 p-4 bg-secondary rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="excludeAgencies"
+                    checked={excludeAgencies}
+                    onChange={(e) => setExcludeAgencies(e.target.checked)}
+                    className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-accent"
+                  />
+                  <label htmlFor="excludeAgencies" className="text-sm">
+                    <span className="font-medium">Exclure les cabinets de recrutement</span>
+                    <span className="text-muted block text-xs mt-1">
+                      (Michael Page, Robert Half, Hays, etc.)
+                    </span>
+                  </label>
+                </div>
+
+                {/* Récurrence */}
+                <div className="p-5 bg-secondary rounded-lg">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A8DADC' }}>
+                      <span className="text-xl">🔄</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-base">Recherche récurrente</h3>
+                      <p className="text-sm text-muted">Relancer automatiquement cette recherche</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { value: 'none' as const, label: 'Une seule fois', sub: 'Pas de récurrence' },
+                      { value: '2days' as const, label: 'Tous les 2 jours', sub: '~15/mois' },
+                      { value: 'weekly' as const, label: 'Hebdomadaire', sub: '~4/mois' },
+                      { value: 'monthly' as const, label: 'Mensuel', sub: '1/mois' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setRecurrence(opt.value)}
+                        className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                          recurrence === opt.value
+                            ? 'border-accent bg-accent/10'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <p className="font-medium" style={{ color: recurrence === opt.value ? '#6366F1' : '#1D3557' }}>{opt.label}</p>
+                        <p className="text-xs mt-1" style={{ color: '#457B9D' }}>{opt.sub}</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  {recurrence !== 'none' && (
+                    <p className="text-sm mt-4 p-3 rounded-lg" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
+                      ⚡ Les nouvelles offres seront automatiquement ajoutées à cette recherche {
+                        recurrence === '2days' ? 'tous les 2 jours' :
+                        recurrence === 'weekly' ? 'chaque semaine' :
+                        'chaque mois'
+                      }.
+                    </p>
+                  )}
+                </div>
+
+                {/* Messages d'erreur */}
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">❌ {error}</p>
+                  </div>
+                )}
+
+                {/* Boutons submit */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push('/searches')}
+                    disabled={loading}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading || extracting}
+                    className="flex-1"
+                  >
+                    {loading ? '⏳ Analyse en cours...' : '🚀 Lancer l\'analyse'}
+                  </Button>
+                </div>
+
+                {/* Barre de progression */}
+                {loading && (
+                  <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="text-3xl animate-bounce">
+                        {LOADING_MESSAGES[loadingMessageIndex].icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">
+                          {LOADING_MESSAGES[loadingMessageIndex].text}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Un instant, on trouve les meilleures offres...
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                        style={{
+                          width: `${((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100}%`
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center gap-2 mt-4">
+                      {LOADING_MESSAGES.map((_, index) => (
+                        <div
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                            index <= loadingMessageIndex
+                              ? 'bg-indigo-500 scale-110'
+                              : 'bg-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </form>
+            ) : (
+              /* ========== FORMULAIRE LINKEDIN ========== */
+              <div className="space-y-6">
+                {/* Header LinkedIn */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#0A66C2' }}>
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold" style={{ color: '#1D3557' }}>Recherche LinkedIn</h2>
+                    <p className="text-sm" style={{ color: '#457B9D' }}>
+                      Trouvez des offres directement depuis les posts LinkedIn
+                    </p>
+                  </div>
+                </div>
+
+                {/* Nom de la recherche */}
+                <div>
+                  <Label htmlFor="lpSearchTitle">Nom de la recherche</Label>
+                  <Input
+                    id="lpSearchTitle"
+                    value={lpSearchTitle}
+                    onChange={(e) => setLpSearchTitle(e.target.value)}
+                    placeholder="Ex: Posts recruteurs React Paris"
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Mots-cles */}
+                <div>
+                  <Label htmlFor="lpKeywords">
+                    Mots-cles / Titre du poste <span style={{ color: '#0A66C2' }}>*</span>
+                  </Label>
+                  <Input
+                    id="lpKeywords"
+                    value={lpKeywords}
+                    onChange={(e) => setLpKeywords(e.target.value)}
+                    placeholder="Ex: developpeur react, data engineer, product manager..."
+                    className="mt-1"
+                    required
+                  />
+                </div>
+
+                {/* Localisation */}
+                <div>
+                  <Label htmlFor="lpLocation">Localisation</Label>
+                  <Input
+                    id="lpLocation"
+                    value={lpLocation}
+                    onChange={(e) => setLpLocation(e.target.value)}
+                    placeholder="Ex: Paris, Lyon, Remote..."
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Type de contrat */}
+                <div>
+                  <Label>Type de contrat</Label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {['CDI', 'CDD', 'Freelance', 'Stage'].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          setLpContractTypes(prev =>
+                            prev.includes(type)
+                              ? prev.filter(t => t !== type)
+                              : [...prev, type]
+                          )
+                        }}
+                        className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                          lpContractTypes.includes(type)
+                            ? 'text-white'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        }`}
+                        style={lpContractTypes.includes(type) ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
+                      >
+                        {type}
+                      </button>
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
+
+                {/* Filtre date de publication */}
+                <div>
+                  <Label>Publie il y a</Label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {[
+                      { value: '24h', label: '- 24h' },
+                      { value: '3days', label: '- 3 jours' },
+                      { value: 'week', label: '- 1 semaine' },
+                      { value: 'older_week', label: '+ 1 semaine' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setLpPostedLimit(opt.value)}
+                        className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                          lpPostedLimit === opt.value
+                            ? 'text-white'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        }`}
+                        style={lpPostedLimit === opt.value ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Exclure cabinets */}
+                <div className="flex items-center space-x-3 p-3 bg-secondary rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="lpExcludeAgencies"
+                    checked={lpExcludeAgencies}
+                    onChange={(e) => setLpExcludeAgencies(e.target.checked)}
+                    className="w-5 h-5 rounded focus:ring-2"
+                    style={{ accentColor: '#0A66C2' }}
+                  />
+                  <label htmlFor="lpExcludeAgencies" className="text-sm">
+                    <span className="font-medium">Exclure les cabinets de recrutement</span>
+                  </label>
+                </div>
+
+                {/* Error */}
+                {lpError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{lpError}</p>
+                  </div>
+                )}
+
+                {/* Submit button */}
+                <Button
+                  type="button"
+                  onClick={handleLinkedInPostsSubmit}
+                  disabled={lpLoading || !lpKeywords.trim()}
+                  className="w-full"
+                  style={{ backgroundColor: '#0A66C2', color: 'white' }}
+                >
+                  {lpLoading ? 'Recherche en cours...' : 'Lancer la recherche LinkedIn'}
+                </Button>
+
+                {/* Loading progress */}
+                {lpLoading && (
+                  <div className="p-6 rounded-xl border" style={{ backgroundColor: '#F0F7FF', borderColor: '#0A66C2' }}>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="text-3xl animate-bounce">
+                        {LINKEDIN_POSTS_LOADING_MESSAGES[lpLoadingMessageIndex].icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">
+                          {LINKEDIN_POSTS_LOADING_MESSAGES[lpLoadingMessageIndex].text}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Analyse des posts LinkedIn...
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                      <div
+                        className="h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                        style={{
+                          backgroundColor: '#0A66C2',
+                          width: `${((lpLoadingMessageIndex + 1) / LINKEDIN_POSTS_LOADING_MESSAGES.length) * 100}%`
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center gap-2 mt-4">
+                      {LINKEDIN_POSTS_LOADING_MESSAGES.map((_, index) => (
+                        <div
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                            index <= lpLoadingMessageIndex
+                              ? 'scale-110'
+                              : 'bg-gray-300'
+                          }`}
+                          style={index <= lpLoadingMessageIndex ? { backgroundColor: '#0A66C2' } : {}}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </div>
       </div>
