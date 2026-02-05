@@ -32,6 +32,11 @@ type Match = {
     full_description?: string
     recruiter_name?: string
     recruiter_url?: string
+    post_engagement?: {
+      likes?: number
+      comments?: number
+      shares?: number
+    }
   }
 }
 
@@ -43,7 +48,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna' | 'indeed'>('all')
+  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna' | 'indeed' | 'linkedin_post'>('all')
 
   useEffect(() => {
     loadMatches()
@@ -85,6 +90,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     if (filter === 'linkedin') return match.source === 'linkedin'
     if (filter === 'adzuna') return match.source === 'adzuna'
     if (filter === 'indeed') return match.source === 'indeed'
+    if (filter === 'linkedin_post') return match.source === 'linkedin_post'
     return true
   })
 
@@ -272,6 +278,20 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   Indeed ({matches.filter(m => m.source === 'indeed').length})
                 </button>
               )}
+              {matches.some(m => m.source === 'linkedin_post') && (
+                <button
+                  onClick={() => setFilter('linkedin_post')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
+                    filter === 'linkedin_post' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  style={filter === 'linkedin_post' ? { backgroundColor: '#0A66C2' } : {}}
+                >
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                  </svg>
+                  LinkedIn Post ({matches.filter(m => m.source === 'linkedin_post').length})
+                </button>
+              )}
             </div>
           </div>
 
@@ -315,13 +335,18 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                         )}
                         {match.source && (
                           <span
-                            className="px-2 py-1 rounded text-xs font-medium"
+                            className="px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
                             style={{
-                              backgroundColor: match.source === 'linkedin' ? '#0A66C2' : match.source === 'indeed' ? '#6B5CE7' : '#FF6B35',
+                              backgroundColor: match.source === 'linkedin_post' ? '#0A66C2' : match.source === 'linkedin' ? '#0A66C2' : match.source === 'indeed' ? '#6B5CE7' : '#FF6B35',
                               color: 'white'
                             }}
                           >
-                            {match.source === 'linkedin' ? 'LinkedIn' : match.source === 'indeed' ? 'Indeed' : 'Adzuna'}
+                            {match.source === 'linkedin_post' && (
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                            {match.source === 'linkedin_post' ? 'LinkedIn Post' : match.source === 'linkedin' ? 'LinkedIn' : match.source === 'indeed' ? 'Indeed' : 'Adzuna'}
                           </span>
                         )}
                       </div>
@@ -404,13 +429,18 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   )}
                   {selectedMatch.source && (
                     <span
-                      className="px-3 py-1 rounded text-sm font-medium"
+                      className="px-3 py-1 rounded text-sm font-medium flex items-center gap-1"
                       style={{
-                        backgroundColor: selectedMatch.source === 'linkedin' ? '#0A66C2' : selectedMatch.source === 'indeed' ? '#6B5CE7' : '#FF6B35',
+                        backgroundColor: selectedMatch.source === 'linkedin_post' ? '#0A66C2' : selectedMatch.source === 'linkedin' ? '#0A66C2' : selectedMatch.source === 'indeed' ? '#6B5CE7' : '#FF6B35',
                         color: 'white'
                       }}
                     >
-                      {selectedMatch.source === 'linkedin' ? 'LinkedIn' : selectedMatch.source === 'indeed' ? 'Indeed' : 'Adzuna'}
+                      {selectedMatch.source === 'linkedin_post' && (
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {selectedMatch.source === 'linkedin_post' ? 'LinkedIn Post' : selectedMatch.source === 'linkedin' ? 'LinkedIn' : selectedMatch.source === 'indeed' ? 'Indeed' : 'Adzuna'}
                     </span>
                   )}
                 </div>
@@ -498,10 +528,39 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 </div>
               )}
 
+              {/* Engagement metrics for LinkedIn Posts */}
+              {selectedMatch.source === 'linkedin_post' && selectedMatch.matching_details?.post_engagement && (
+                <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F0F7FF' }}>
+                  <h3 className="font-semibold mb-3" style={{ color: '#0A66C2' }}>Engagement du post</h3>
+                  <div className="flex gap-6">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" style={{ color: '#0A66C2' }} fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                      </svg>
+                      <span className="text-sm font-medium" style={{ color: '#1D3557' }}>{selectedMatch.matching_details.post_engagement.likes || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" style={{ color: '#0A66C2' }} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-sm font-medium" style={{ color: '#1D3557' }}>{selectedMatch.matching_details.post_engagement.comments || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" style={{ color: '#0A66C2' }} fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                      </svg>
+                      <span className="text-sm font-medium" style={{ color: '#1D3557' }}>{selectedMatch.matching_details.post_engagement.shares || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Justification */}
               {selectedMatch.justification && (
                 <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F1FAEE' }}>
-                  <h3 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Analyse de correspondance</h3>
+                  <h3 className="font-semibold mb-2" style={{ color: '#1D3557' }}>
+                    {selectedMatch.source === 'linkedin_post' ? 'Description de l\'offre' : 'Analyse de correspondance'}
+                  </h3>
                   <p className="text-sm" style={{ color: '#457B9D' }}>{selectedMatch.justification}</p>
                 </div>
               )}
@@ -524,13 +583,26 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
 
               {/* Liens */}
               <div className="space-y-3">
-                <Button
-                  onClick={() => window.open(selectedMatch.job_url, '_blank')}
-                  className="w-full"
-                  style={{ backgroundColor: '#6366F1', color: 'white' }}
-                >
-                  Voir l'offre complète →
-                </Button>
+                {selectedMatch.source === 'linkedin_post' ? (
+                  <Button
+                    onClick={() => window.open(selectedMatch.job_url, '_blank')}
+                    className="w-full"
+                    style={{ backgroundColor: '#0A66C2', color: 'white' }}
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                    </svg>
+                    Voir le post LinkedIn
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => window.open(selectedMatch.job_url, '_blank')}
+                    className="w-full"
+                    style={{ backgroundColor: '#6366F1', color: 'white' }}
+                  >
+                    Voir l'offre complète →
+                  </Button>
+                )}
 
                 {selectedMatch.matching_details?.recruiter_url && (
                   <Button

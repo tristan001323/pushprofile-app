@@ -22,6 +22,15 @@ const LOADING_MESSAGES = [
   { text: "Préparation de vos résultats...", icon: "✨" },
 ]
 
+const LINKEDIN_POSTS_LOADING_MESSAGES = [
+  { text: "Construction des requêtes de recherche...", icon: "🔧" },
+  { text: "Recherche de posts LinkedIn...", icon: "🔍" },
+  { text: "Analyse des publications de recruteurs...", icon: "📝" },
+  { text: "Extraction des offres d'emploi avec l'IA...", icon: "🤖" },
+  { text: "Filtrage et scoring des résultats...", icon: "📊" },
+  { text: "Préparation de vos résultats...", icon: "✨" },
+]
+
 export default function NewSearchPage() {
   const router = useRouter()
 
@@ -46,6 +55,16 @@ export default function NewSearchPage() {
   // Récurrence
   const [recurrence, setRecurrence] = useState<'none' | '2days' | 'weekly' | 'monthly'>('none')
 
+  // LinkedIn Posts search
+  const [lpSearchTitle, setLpSearchTitle] = useState('')
+  const [lpKeywords, setLpKeywords] = useState('')
+  const [lpLocation, setLpLocation] = useState('')
+  const [lpContractTypes, setLpContractTypes] = useState<string[]>([])
+  const [lpExcludeAgencies, setLpExcludeAgencies] = useState(true)
+  const [lpLoading, setLpLoading] = useState(false)
+  const [lpError, setLpError] = useState('')
+  const [lpLoadingMessageIndex, setLpLoadingMessageIndex] = useState(0)
+
   // États UI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -66,6 +85,22 @@ export default function NewSearchPage() {
 
     return () => clearInterval(interval)
   }, [loading])
+
+  // Cycle through LinkedIn posts loading messages
+  useEffect(() => {
+    if (!lpLoading) {
+      setLpLoadingMessageIndex(0)
+      return
+    }
+
+    const interval = setInterval(() => {
+      setLpLoadingMessageIndex(prev =>
+        prev < LINKEDIN_POSTS_LOADING_MESSAGES.length - 1 ? prev + 1 : prev
+      )
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [lpLoading])
 
   // Extraction texte PDF
   const extractPdfText = async (file: File): Promise<string> => {
@@ -158,6 +193,52 @@ export default function NewSearchPage() {
     }
 
     return true
+  }
+
+  // Soumission LinkedIn Posts
+  const handleLinkedInPostsSubmit = async () => {
+    setLpError('')
+
+    if (!lpKeywords.trim()) {
+      setLpError('Les mots-clés sont obligatoires')
+      return
+    }
+
+    setLpLoading(true)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setLpError('Vous devez être connecté pour lancer une recherche')
+        setLpLoading(false)
+        return
+      }
+
+      const response = await fetch('/api/search-linkedin-posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: lpSearchTitle || null,
+          keywords: lpKeywords,
+          location: lpLocation || null,
+          contract_types: lpContractTypes.length > 0 ? lpContractTypes : null,
+          exclude_agencies: lpExcludeAgencies,
+          user_id: session.user.id,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la recherche')
+      }
+
+      router.push(`/searches/${data.search_id}`)
+    } catch (err: any) {
+      setLpError(err.message || 'Une erreur est survenue')
+    } finally {
+      setLpLoading(false)
+    }
   }
 
   // Soumission du formulaire
@@ -604,6 +685,170 @@ export default function NewSearchPage() {
               </div>
             )}
           </form>
+          </Card>
+
+          {/* LINKEDIN POSTS SEARCH SECTION */}
+          <Card className="p-4 md:p-8 mt-8 border-2" style={{ borderColor: '#0A66C2' }}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#0A66C2' }}>
+                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Recherche approfondie LinkedIn</h2>
+                <p className="text-sm" style={{ color: '#457B9D' }}>
+                  Scrape les posts de recruteurs sur LinkedIn pour trouver des offres cachees
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mt-6">
+              {/* Nom de la recherche */}
+              <div>
+                <Label htmlFor="lpSearchTitle">Nom de la recherche</Label>
+                <Input
+                  id="lpSearchTitle"
+                  value={lpSearchTitle}
+                  onChange={(e) => setLpSearchTitle(e.target.value)}
+                  placeholder="Ex: Posts recruteurs React Paris"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Mots-cles */}
+              <div>
+                <Label htmlFor="lpKeywords">
+                  Mots-cles / Titre du poste <span className="text-accent">*</span>
+                </Label>
+                <Input
+                  id="lpKeywords"
+                  value={lpKeywords}
+                  onChange={(e) => setLpKeywords(e.target.value)}
+                  placeholder="Ex: developpeur react, data engineer, product manager..."
+                  className="mt-1"
+                  required
+                />
+              </div>
+
+              {/* Localisation */}
+              <div>
+                <Label htmlFor="lpLocation">Localisation</Label>
+                <Input
+                  id="lpLocation"
+                  value={lpLocation}
+                  onChange={(e) => setLpLocation(e.target.value)}
+                  placeholder="Ex: Paris, Lyon, Remote..."
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Type de contrat */}
+              <div>
+                <Label>Type de contrat</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {['CDI', 'CDD', 'Freelance', 'Stage'].map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => {
+                        setLpContractTypes(prev =>
+                          prev.includes(type)
+                            ? prev.filter(t => t !== type)
+                            : [...prev, type]
+                        )
+                      }}
+                      className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                        lpContractTypes.includes(type)
+                          ? 'text-white'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      }`}
+                      style={lpContractTypes.includes(type) ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Exclure cabinets */}
+              <div className="flex items-center space-x-3 p-3 bg-secondary rounded-lg">
+                <input
+                  type="checkbox"
+                  id="lpExcludeAgencies"
+                  checked={lpExcludeAgencies}
+                  onChange={(e) => setLpExcludeAgencies(e.target.checked)}
+                  className="w-5 h-5 rounded focus:ring-2"
+                  style={{ accentColor: '#0A66C2' }}
+                />
+                <label htmlFor="lpExcludeAgencies" className="text-sm">
+                  <span className="font-medium">Exclure les cabinets de recrutement</span>
+                </label>
+              </div>
+
+              {/* Error */}
+              {lpError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{lpError}</p>
+                </div>
+              )}
+
+              {/* Submit button */}
+              <Button
+                type="button"
+                onClick={handleLinkedInPostsSubmit}
+                disabled={lpLoading || !lpKeywords.trim()}
+                className="w-full"
+                style={{ backgroundColor: '#0A66C2', color: 'white' }}
+              >
+                {lpLoading ? 'Recherche en cours...' : 'Lancer la recherche LinkedIn'}
+              </Button>
+
+              {/* Loading progress */}
+              {lpLoading && (
+                <div className="p-6 rounded-xl border" style={{ backgroundColor: '#F0F7FF', borderColor: '#0A66C2' }}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="text-3xl animate-bounce">
+                      {LINKEDIN_POSTS_LOADING_MESSAGES[lpLoadingMessageIndex].icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">
+                        {LINKEDIN_POSTS_LOADING_MESSAGES[lpLoadingMessageIndex].text}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Analyse des posts de recruteurs LinkedIn...
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                      style={{
+                        backgroundColor: '#0A66C2',
+                        width: `${((lpLoadingMessageIndex + 1) / LINKEDIN_POSTS_LOADING_MESSAGES.length) * 100}%`
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center gap-2 mt-4">
+                    {LINKEDIN_POSTS_LOADING_MESSAGES.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                          index <= lpLoadingMessageIndex
+                            ? 'scale-110'
+                            : 'bg-gray-300'
+                        }`}
+                        style={index <= lpLoadingMessageIndex ? { backgroundColor: '#0A66C2' } : {}}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </Card>
         </div>
       </div>

@@ -26,7 +26,7 @@ type Stats = {
   viewedJobs: number
   favoriteJobs: number
   avgScoreTop10: number
-  sourceCounts: { linkedin: number; adzuna: number; indeed: number }
+  sourceCounts: { linkedin: number; adzuna: number; indeed: number; linkedin_post: number }
   statusCounts: { nouveau: number; a_contacter: number; rdv_pris: number; refuse: number }
   topCompanies: { name: string; count: number }[]
 }
@@ -43,6 +43,7 @@ function computeStats(matches: MatchData[], searches: { id: string; is_favorite:
     linkedin: matches.filter(m => m.source === 'linkedin').length,
     adzuna: matches.filter(m => m.source === 'adzuna').length,
     indeed: matches.filter(m => m.source === 'indeed').length,
+    linkedin_post: matches.filter(m => m.source === 'linkedin_post').length,
   }
 
   const top10Matches = matches.filter(m => m.rank <= 10)
@@ -160,6 +161,7 @@ export default function DataPage() {
   const getSourceColor = (source: string) => {
     switch (source) {
       case 'linkedin': return '#0A66C2'
+      case 'linkedin_post': return '#004182'
       case 'adzuna': return '#FF6B35'
       case 'indeed': return '#6B5CE7'
       default: return '#9CA3AF'
@@ -169,6 +171,7 @@ export default function DataPage() {
   const getSourceLabel = (source: string) => {
     switch (source) {
       case 'linkedin': return 'LinkedIn'
+      case 'linkedin_post': return 'LinkedIn Post'
       case 'adzuna': return 'Adzuna'
       case 'indeed': return 'Indeed'
       default: return source
@@ -259,7 +262,7 @@ export default function DataPage() {
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4" style={{ color: '#1D3557' }}>Répartition par source</h3>
               <div className="space-y-4">
-                {(['linkedin', 'adzuna', 'indeed'] as const).map(source => {
+                {(['linkedin', 'adzuna', 'indeed', 'linkedin_post'] as const).map(source => {
                   const count = stats.sourceCounts[source]
                   const percent = stats.totalJobs > 0 ? (count / stats.totalJobs) * 100 : 0
                   return (
