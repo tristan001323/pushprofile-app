@@ -33,31 +33,34 @@ function cleanJsonResponse(text: string): string {
     .trim()
 }
 
-// LinkedIn Post format from Apify actor 29VKGPinaGwpfxTrv
+// LinkedIn Post format from Apify actor buIWk2uOUzTmcLsuB (LinkedIn Posts Search Scraper)
 interface LinkedInPost {
-  postUrn?: string
-  url?: string
+  type?: string
+  id?: string
+  linkedinUrl?: string
   content?: string
   author?: {
+    universalName?: string | null
+    publicIdentifier?: string
+    type?: string
     name?: string
-    profileUrl?: string
+    linkedinUrl?: string
+    info?: string
+    website?: string | null
+    avatar?: { url?: string }
   }
-  reactionsCount?: number
-  commentsCount?: number
-  sharesCount?: number
-  timestamp?: string
-  postedAt?: string
-  media_urls?: string[]
-}
-
-// Apify actor response wrapper
-interface ApifyPostsResponse {
-  success?: boolean
-  keywords?: string
-  totalPosts?: number
-  posts?: LinkedInPost[]
-  error?: string
-  scrapedAt?: string
+  postedAt?: {
+    timestamp?: number
+    date?: string
+    postedAgoShort?: string
+    postedAgoText?: string
+  }
+  engagement?: {
+    likes?: number
+    comments?: number
+    shares?: number
+  }
+  postImages?: any[]
 }
 
 interface ParsedJobPost {
@@ -71,40 +74,35 @@ interface ParsedJobPost {
   score: number
 }
 
-// Build a single broad LinkedIn search query
-function buildLinkedInPostQuery(
+// Build search queries for the actor
+// Each query must be under 85 chars (LinkedIn limit)
+function buildSearchQueries(
   keywords: string,
   contractTypes: string[],
   location: string
-): string {
+): string[] {
   const keyword = keywords.trim()
+  const queries: string[] = []
 
-  // Simple and direct - like the actor example: "hiring engineer" OR "looking for job"
-  let query = `"hiring ${keyword}" OR "recrute ${keyword}"`
+  // Query 1: French - "recrute {keyword}" with location
+  let q1 = `recrute ${keyword}`
+  if (location) q1 += ` ${location}`
+  if (contractTypes.length > 0) q1 += ` ${contractTypes[0]}`
+  if (q1.length > 85) q1 = q1.substring(0, 85)
+  queries.push(q1)
 
-  if (location) {
-    query += ` ${location}`
-  }
+  // Query 2: English - "hiring {keyword}" with location
+  let q2 = `hiring ${keyword}`
+  if (location) q2 += ` ${location}`
+  if (q2.length > 85) q2 = q2.substring(0, 85)
+  queries.push(q2)
 
-  if (contractTypes.length > 0) {
-    query += ` ${contractTypes[0]}`
-  }
-
-  // Keep under 85 chars
-  if (query.length > 85) {
-    query = `hiring OR recrute ${keyword}`
-    if (location) query += ` ${location}`
-  }
-
-  if (query.length > 85) {
-    query = query.substring(0, 85)
-  }
-
-  return query
+  return queries
 }
 
-// Search LinkedIn posts via Apify actor 29VKGPinaGwpfxTrv
-async function searchLinkedInPosts(query: string): Promise<LinkedInPost[]> {
+// Search LinkedIn posts via Apify actor buIWk2uOUzTmcLsuB
+// Price: $2/1000 posts. maxPosts=25 per query x 2 queries = 50 posts max = $0.10 max
+async function searchLinkedInPosts(queries: string[]): Promise<LinkedInPost[]> {
   const apiKey = getApifyApiKey()
 
   if (!apiKey) {
@@ -112,22 +110,29 @@ async function searchLinkedInPosts(query: string): Promise<LinkedInPost[]> {
     return []
   }
 
-  console.log(`LinkedIn posts search query: "${query}"`)
+  console.log('LinkedIn posts search queries:', queries)
 
   try {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 55000) // 55s to stay under Vercel 60s
+    const timeoutId = setTimeout(() => controller.abort(), 55000)
+
+    const requestBody = {
+      searchQueries: queries,
+      postedLimit: 'month',
+      maxPosts: 25,
+      sortBy: 'relevance',
+      scrapeReactions: false,
+      scrapeComments: false,
+    }
+
+    console.log('Apify request body:', JSON.stringify(requestBody))
 
     const response = await fetch(
-      `https://api.apify.com/v2/acts/29VKGPinaGwpfxTrv/run-sync-get-dataset-items?token=${apiKey}`,
+      `https://api.apify.com/v2/acts/buIWk2uOUzTmcLsuB/run-sync-get-dataset-items?token=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keywords: query,
-          datePosted: 'past-month',
-          limit: 50
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal
       }
     )
@@ -143,42 +148,22 @@ async function searchLinkedInPosts(query: string): Promise<LinkedInPost[]> {
     const rawData = await response.json()
     console.log('Apify raw response type:', typeof rawData, Array.isArray(rawData) ? `array[${rawData.length}]` : 'object')
 
-    // Log the actual content to debug
-    const debugStr = JSON.stringify(rawData).substring(0, 1000)
-    console.log('Apify raw response preview:', debugStr)
-
-    // run-sync-get-dataset-items returns dataset items as an array
-    // Each item is a { success, posts: [...] } object
-    const allPosts: LinkedInPost[] = []
+    // run-sync-get-dataset-items returns a flat array of posts
+    let posts: LinkedInPost[] = []
 
     if (Array.isArray(rawData)) {
-      for (const item of rawData) {
-        console.log('Item keys:', Object.keys(item).join(', '))
-        console.log('Item success:', item.success, 'totalPosts:', item.totalPosts, 'posts length:', item.posts?.length, 'error:', item.error)
-
-        // Could be the wrapper object with posts array
-        if (item.posts && Array.isArray(item.posts)) {
-          allPosts.push(...item.posts)
-        }
-        // Or could be a flat post object itself (if actor pushes posts individually)
-        else if (item.content || item.url || item.postUrn) {
-          allPosts.push(item as LinkedInPost)
-        }
-      }
-    } else if (rawData && typeof rawData === 'object') {
-      console.log('Object keys:', Object.keys(rawData).join(', '))
-      if (rawData.posts && Array.isArray(rawData.posts)) {
-        allPosts.push(...rawData.posts)
-      }
+      // Filter to only "post" type items (ignore reactions/comments if any)
+      posts = rawData.filter((item: any) => !item.type || item.type === 'post')
+      console.log(`LinkedIn posts: ${posts.length} posts extracted (${rawData.length} total items)`)
+    } else {
+      console.log('Unexpected response format:', JSON.stringify(rawData).substring(0, 500))
     }
 
-    console.log(`LinkedIn posts: extracted ${allPosts.length} posts`)
-
-    // Deduplicate by url or postUrn
+    // Deduplicate by id or linkedinUrl
     const seen = new Set<string>()
     const uniquePosts: LinkedInPost[] = []
-    for (const post of allPosts) {
-      const key = post.url || post.postUrn || post.content?.substring(0, 100) || ''
+    for (const post of posts) {
+      const key = post.id || post.linkedinUrl || post.content?.substring(0, 100) || ''
       if (key && !seen.has(key)) {
         seen.add(key)
         uniquePosts.push(post)
@@ -202,7 +187,6 @@ async function searchLinkedInPosts(query: string): Promise<LinkedInPost[]> {
 async function parsePostsWithClaude(posts: LinkedInPost[]): Promise<ParsedJobPost[]> {
   if (posts.length === 0) return []
 
-  // Send posts in batches of 15 to avoid token limits
   const batchSize = 15
   const allParsed: ParsedJobPost[] = []
 
@@ -211,9 +195,9 @@ async function parsePostsWithClaude(posts: LinkedInPost[]): Promise<ParsedJobPos
 
     const postsText = batch.map((post, index) =>
       `Post ${index + 1}:
-Auteur: ${post.author?.name || 'Inconnu'}
-Profil: ${post.author?.profileUrl || ''}
-Date: ${post.postedAt || post.timestamp || 'Inconnue'}
+Auteur: ${post.author?.name || 'Inconnu'} (${post.author?.info || ''})
+Profil: ${post.author?.linkedinUrl || ''}
+Date: ${post.postedAt?.date || post.postedAt?.postedAgoText || 'Inconnue'}
 Texte: ${(post.content || '').substring(0, 800)}
 ---`
     ).join('\n')
@@ -270,7 +254,6 @@ Retourne UNIQUEMENT un JSON array (sans backticks, sans markdown):
 
       const parsed = JSON.parse(cleanJsonResponse(data.content[0].text))
 
-      // Map parsed results back to posts
       for (const item of parsed) {
         if (item.is_job_post) {
           allParsed.push({
@@ -284,11 +267,9 @@ Retourne UNIQUEMENT un JSON array (sans backticks, sans markdown):
             score: item.score || 50,
           })
 
-          // Store post_index to link back to the original post data
           const postIndex = item.post_index - 1
           if (postIndex >= 0 && postIndex < batch.length) {
-            const post = batch[postIndex]
-            ;(allParsed[allParsed.length - 1] as any)._post = post
+            ;(allParsed[allParsed.length - 1] as any)._post = batch[postIndex]
           }
         }
       }
@@ -340,17 +321,16 @@ export async function POST(request: NextRequest) {
 
     const searchId = searchData.id
 
-    // 2. Build ONE broad query (stay under Vercel 60s timeout)
-    const query = buildLinkedInPostQuery(
+    // 2. Build search queries (2 queries x 25 posts = 50 max = $0.10 max)
+    const queries = buildSearchQueries(
       keywords,
       contract_types || [],
       location || ''
     )
-    console.log('LinkedIn posts query:', query)
 
-    // 3. Search LinkedIn posts (single call)
+    // 3. Search LinkedIn posts
     console.log('Searching LinkedIn posts...')
-    const posts = await searchLinkedInPosts(query)
+    const posts = await searchLinkedInPosts(queries)
 
     if (posts.length === 0) {
       await supabase
@@ -369,7 +349,7 @@ export async function POST(request: NextRequest) {
     let filteredPosts = posts
     if (exclude_agencies !== false) {
       filteredPosts = posts.filter(post => {
-        const text = ((post.content || '') + ' ' + (post.author?.name || '')).toLowerCase()
+        const text = ((post.content || '') + ' ' + (post.author?.name || '') + ' ' + (post.author?.info || '')).toLowerCase()
         return !RECRUITMENT_AGENCIES.some(agency => text.includes(agency))
       })
       console.log(`Filtered ${posts.length - filteredPosts.length} posts from recruitment agencies`)
@@ -402,13 +382,13 @@ export async function POST(request: NextRequest) {
         job_title: job.job_title,
         company_name: job.company_name,
         location: job.location,
-        posted_date: post?.postedAt ? post.postedAt.split('T')[0] : null,
-        job_url: post?.url || '',
+        posted_date: post?.postedAt?.date ? post.postedAt.date.split('T')[0] : null,
+        job_url: post?.linkedinUrl || '',
         score: job.score,
         score_type: 'claude_ai',
         justification: job.description,
         status: 'nouveau',
-        external_id: `linkedin_post_${post?.postUrn || post?.url ? Buffer.from(post?.postUrn || post?.url || '').toString('base64').substring(0, 40) : index}`,
+        external_id: `linkedin_post_${post?.id || index}`,
         source: 'linkedin_post',
         rank: index + 1,
         matching_details: {
@@ -418,11 +398,11 @@ export async function POST(request: NextRequest) {
           salary_max: null,
           full_description: post?.content || job.description,
           recruiter_name: post?.author?.name || null,
-          recruiter_url: post?.author?.profileUrl || null,
+          recruiter_url: post?.author?.linkedinUrl || null,
           post_engagement: {
-            likes: post?.reactionsCount || 0,
-            comments: post?.commentsCount || 0,
-            shares: post?.sharesCount || 0,
+            likes: post?.engagement?.likes || 0,
+            comments: post?.engagement?.comments || 0,
+            shares: post?.engagement?.shares || 0,
           }
         }
       }
