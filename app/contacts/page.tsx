@@ -114,8 +114,8 @@ export default function ContactsPage() {
       <AppLayout>
         <div className="p-8 flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted">Chargement des contacts...</p>
+            <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{ borderColor: '#6366F1', borderTopColor: 'transparent' }} />
+            <p style={{ color: '#457B9D' }}>Chargement des contacts...</p>
           </div>
         </div>
       </AppLayout>
@@ -130,13 +130,17 @@ export default function ContactsPage() {
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-text">Mes Contacts</h1>
-              <p className="text-muted mt-1">
+              <h1 className="text-3xl font-bold" style={{ color: '#1D3557' }}>Mes Contacts</h1>
+              <p className="mt-1" style={{ color: '#457B9D' }}>
                 Tous les decideurs que vous avez debloques
               </p>
             </div>
             {contacts.length > 0 && (
-              <Button onClick={exportToCSV} variant="outline">
+              <Button
+                onClick={exportToCSV}
+                variant="outline"
+                className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+              >
                 Exporter en CSV
               </Button>
             )}
@@ -165,16 +169,19 @@ export default function ContactsPage() {
           {contacts.length === 0 ? (
             /* Empty State */
             <Card className="p-12 text-center">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#E0E7FF' }}>
+                <svg className="w-10 h-10" style={{ color: '#6366F1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold mb-2">Aucun contact pour le moment</h2>
-              <p className="text-muted mb-6 max-w-md mx-auto">
+              <h2 className="text-xl font-semibold mb-2" style={{ color: '#1D3557' }}>Aucun contact pour le moment</h2>
+              <p className="mb-6 max-w-md mx-auto" style={{ color: '#457B9D' }}>
                 Debloquez des contacts depuis vos resultats de recherche pour les retrouver ici.
               </p>
-              <Button onClick={() => window.location.href = '/searches'}>
+              <Button
+                onClick={() => window.location.href = '/searches'}
+                style={{ backgroundColor: '#6366F1', color: 'white' }}
+              >
                 Voir mes recherches
               </Button>
             </Card>
@@ -331,14 +338,14 @@ export default function ContactsPage() {
                 </div>
 
                 {filteredContacts.length === 0 && contacts.length > 0 && (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="p-8 text-center" style={{ color: '#457B9D' }}>
                     Aucun contact ne correspond a votre recherche
                   </div>
                 )}
               </Card>
 
               {/* Results count */}
-              <p className="text-sm text-muted mt-4 text-center">
+              <p className="text-sm mt-4 text-center" style={{ color: '#457B9D' }}>
                 {filteredContacts.length} contact{filteredContacts.length > 1 ? 's' : ''} affiche{filteredContacts.length > 1 ? 's' : ''}
                 {filterCompany || searchTerm ? ` sur ${contacts.length} au total` : ''}
               </p>
