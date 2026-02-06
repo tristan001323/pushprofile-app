@@ -36,11 +36,21 @@ type CompanyProfile = {
   }
   jobs_count: number
   jobs: Array<{
-    slug: string
-    name: string
-    contract_type: string
+    // WTTJ format
+    slug?: string
+    name?: string
+    // Job board format
+    title?: string
+    url?: string
+    location?: string
+    source?: string
+    // Common
+    contract_type?: string
     remote?: string
     published_at?: string
+    posted_date?: string
+    salary_min?: number
+    salary_max?: number
   }>
   scraped_at: string
   // LinkedIn specific
@@ -489,45 +499,67 @@ export default function CompanyIntelligencePage() {
               {/* Jobs */}
               {company.jobs && company.jobs.length > 0 && (
                 <Card className="p-6">
-                  <h3 className="font-semibold mb-3" style={{ color: '#1D3557' }}>Postes ouverts ({company.jobs_count})</h3>
+                  <h3 className="font-semibold mb-4" style={{ color: '#1D3557' }}>
+                    Postes ouverts ({company.jobs_count})
+                  </h3>
                   <div className="space-y-3">
-                    {company.jobs.slice(0, 10).map((job, i) => (
-                      <div key={i} className="flex justify-between items-center p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div>
-                          <p className="font-medium" style={{ color: '#1D3557' }}>{job.name}</p>
-                          <div className="flex gap-2 mt-1">
-                            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#E8F4F8', color: '#1D3557' }}>
-                              {job.contract_type === 'permanent' ? 'CDI' : job.contract_type === 'fixed_term' ? 'CDD' : job.contract_type}
-                            </span>
-                            {job.remote && (
-                              <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
-                                {job.remote}
-                              </span>
-                            )}
+                    {company.jobs.map((job, i) => {
+                      // Handle both WTTJ and job board formats
+                      const jobTitle = job.name || job.title || 'Poste non specifie'
+                      const jobUrl = job.url || (job.slug ? `https://www.welcometothejungle.com/fr/companies/${company.slug}/jobs/${job.slug}` : '#')
+                      const contractType = job.contract_type === 'permanent' ? 'CDI'
+                        : job.contract_type === 'fixed_term' ? 'CDD'
+                        : job.contract_type || null
+
+                      return (
+                        <div key={i} className="flex justify-between items-start p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100">
+                          <div className="flex-1">
+                            <p className="font-medium" style={{ color: '#1D3557' }}>{jobTitle}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {contractType && (
+                                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#E8F4F8', color: '#1D3557' }}>
+                                  {contractType}
+                                </span>
+                              )}
+                              {job.location && (
+                                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#F3F4F6', color: '#374151' }}>
+                                  {job.location}
+                                </span>
+                              )}
+                              {job.remote && (
+                                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
+                                  {job.remote}
+                                </span>
+                              )}
+                              {job.source && (
+                                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
+                                  {job.source}
+                                </span>
+                              )}
+                              {(job.salary_min || job.salary_max) && (
+                                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
+                                  {job.salary_min && job.salary_max
+                                    ? `${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()} EUR`
+                                    : job.salary_min
+                                      ? `${job.salary_min.toLocaleString()}+ EUR`
+                                      : `< ${job.salary_max?.toLocaleString()} EUR`
+                                  }
+                                </span>
+                              )}
+                            </div>
                           </div>
+                          <a
+                            href={jobUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm px-3 py-1 rounded hover:bg-gray-100 whitespace-nowrap ml-3"
+                            style={{ color: '#6366F1' }}
+                          >
+                            Voir →
+                          </a>
                         </div>
-                        <a
-                          href={`https://www.welcometothejungle.com/fr/companies/${company.slug}/jobs/${job.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm px-3 py-1 rounded hover:bg-gray-100"
-                          style={{ color: '#6366F1' }}
-                        >
-                          Voir →
-                        </a>
-                      </div>
-                    ))}
-                    {company.jobs_count > 10 && (
-                      <a
-                        href={company.wttj_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block text-center text-sm py-2 hover:underline"
-                        style={{ color: '#6366F1' }}
-                      >
-                        Voir les {company.jobs_count - 10} autres postes →
-                      </a>
-                    )}
+                      )
+                    })}
                   </div>
                 </Card>
               )}
