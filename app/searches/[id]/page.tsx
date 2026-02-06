@@ -96,6 +96,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [enrichedContacts, setEnrichedContacts] = useState<EnrichedContact[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
   const [contactsError, setContactsError] = useState<string | null>(null)
+  const [contactsSearched, setContactsSearched] = useState(false) // Track if we already searched
 
   // Processing state
   const [searchStatus, setSearchStatus] = useState<'processing' | 'completed' | 'error'>('processing')
@@ -192,6 +193,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     setIsPanelOpen(true)
     setEnrichedContacts([])  // Reset contacts when opening new panel
     setContactsError(null)
+    setContactsSearched(false)
 
     if (!match.viewed_at) {
       const now = new Date().toISOString()
@@ -282,6 +284,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     setContactsLoading(true)
     setContactsError(null)
     setEnrichedContacts([])
+    setContactsSearched(false)
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -307,6 +310,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
       }
 
       setEnrichedContacts(data.contacts || [])
+      setContactsSearched(true) // Mark that we searched
 
       // Update local match state with enriched contacts
       if (selectedMatch && data.contacts?.length > 0) {
@@ -786,11 +790,11 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       </svg>
                       Décideurs chez {selectedMatch.company_name}
                     </h3>
-                    {selectedMatch.matching_details?.enriched_contacts || enrichedContacts.length > 0 ? (
+                    {(selectedMatch.matching_details?.enriched_contacts?.length > 0 || enrichedContacts.length > 0) && (
                       <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
-                        Débloqué
+                        {(selectedMatch.matching_details?.enriched_contacts || enrichedContacts).length} contact(s)
                       </span>
-                    ) : null}
+                    )}
                   </div>
 
                   {/* Show enriched contacts if available */}
@@ -844,29 +848,43 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       {contactsError && (
                         <p className="text-sm text-red-600 mb-3">{contactsError}</p>
                       )}
-                      <Button
-                        onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id)}
-                        disabled={contactsLoading}
-                        className="w-full"
-                        style={{ backgroundColor: '#6366F1', color: 'white' }}
-                      >
-                        {contactsLoading ? (
-                          <>
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Recherche des contacts...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                            Débloquer les contacts
-                          </>
-                        )}
-                      </Button>
+
+                      {/* Show "no contacts found" if we searched but found nothing */}
+                      {contactsSearched && !contactsLoading && enrichedContacts.length === 0 ? (
+                        <div className="text-center py-4">
+                          <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                          <p className="text-sm text-gray-500 mb-1">Aucun décideur trouvé</p>
+                          <p className="text-xs text-gray-400">
+                            Cette entreprise n'a pas de contacts publics dans notre base
+                          </p>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id)}
+                          disabled={contactsLoading}
+                          className="w-full"
+                          style={{ backgroundColor: '#6366F1', color: 'white' }}
+                        >
+                          {contactsLoading ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Recherche des contacts...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              </svg>
+                              Débloquer les contacts
+                            </>
+                          )}
+                        </Button>
+                      )}
                       <p className="text-xs text-center mt-2" style={{ color: '#457B9D' }}>
                         Trouvez les emails et téléphones des décideurs
                       </p>

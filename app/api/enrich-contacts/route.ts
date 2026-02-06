@@ -94,20 +94,29 @@ export async function POST(request: NextRequest) {
     console.log(`Leads Finder returned ${results.length} contacts`)
 
     // 3. Normalize and enrich results
-    const enrichedContacts: EnrichedContact[] = results.map(contact => ({
-      full_name: contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || null,
-      first_name: contact.first_name || null,
-      last_name: contact.last_name || null,
-      job_title: contact.job_title || contact.headline || null,
-      email: contact.email || null,
-      email_status: contact.email_status || null,
-      phone: contact.mobile_number || null,
-      linkedin_url: contact.linkedin_url || null,
-      company_name: contact.company_name || company_name,
-      company_domain: contact.company_domain || null,
-      company_industry: contact.company_industry || null,
-      company_size: contact.company_size || null
-    }))
+    const enrichedContacts: EnrichedContact[] = results
+      .map(contact => ({
+        full_name: contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || null,
+        first_name: contact.first_name || null,
+        last_name: contact.last_name || null,
+        job_title: contact.job_title || contact.headline || null,
+        email: contact.email || null,
+        email_status: contact.email_status || null,
+        phone: contact.mobile_number || null,
+        linkedin_url: contact.linkedin_url || null,
+        company_name: contact.company_name || company_name,
+        company_domain: contact.company_domain || null,
+        company_industry: contact.company_industry || null,
+        company_size: contact.company_size || null
+      }))
+      // Filter out contacts that don't have useful data (at least name OR email OR linkedin)
+      .filter(contact =>
+        (contact.full_name && contact.full_name.trim().length > 0) ||
+        contact.email ||
+        contact.linkedin_url
+      )
+
+    console.log(`After filtering empty contacts: ${enrichedContacts.length} valid contacts`)
 
     // 4. Cache the results
     if (enrichedContacts.length > 0) {
