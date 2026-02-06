@@ -14,6 +14,7 @@ type CompanyProfile = {
   wttj_url: string | null
   linkedin_url: string | null
   website: string | null
+  logo?: string | null
   description: string | null
   size: string | null
   employee_count: number | null
@@ -42,6 +43,12 @@ type CompanyProfile = {
     published_at?: string
   }>
   scraped_at: string
+  // LinkedIn specific
+  source?: string
+  company_type?: string | null
+  follower_count?: number | null
+  specialities?: string[]
+  funding_rounds?: number | null
 }
 
 export default function CompanyIntelligencePage() {
@@ -321,12 +328,34 @@ export default function CompanyIntelligencePage() {
               {/* Header Card */}
               <Card className="p-6">
                 <div className="flex flex-col md:flex-row gap-6">
+                  {/* Logo */}
+                  {company.logo && (
+                    <div className="flex-shrink-0">
+                      <img
+                        src={company.logo}
+                        alt={`${company.name} logo`}
+                        className="w-20 h-20 rounded-xl object-contain bg-gray-50 border"
+                      />
+                    </div>
+                  )}
                   <div className="flex-1">
-                    <h2 className="text-2xl font-bold mb-2" style={{ color: '#1D3557' }}>{company.name}</h2>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h2 className="text-2xl font-bold" style={{ color: '#1D3557' }}>{company.name}</h2>
+                      {company.source === 'linkedin' && (
+                        <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: '#E8F4FF', color: '#0A66C2' }}>
+                          LinkedIn
+                        </span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {company.size && (
                         <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: '#E8F4F8', color: '#1D3557' }}>
-                          {company.size}
+                          {company.size} employes
+                        </span>
+                      )}
+                      {company.follower_count && (
+                        <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: '#E8F4FF', color: '#0A66C2' }}>
+                          {company.follower_count.toLocaleString()} followers
                         </span>
                       )}
                       {company.headquarters_city && (
@@ -336,10 +365,22 @@ export default function CompanyIntelligencePage() {
                       )}
                       {company.creation_year && (
                         <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: '#E8F4F8', color: '#1D3557' }}>
-                          Fondée en {company.creation_year}
+                          Fondee en {company.creation_year}
+                        </span>
+                      )}
+                      {company.company_type && (
+                        <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: '#F3F4F6', color: '#374151' }}>
+                          {company.company_type}
                         </span>
                       )}
                     </div>
+
+                    {/* Specialities (LinkedIn) */}
+                    {company.specialities && company.specialities.length > 0 && (
+                      <p className="text-sm text-gray-600 italic mb-3">
+                        {company.specialities.join(' • ')}
+                      </p>
+                    )}
 
                     {/* Sectors */}
                     {company.sectors && company.sectors.length > 0 && (

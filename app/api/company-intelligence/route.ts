@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { runApifyActor, APIFY_ACTORS, WTTJCompanyOutput } from '@/lib/apify'
+import { runApifyActor, APIFY_ACTORS, WTTJCompanyOutput, LinkedInCompanyOutput } from '@/lib/apify'
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -34,27 +34,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'user_id is required' }, { status: 400 })
     }
 
+    // Detect URL type
+    const isLinkedInUrl = company_url?.includes('linkedin.com/company/')
+    const isWttjUrl = company_url?.includes('welcometothejungle.com')
+
     // Extract slug from URL if provided
     let slug: string | null = null
+    let linkedinUniversalName: string | null = null
+
     if (company_url) {
-      // Handle WTTJ URLs: https://www.welcometothejungle.com/fr/companies/doctolib
-      const wttjMatch = company_url.match(/welcometothejungle\.com\/\w+\/companies\/([^\/\?]+)/)
-      if (wttjMatch) {
-        slug = wttjMatch[1]
+      if (isWttjUrl) {
+        const wttjMatch = company_url.match(/welcometothejungle\.com\/\w+\/companies\/([^\/\?]+)/)
+        if (wttjMatch) slug = wttjMatch[1]
+      } else if (isLinkedInUrl) {
+        const linkedinMatch = company_url.match(/linkedin\.com\/company\/([^\/\?]+)/)
+        if (linkedinMatch) linkedinUniversalName = linkedinMatch[1]
       }
     }
 
     // 1. Check cache first (30 days validity)
-    const cacheQuery = slug
-      ? supabase.from('company_profiles').select('*').eq('slug', slug)
-      : supabase.from('company_profiles').select('*').ilike('name', `%${company_name}%`)
+    let cacheQuery
+    if (slug) {
+      cacheQuery = supabase.from('company_profiles').select('*').eq('slug', slug)
+    } else if (linkedinUniversalName) {
+      cacheQuery = supabase.from('company_profiles').select('*').eq('slug', linkedinUniversalName)
+    } else {
+      cacheQuery = supabase.from('company_profiles').select('*').ilike('name', `%${company_name}%`)
+    }
 
     const { data: cachedProfile } = await cacheQuery
       .gte('scraped_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
       .single()
 
     if (cachedProfile) {
-      console.log(`Found cached company profile for ${slug || company_name}`)
+      console.log(`Found cached company profile for ${slug || linkedinUniversalName || company_name}`)
       return NextResponse.json({
         success: true,
         company: cachedProfile,
@@ -63,77 +76,159 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 2. Build input for saswave/welcome-to-the-jungle-scraper
-    const input: Record<string, unknown> = {
-      maxItems: 1,
-      includeJobs: true
-    }
+    let companyProfile
 
-    if (company_url) {
-      input.startUrls = [{ url: company_url }]
-    } else if (company_name) {
-      input.search = company_name
-    }
+    // 2. Use LinkedIn scraper if LinkedIn URL provided
+    if (isLinkedInUrl && company_url) {
+      console.log(`Fetching LinkedIn company data for ${company_url}`)
 
-    console.log(`Fetching company intelligence for ${company_url || company_name}`)
+      const results = await runApifyActor<LinkedInCompanyOutput>({
+        actorId: APIFY_ACTORS.LINKEDIN_COMPANY,
+        input: {
+          urls: [company_url]
+        },
+        timeoutSecs: 120
+      })
 
-    // 3. Call WTTJ Company scraper
-    const results = await runApifyActor<WTTJCompanyOutput>({
-      actorId: APIFY_ACTORS.WTTJ_COMPANY,
-      input,
-      timeoutSecs: 120
-    })
+      if (results.length === 0) {
+        return NextResponse.json({
+          success: false,
+          error: 'Company not found on LinkedIn'
+        }, { status: 404 })
+      }
 
-    if (results.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Company not found on Welcome to the Jungle'
-      }, { status: 404 })
-    }
+      const linkedinData = results[0]
+      console.log(`LinkedIn Company scraper returned data for: ${linkedinData.name}`)
 
-    const companyData = results[0]
-    console.log(`WTTJ Company scraper returned data for: ${companyData.name}`)
+      // Find headquarters
+      const hq = linkedinData.locations?.find(l => l.headquarter) || linkedinData.locations?.[0]
 
-    // 4. Normalize and structure the data
-    const companyProfile = {
-      slug: companyData.slug || slug || companyData.name?.toLowerCase().replace(/\s+/g, '-'),
-      name: companyData.name,
-      wttj_url: companyData.organization_url,
-      linkedin_url: companyData.social_networks?.linkedin || null,
-      website: companyData.website || null,
+      // Normalize LinkedIn data to our format
+      companyProfile = {
+        slug: linkedinData.universalName || linkedinData.name?.toLowerCase().replace(/\s+/g, '-'),
+        name: linkedinData.name,
+        wttj_url: null,
+        linkedin_url: linkedinData.linkedinUrl,
+        website: linkedinData.website?.split('?')[0] || null, // Remove UTM params
+        logo: linkedinData.logo || null,
 
-      // Company info
-      description: companyData.descriptions?.map(d => `${d.title}: ${d.body}`).join('\n\n') || null,
-      size: companyData.size || null,
-      employee_count: companyData.nb_employees || null,
-      average_age: companyData.average_age || null,
-      creation_year: companyData.creation_year || null,
+        // Company info
+        description: linkedinData.description || linkedinData.tagline || null,
+        size: linkedinData.employeeCountRange
+          ? `${linkedinData.employeeCountRange.start}${linkedinData.employeeCountRange.end ? `-${linkedinData.employeeCountRange.end}` : '+'}`
+          : null,
+        employee_count: linkedinData.employeeCount || null,
+        average_age: null,
+        creation_year: linkedinData.foundedOn?.year || null,
 
-      // Parity
-      parity_men: companyData.parity_men || null,
-      parity_women: companyData.parity_women || null,
+        // Parity (not available on LinkedIn)
+        parity_men: null,
+        parity_women: null,
 
-      // Location
-      offices: companyData.offices || [],
-      headquarters_city: companyData.offices?.[0]?.city || null,
-      headquarters_country: companyData.offices?.[0]?.country_code || null,
+        // Location
+        offices: linkedinData.locations?.map(loc => ({
+          address: [loc.line1, loc.line2].filter(Boolean).join(', '),
+          city: loc.parsed?.city || loc.city || '',
+          country_code: loc.country || ''
+        })) || [],
+        headquarters_city: hq?.parsed?.city || hq?.city || null,
+        headquarters_country: hq?.country || null,
 
-      // Industry & Tech
-      sectors: companyData.sectors || [],
-      tech_stack: companyData.technos_list || [],
+        // Industry & Tech
+        sectors: linkedinData.industries?.map(i => ({ name: i, parent_name: 'Industry' })) || [],
+        tech_stack: [],
 
-      // Social
-      social_networks: companyData.social_networks || {},
+        // Social
+        social_networks: {
+          linkedin: linkedinData.linkedinUrl
+        },
 
-      // Jobs
-      jobs_count: companyData.jobs_count || companyData.jobs?.length || 0,
-      jobs: companyData.jobs?.slice(0, 20) || [],  // Keep top 20 jobs
+        // Additional LinkedIn data
+        company_type: linkedinData.companyType || null,
+        follower_count: linkedinData.followerCount || null,
+        specialities: linkedinData.specialities || [],
+        funding_rounds: linkedinData.fundingData?.numFundingRounds || null,
 
-      // Raw data for future use
-      raw_data: companyData,
+        // Jobs (not available from this scraper)
+        jobs_count: 0,
+        jobs: [],
 
-      // Timestamps
-      scraped_at: new Date().toISOString()
+        // Source
+        source: 'linkedin',
+        raw_data: linkedinData,
+        scraped_at: new Date().toISOString()
+      }
+    } else {
+      // 3. Use WTTJ scraper for WTTJ URLs or company name search
+      const input: Record<string, unknown> = {
+        maxItems: 1,
+        includeJobs: true
+      }
+
+      if (company_url && isWttjUrl) {
+        input.startUrls = [{ url: company_url }]
+      } else if (company_name) {
+        input.search = company_name
+      }
+
+      console.log(`Fetching WTTJ company data for ${company_url || company_name}`)
+
+      const results = await runApifyActor<WTTJCompanyOutput>({
+        actorId: APIFY_ACTORS.WTTJ_COMPANY,
+        input,
+        timeoutSecs: 120
+      })
+
+      if (results.length === 0) {
+        return NextResponse.json({
+          success: false,
+          error: 'Company not found on Welcome to the Jungle'
+        }, { status: 404 })
+      }
+
+      const companyData = results[0]
+      console.log(`WTTJ Company scraper returned data for: ${companyData.name}`)
+
+      // Normalize WTTJ data to our format
+      companyProfile = {
+        slug: companyData.slug || slug || companyData.name?.toLowerCase().replace(/\s+/g, '-'),
+        name: companyData.name,
+        wttj_url: companyData.organization_url,
+        linkedin_url: companyData.social_networks?.linkedin || null,
+        website: companyData.website || null,
+
+        // Company info
+        description: companyData.descriptions?.map(d => `${d.title}: ${d.body}`).join('\n\n') || null,
+        size: companyData.size || null,
+        employee_count: companyData.nb_employees || null,
+        average_age: companyData.average_age || null,
+        creation_year: companyData.creation_year || null,
+
+        // Parity
+        parity_men: companyData.parity_men || null,
+        parity_women: companyData.parity_women || null,
+
+        // Location
+        offices: companyData.offices || [],
+        headquarters_city: companyData.offices?.[0]?.city || null,
+        headquarters_country: companyData.offices?.[0]?.country_code || null,
+
+        // Industry & Tech
+        sectors: companyData.sectors || [],
+        tech_stack: companyData.technos_list || [],
+
+        // Social
+        social_networks: companyData.social_networks || {},
+
+        // Jobs
+        jobs_count: companyData.jobs_count || companyData.jobs?.length || 0,
+        jobs: companyData.jobs?.slice(0, 20) || [],
+
+        // Source
+        source: 'wttj',
+        raw_data: companyData,
+        scraped_at: new Date().toISOString()
+      }
     }
 
     // 5. Cache the result
@@ -153,7 +248,7 @@ export async function POST(request: NextRequest) {
         api_name: 'company-intelligence',
         credits_used: 1,
         metadata: {
-          company_name: companyData.name,
+          company_name: companyProfile.name,
           company_slug: companyProfile.slug
         }
       })

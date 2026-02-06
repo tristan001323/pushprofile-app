@@ -25,6 +25,9 @@ export const APIFY_ACTORS = {
   // Contact enrichment - Decision Maker Email Finder
   DECISION_MAKER_FINDER: '0d92bM36riVMXNvp3',  // snipercoder/decision-maker-email-finder - $1.00/1000
 
+  // LinkedIn Company scraper
+  LINKEDIN_COMPANY: 'UwSdACBp7ymaGUJjS',  // harvest_api/linkedin-company-scraper
+
   // Employee scraping
   LINKEDIN_EMPLOYEES: 'Vb6LZkh4EqRlR0Ka9', // harvestapi/linkedin-company-employees - $8/1000
 
@@ -521,6 +524,68 @@ export interface LinkedInProfileOutput {
     link?: string
   }>
   status: number
+}
+
+// LinkedIn Company (harvest_api/linkedin-company-scraper)
+export interface LinkedInCompanyOutput {
+  id: string
+  universalName: string
+  linkedinUrl: string
+  name: string
+  tagline?: string
+  website?: string
+  logo?: string
+  foundedOn?: { year: number }
+  employeeCount?: number
+  employeeCountRange?: { start: number; end?: number }
+  followerCount?: number
+  description?: string
+  companyType?: string
+  locations?: Array<{
+    country: string
+    geographicArea?: string
+    city?: string
+    line1?: string
+    line2?: string
+    postalCode?: string
+    headquarter?: boolean
+    description?: string
+    parsed?: {
+      text: string
+      countryCode?: string
+      country?: string
+      state?: string
+      city?: string
+    }
+  }>
+  specialities?: string[]
+  industries?: string[]
+  logos?: Array<{
+    url: string
+    width: number
+    height: number
+  }>
+  backgroundCovers?: Array<{
+    url: string
+    width: number
+    height: number
+  }>
+  phone?: string
+  fundingData?: {
+    numFundingRounds?: number
+    lastFundingRound?: {
+      fundingType?: string
+      moneyRaised?: {
+        currencyCode: string
+        amount: string
+      }
+      announcedOn?: {
+        month: number
+        day: number
+        year: number
+      }
+    }
+  }
 }
 
 // ============================================
