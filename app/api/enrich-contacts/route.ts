@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { runApifyActor, APIFY_ACTORS, LeadsFinderOutput } from '@/lib/apify'
+import { runApifyActor, APIFY_ACTORS, DecisionMakerOutput } from '@/lib/apify'
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -13,8 +13,8 @@ const getSupabase = () => {
 
 interface EnrichContactRequest {
   company_name: string
-  job_titles?: string[]  // e.g., ["CTO", "VP Engineering", "Head of HR"]
-  match_id?: string      // Optional: link to a specific match
+  company_domain?: string  // Domain is preferred for better results
+  match_id?: string
   user_id: string
 }
 
@@ -24,20 +24,47 @@ interface EnrichedContact {
   last_name: string | null
   job_title: string | null
   email: string | null
-  email_status: string | null
   phone: string | null
   linkedin_url: string | null
   company_name: string | null
   company_domain: string | null
-  company_industry: string | null
-  company_size: string | null
+}
+
+// Helper to extract domain from company name or URL
+function extractDomain(companyName: string, providedDomain?: string): string | null {
+  if (providedDomain) {
+    // Clean the domain
+    return providedDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+  }
+
+  // Try to guess domain from company name (basic heuristic)
+  // This is a fallback - ideally the domain should be provided
+  const cleanName = companyName.toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+
+  // Common French TLDs
+  const possibleDomains = [
+    `${cleanName}.fr`,
+    `${cleanName}.com`,
+    `${cleanName}.eu`
+  ]
+
+  return possibleDomains[0] // Return .fr as default guess
+}
+
+// Helper to split full name into first/last
+function splitName(fullName: string): { firstName: string; lastName: string } {
+  const nameParts = (fullName || '').trim().split(/\s+/)
+  const firstName = nameParts[0] || ''
+  const lastName = nameParts.slice(1).join(' ') || ''
+  return { firstName, lastName }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase()
     const body: EnrichContactRequest = await request.json()
-    const { company_name, job_titles, match_id, user_id } = body
+    const { company_name, company_domain, match_id, user_id } = body
 
     if (!company_name) {
       return NextResponse.json({ error: 'company_name is required' }, { status: 400 })
@@ -47,27 +74,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'user_id is required' }, { status: 400 })
     }
 
-    // Default job titles to search for (decision makers)
-    const titlesToSearch = job_titles || [
-      'CEO', 'CTO', 'CFO', 'COO',
-      'VP Engineering', 'VP Product', 'VP HR',
-      'Head of Engineering', 'Head of Product', 'Head of HR',
-      'Director of Engineering', 'Director of HR',
-      'DRH', 'Directeur Technique', 'Directeur RH'
-    ]
+    // Extract or guess domain
+    const domain = extractDomain(company_name, company_domain)
 
-    console.log(`Enriching contacts for ${company_name}, searching for: ${titlesToSearch.join(', ')}`)
+    if (!domain) {
+      return NextResponse.json({ error: 'Could not determine company domain' }, { status: 400 })
+    }
+
+    console.log(`Enriching contacts for ${company_name} (domain: ${domain})`)
 
     // 1. Check cache first
     const { data: cachedContacts } = await supabase
       .from('contacts_cache')
       .select('*')
-      .eq('company_name', company_name.toLowerCase())
-      .in('job_title_searched', titlesToSearch.map(t => t.toLowerCase()))
+      .eq('company_domain', domain.toLowerCase())
       .gte('enriched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // 30 days cache
 
     if (cachedContacts && cachedContacts.length > 0) {
-      console.log(`Found ${cachedContacts.length} cached contacts for ${company_name}`)
+      console.log(`Found ${cachedContacts.length} cached contacts for ${domain}`)
       return NextResponse.json({
         success: true,
         contacts: cachedContacts,
@@ -76,69 +100,67 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 2. Call Leads Finder API
-    // The actor expects: company domain or name, and optionally job titles
+    // 2. Call Decision Maker Email Finder API
     const input = {
-      companies: [company_name],
-      jobTitles: titlesToSearch,
-      limit: 10,  // Get up to 10 contacts per company
-      onlyVerifiedEmails: false  // Include unverified to get more results
+      domains: domain,  // String, not array
+      seniority: ["c_suite", "director", "vp", "head", "manager"],
+      maxLeadsPerDomain: 3
     }
 
-    const results = await runApifyActor<LeadsFinderOutput>({
-      actorId: APIFY_ACTORS.LEADS_FINDER,
+    console.log(`Calling Decision Maker Finder with input:`, JSON.stringify(input))
+
+    const results = await runApifyActor<DecisionMakerOutput>({
+      actorId: APIFY_ACTORS.DECISION_MAKER_FINDER,
       input,
       timeoutSecs: 120
     })
 
-    console.log(`Leads Finder returned ${results.length} contacts`)
+    console.log(`Decision Maker Finder returned ${results.length} contacts`)
 
-    // DEBUG: Log raw results to see what the actor returns
+    // DEBUG: Log raw results
     if (results.length > 0) {
-      console.log('Raw Leads Finder results:', JSON.stringify(results, null, 2))
+      console.log('Raw Decision Maker results:', JSON.stringify(results, null, 2))
     }
 
-    // 3. Normalize and enrich results
+    // 3. Normalize results to our format
     const enrichedContacts: EnrichedContact[] = results
-      .map(contact => ({
-        full_name: contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || null,
-        first_name: contact.first_name || null,
-        last_name: contact.last_name || null,
-        job_title: contact.job_title || contact.headline || null,
-        email: contact.email || null,
-        email_status: contact.email_status || null,
-        phone: contact.mobile_number || null,
-        linkedin_url: contact.linkedin_url || null,
-        company_name: contact.company_name || company_name,
-        company_domain: contact.company_domain || null,
-        company_industry: contact.company_industry || null,
-        company_size: contact.company_size || null
-      }))
-      // Filter out contacts that don't have useful data (at least name OR email OR linkedin)
+      .map(contact => {
+        const { firstName, lastName } = splitName(contact.name || '')
+        return {
+          full_name: contact.name || null,
+          first_name: firstName || null,
+          last_name: lastName || null,
+          job_title: contact.title || null,
+          email: contact.email || null,
+          phone: contact.phone || null,
+          linkedin_url: contact.linkedin || null,
+          company_name: contact.company || company_name,
+          company_domain: contact.domain || domain
+        }
+      })
+      // Filter out contacts without useful data
       .filter(contact =>
         (contact.full_name && contact.full_name.trim().length > 0) ||
         contact.email ||
         contact.linkedin_url
       )
 
-    console.log(`After filtering empty contacts: ${enrichedContacts.length} valid contacts`)
+    console.log(`After filtering: ${enrichedContacts.length} valid contacts`)
 
     // 4. Cache the results
     if (enrichedContacts.length > 0) {
       const cacheEntries = enrichedContacts.map(contact => ({
         company_name: company_name.toLowerCase(),
-        job_title_searched: (contact.job_title || 'unknown').toLowerCase(),
+        company_domain: (contact.company_domain || domain).toLowerCase(),
+        job_title_searched: 'decision_maker',
         full_name: contact.full_name,
         first_name: contact.first_name,
         last_name: contact.last_name,
         job_title: contact.job_title,
         email: contact.email,
-        email_status: contact.email_status,
         phone: contact.phone,
         linkedin_url: contact.linkedin_url,
-        company_domain: contact.company_domain,
-        company_industry: contact.company_industry,
-        company_size: contact.company_size,
+        source: 'apify_decision_maker_finder',
         enriched_at: new Date().toISOString()
       }))
 
@@ -157,11 +179,7 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('matches')
         .update({
-          matching_details: supabase.rpc('jsonb_set', {
-            target: 'matching_details',
-            path: '{enriched_contact}',
-            value: JSON.stringify(primaryContact)
-          })
+          enriched_contacts: enrichedContacts
         })
         .eq('id', match_id)
     }
@@ -175,7 +193,9 @@ export async function POST(request: NextRequest) {
         credits_used: results.length,
         metadata: {
           company_name,
-          contacts_found: results.length
+          domain,
+          contacts_found: enrichedContacts.length,
+          source: 'apify_decision_maker_finder'
         }
       })
 

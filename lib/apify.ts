@@ -22,8 +22,8 @@ export const APIFY_ACTORS = {
   // Company Intelligence (saswave) - $15/month + usage
   WTTJ_COMPANY: 'OdeZQS0Wd7OV62KFe',     // saswave/welcome-to-the-jungle-scraper
 
-  // Contact enrichment
-  LEADS_FINDER: 'IoSHqwTR9YGhzccez',     // code_crafter/leads-finder - $1.50/1000
+  // Contact enrichment - Decision Maker Email Finder
+  DECISION_MAKER_FINDER: '0d92bM36riVMXNvp3',  // snipercoder/decision-maker-email-finder - $1.00/1000
 
   // Employee scraping
   LINKEDIN_EMPLOYEES: 'Vb6LZkh4EqRlR0Ka9', // harvestapi/linkedin-company-employees - $8/1000
@@ -407,23 +407,15 @@ export interface WTTJCompanyOutput {
   }>
 }
 
-// Leads Finder (code_crafter)
-export interface LeadsFinderOutput {
-  first_name?: string
-  last_name?: string
-  full_name?: string
-  job_title?: string
-  headline?: string
-  linkedin_url?: string
+// Decision Maker Email Finder (snipercoder)
+export interface DecisionMakerOutput {
+  name?: string
   email?: string
-  email_status?: string
-  mobile_number?: string
-  company_name?: string
-  company_domain?: string
-  company_linkedin_url?: string
-  company_industry?: string
-  company_size?: string
-  company_location?: string
+  title?: string
+  company?: string
+  linkedin?: string
+  phone?: string
+  domain?: string
 }
 
 // LinkedIn Employees (harvestapi)

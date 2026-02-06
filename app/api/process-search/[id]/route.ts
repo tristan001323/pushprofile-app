@@ -166,7 +166,10 @@ async function fetchLinkedInJobs(parsedData: ParsedCV, contractTypes?: string[],
         remote_type: (job.workType || '').toLowerCase().includes('remote') ? 'remote' : 'on_site',
         salary_min: null,
         salary_max: null,
-        full_description: job.jobDescription || ''
+        full_description: job.jobDescription || '',
+        // Recruiter info from LinkedIn
+        recruiter_name: job.posterFullName || null,
+        recruiter_url: job.posterProfileUrl || null
       },
       prefilter_score: 50
     }))
