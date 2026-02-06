@@ -93,6 +93,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`Leads Finder returned ${results.length} contacts`)
 
+    // DEBUG: Log raw results to see what the actor returns
+    if (results.length > 0) {
+      console.log('Raw Leads Finder results:', JSON.stringify(results, null, 2))
+    }
+
     // 3. Normalize and enrich results
     const enrichedContacts: EnrichedContact[] = results
       .map(contact => ({
