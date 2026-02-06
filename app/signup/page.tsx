@@ -138,7 +138,7 @@ export default function SignupPage() {
           main_goal: onboarding.mainGoal,
         })
       }
-      router.push('/searches')
+      router.push('/dashboard')
     }
   }
 

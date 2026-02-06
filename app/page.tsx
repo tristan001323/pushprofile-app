@@ -36,7 +36,7 @@ export default function LandingPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         // Utilisateur connecté -> rediriger vers "Mon espace"
-        router.push('/searches')
+        router.push('/dashboard')
       } else {
         setIsLoggedIn(false)
         setCheckingAuth(false)
@@ -49,7 +49,7 @@ export default function LandingPage() {
         router.push('/reset-password')
       } else if (event === 'SIGNED_IN' && session) {
         // Rediriger après connexion
-        router.push('/searches')
+        router.push('/dashboard')
       }
     })
 
