@@ -50,6 +50,44 @@ export default function CompanyIntelligencePage() {
   const [error, setError] = useState<string | null>(null)
   const [company, setCompany] = useState<CompanyProfile | null>(null)
 
+  const searchCompanyByName = async (name: string) => {
+    setSearchUrl(name)
+    setLoading(true)
+    setError(null)
+    setCompany(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('Vous devez être connecté')
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch('/api/company-intelligence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_name: name,
+          user_id: session.user.id
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Entreprise non trouvée')
+      }
+
+      setCompany(data.company)
+    } catch (err) {
+      console.error('Error fetching company:', err)
+      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const searchCompany = async () => {
     if (!searchUrl.trim()) {
       setError('Veuillez entrer une URL ou un nom d\'entreprise')
@@ -64,6 +102,7 @@ export default function CompanyIntelligencePage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         setError('Vous devez être connecté')
+        setLoading(false)
         return
       }
 
@@ -97,22 +136,38 @@ export default function CompanyIntelligencePage() {
     <AppLayout>
       <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
-          {/* Header */}
+
+          {/* Hero Header */}
           <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#1D3557' }}>
-              Company Intelligence
-            </h1>
-            <p className="mt-2" style={{ color: '#457B9D' }}>
-              Analysez une entreprise en profondeur : taille, stack technique, culture, postes ouverts...
-            </p>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#1D3557' }}>
+                  Company Intelligence
+                </h1>
+                <p className="text-sm" style={{ color: '#457B9D' }}>
+                  Analyse approfondie d'entreprise en temps reel
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Search */}
-          <Card className="p-6 mb-8">
+          {/* Search Card */}
+          <Card className="p-6 mb-6 border-t-4 border-t-emerald-500">
+            <div className="mb-4">
+              <h2 className="font-semibold text-gray-900 mb-1">Rechercher une entreprise</h2>
+              <p className="text-sm text-gray-500">
+                Entrez l'URL Welcome to the Jungle ou le nom de l'entreprise
+              </p>
+            </div>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <Input
-                  placeholder="URL WTTJ (ex: https://www.welcometothejungle.com/fr/companies/doctolib) ou nom d'entreprise"
+                  placeholder="Ex: https://www.welcometothejungle.com/fr/companies/doctolib ou Doctolib"
                   value={searchUrl}
                   onChange={(e) => setSearchUrl(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && searchCompany()}
@@ -122,7 +177,7 @@ export default function CompanyIntelligencePage() {
               <Button
                 onClick={searchCompany}
                 disabled={loading}
-                style={{ backgroundColor: '#6366F1', color: 'white' }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 {loading ? (
                   <>
@@ -146,6 +201,119 @@ export default function CompanyIntelligencePage() {
               <p className="mt-3 text-sm text-red-600">{error}</p>
             )}
           </Card>
+
+          {/* Feature Grid - Only show when no company */}
+          {!company && !loading && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Que contient un rapport Company Intelligence ?</h2>
+              <div className="grid md:grid-cols-3 gap-4">
+                <Card className="p-5 border-0 bg-gradient-to-br from-blue-50 to-white">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Donnees RH</h3>
+                  <p className="text-sm text-gray-500">Effectifs, age moyen, parite H/F, date de creation</p>
+                </Card>
+
+                <Card className="p-5 border-0 bg-gradient-to-br from-purple-50 to-white">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Stack Technique</h3>
+                  <p className="text-sm text-gray-500">Technologies, langages, frameworks utilises par l'equipe tech</p>
+                </Card>
+
+                <Card className="p-5 border-0 bg-gradient-to-br from-amber-50 to-white">
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Postes Ouverts</h3>
+                  <p className="text-sm text-gray-500">Liste des offres actives avec type de contrat et remote</p>
+                </Card>
+
+                <Card className="p-5 border-0 bg-gradient-to-br from-green-50 to-white">
+                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Bureaux</h3>
+                  <p className="text-sm text-gray-500">Localisation du siege et des bureaux secondaires</p>
+                </Card>
+
+                <Card className="p-5 border-0 bg-gradient-to-br from-rose-50 to-white">
+                  <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Secteur d'activite</h3>
+                  <p className="text-sm text-gray-500">Industrie, domaine d'expertise et positionnement</p>
+                </Card>
+
+                <Card className="p-5 border-0 bg-gradient-to-br from-cyan-50 to-white">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Liens & Reseaux</h3>
+                  <p className="text-sm text-gray-500">Site web, LinkedIn, Twitter, et autres reseaux sociaux</p>
+                </Card>
+              </div>
+
+              {/* Use Cases */}
+              <div className="mt-8 p-6 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100">
+                <h3 className="font-semibold text-gray-900 mb-4">Cas d'usage</h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">🎯</span>
+                    <div>
+                      <p className="font-medium text-gray-900">Recruteurs / ESN</p>
+                      <p className="text-sm text-gray-500">Preparez vos pitchs commerciaux avec des donnees precises sur les besoins tech</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">💼</span>
+                    <div>
+                      <p className="font-medium text-gray-900">Candidats</p>
+                      <p className="text-sm text-gray-500">Evaluez la culture d'entreprise et le stack technique avant de postuler</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">📊</span>
+                    <div>
+                      <p className="font-medium text-gray-900">Business Dev</p>
+                      <p className="text-sm text-gray-500">Identifiez les entreprises en croissance qui recrutent dans votre domaine</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Example companies */}
+              <div className="mt-6">
+                <p className="text-sm text-gray-500 mb-3">Essayez avec ces entreprises :</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Doctolib', 'Alan', 'Qonto', 'Payfit', 'Swile', 'Back Market'].map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => searchCompanyByName(name)}
+                      className="px-3 py-1.5 rounded-full text-sm bg-white border border-gray-200 hover:border-emerald-500 hover:text-emerald-600 transition-colors"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Company Profile */}
           {company && (
