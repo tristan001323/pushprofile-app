@@ -706,8 +706,9 @@ export default function NewSearchPage() {
                   type="submit"
                   disabled={loading || extracting}
                   className="flex-1"
+                  style={{ backgroundColor: '#6366F1', color: 'white' }}
                 >
-                  {loading ? '⏳ Analyse en cours...' : '🚀 Lancer l\'analyse'}
+                  {loading ? 'Analyse en cours...' : 'Lancer l\'analyse'}
                 </Button>
               </div>
 
