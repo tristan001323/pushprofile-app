@@ -147,9 +147,10 @@ export async function POST(request: NextRequest) {
 
     console.log(`After filtering: ${enrichedContacts.length} valid contacts`)
 
-    // 4. Cache the results
+    // 4. Cache the results AND save to user's contacts
     if (enrichedContacts.length > 0) {
       const cacheEntries = enrichedContacts.map(contact => ({
+        user_id,  // Track which user unlocked this contact
         company_name: company_name.toLowerCase(),
         company_domain: (contact.company_domain || domain).toLowerCase(),
         job_title_searched: 'decision_maker',
