@@ -1,0 +1,527 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import {
+  runApifyActor,
+  APIFY_ACTORS,
+  LinkedInJobOutput,
+  IndeedJobOutput,
+  GlassdoorJobOutput,
+  WTTJJobOutput
+} from '@/lib/apify'
+import { callClaude, cleanJsonResponse } from '@/lib/claude'
+
+const getSupabase = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Missing Supabase credentials')
+  return createClient(url, key)
+}
+const getAdzunaCredentials = () => ({
+  appId: process.env.ADZUNA_APP_ID || '',
+  appKey: process.env.ADZUNA_APP_KEY || ''
+})
+
+// Recruitment agencies to filter out
+const RECRUITMENT_AGENCIES = [
+  'michael page', 'page personnel', 'pagegroup', 'robert half', 'hays', 'randstad', 'adecco', 'manpower',
+  'kelly services', 'experis', 'akkodis', 'modis', 'spring', 'lhh', 'expectra', 'synergie', 'crit',
+  'proman', 'actual', 'partnaire', 'temporis', 'interaction', 'start people', 'menway', 'lynx rh',
+  'free-work', 'free work', 'externatic', 'urban linker', 'talent.io', 'hired', 'triplebyte',
+  'lincoln', 'jp associates', 'freelance.com', 'malt', 'side', 'coopaname', 'keljob', 'jobteaser',
+  'le collectif', 'skillwise', 'happy to meet you', 'htmy', 'ignition program', 'mobiskill',
+  'silkhom', 'altaide', 'mybeautifuljob', 'hunteed', 'opensourcing', 'nexten', 'kicklox',
+  'welovedevs', 'chooseyourboss', 'lesjeudis', 'club freelance', 'comet', 'xor talents',
+  'mindquest', 'wenabi', 'approach people', 'blue coding', 'wesley', 'sthree', 'computer futures',
+  'progressive recruitment', 'real staffing', 'nigel frank', 'jefferson wells', 'aston carter'
+]
+
+interface ParsedCV {
+  target_roles: string[]
+  skills: string[]
+  experience_years: number
+  location: string
+  seniority: string
+  education: string
+  languages: string[]
+}
+
+interface NormalizedJob {
+  search_id: string
+  external_id: string
+  source: string
+  job_url: string
+  job_title: string
+  company_name: string
+  location: string
+  description: string
+  posted_date: string | null
+  matching_details: Record<string, unknown>
+  prefilter_score?: number
+}
+
+// Update processing step
+async function updateStep(supabase: ReturnType<typeof getSupabase>, searchId: string, step: string) {
+  await supabase
+    .from('searches')
+    .update({ processing_step: step })
+    .eq('id', searchId)
+  console.log(`[${searchId}] Step: ${step}`)
+}
+
+// Set error and complete
+async function setError(supabase: ReturnType<typeof getSupabase>, searchId: string, error: string) {
+  await supabase
+    .from('searches')
+    .update({ status: 'error', processing_step: null, error_message: error })
+    .eq('id', searchId)
+}
+
+// Score jobs with Claude Sonnet (needs nuanced reasoning)
+async function scoreTopJobsWithClaude(jobs: NormalizedJob[], cvData: ParsedCV): Promise<Array<{ job_index: number; score: number; justification: string }>> {
+  const top10 = jobs.slice(0, 10)
+  const jobsList = top10.map((job, index) =>
+    `Job ${index + 1}: ${job.job_title} @ ${job.company_name}\nLocation: ${job.location}\nDescription: ${job.description.substring(0, 500)}`
+  ).join('\n\n')
+
+  const prompt = `Tu es un expert en matching CV-job. Analyse ce CV et ces 10 jobs, puis donne un score de 0 à 100 pour chaque job avec justification.\n\nCV du candidat:\n- Rôles ciblés: ${cvData.target_roles.join(', ')}\n- Compétences: ${cvData.skills.join(', ')}\n- Expérience: ${cvData.experience_years} ans\n- Localisation: ${cvData.location}\n- Séniorité: ${cvData.seniority}\n\nJobs à scorer:\n${jobsList}\n\nRetourne UNIQUEMENT un JSON array avec ce format (rien d'autre):\n[\n  {"job_index": 1, "score": 85, "justification": "..."},\n  {"job_index": 2, "score": 78, "justification": "..."}\n]`
+
+  const response = await callClaude({
+    model: 'sonnet',
+    prompt,
+    maxTokens: 2000
+  })
+
+  return JSON.parse(cleanJsonResponse(response.text))
+}
+
+// Fetch Adzuna jobs
+async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+  const { appId, appKey } = getAdzunaCredentials()
+  if (!appId || !appKey) return []
+
+  const location = parsedData.location || 'france'
+  const jobTitle = parsedData.target_roles[0] || 'developer'
+  const baseUrl = 'https://api.adzuna.com/v1/api/jobs/fr/search/1'
+  const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=50&where=${encodeURIComponent(location)}&distance=50&max_days_old=30&what=${encodeURIComponent(jobTitle)}`
+
+  try {
+    const response = await fetch(baseUrl + params)
+    const data = await response.json()
+    if (!response.ok || !data.results) return []
+
+    return data.results.map((job: any) => ({
+      search_id: '',
+      external_id: `adzuna_${job.id}`,
+      source: 'adzuna',
+      job_url: job.redirect_url,
+      job_title: job.title,
+      company_name: job.company?.display_name || 'Unknown',
+      location: job.location?.display_name || 'Remote',
+      description: job.description || '',
+      posted_date: job.created ? new Date(job.created).toISOString().split('T')[0] : null,
+      matching_details: {
+        contract_type: job.contract_type || 'permanent',
+        remote_type: 'on_site',
+        salary_min: job.salary_min || null,
+        salary_max: job.salary_max || null,
+        full_description: job.description
+      },
+      prefilter_score: 50
+    }))
+  } catch (error) {
+    console.error('Adzuna error:', error)
+    return []
+  }
+}
+
+// Fetch LinkedIn jobs
+async function fetchLinkedInJobs(parsedData: ParsedCV, contractTypes?: string[], remoteOptions?: string[]): Promise<NormalizedJob[]> {
+  const input: Record<string, unknown> = {
+    searchQueries: [parsedData.target_roles[0] || 'developer'],
+    location: parsedData.location || 'France',
+    maxResults: 35,
+    publishedAt: 'pastMonth',
+    rows: 35
+  }
+
+  try {
+    const jobs = await runApifyActor<LinkedInJobOutput>({
+      actorId: APIFY_ACTORS.LINKEDIN_JOBS,
+      input,
+      timeoutSecs: 90
+    })
+
+    return jobs.map(job => ({
+      search_id: '',
+      external_id: `linkedin_${job.jobId}`,
+      source: 'linkedin',
+      job_url: job.applyUrl || job.jobUrl,
+      job_title: job.jobTitle,
+      company_name: job.companyName || 'Unknown',
+      location: job.location || 'Remote',
+      description: (job.jobDescription || '').substring(0, 2000),
+      posted_date: job.publishedAt ? job.publishedAt.split('T')[0] : null,
+      matching_details: {
+        contract_type: job.contractType === 'C' ? 'contract' : job.contractType === 'I' ? 'internship' : 'permanent',
+        remote_type: (job.workType || '').toLowerCase().includes('remote') ? 'remote' : 'on_site',
+        salary_min: null,
+        salary_max: null,
+        full_description: job.jobDescription || ''
+      },
+      prefilter_score: 50
+    }))
+  } catch (error) {
+    console.error('LinkedIn error:', error)
+    return []
+  }
+}
+
+// Fetch Indeed jobs
+async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+  const input: Record<string, unknown> = {
+    keyword: parsedData.target_roles[0] || 'developer',
+    location: parsedData.location || 'France',
+    country: 'fr',
+    maxItems: 35,
+    parseCompanyDetails: true
+  }
+
+  try {
+    const jobs = await runApifyActor<IndeedJobOutput>({
+      actorId: APIFY_ACTORS.INDEED_JOBS,
+      input,
+      timeoutSecs: 90
+    })
+
+    return jobs.map(job => ({
+      search_id: '',
+      external_id: `indeed_${job.key}`,
+      source: 'indeed',
+      job_url: job.applyUrl || job.jobUrl,
+      job_title: job.title,
+      company_name: job.company?.companyName || 'Unknown',
+      location: job.location?.city ? `${job.location.city}, ${job.location.country}` : 'Remote',
+      description: (job.description_text || '').substring(0, 2000),
+      posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
+      matching_details: {
+        contract_type: 'permanent',
+        remote_type: 'on_site',
+        salary_min: job.baseSalary_min || null,
+        salary_max: job.baseSalary_max || null,
+        full_description: job.description_text || ''
+      },
+      prefilter_score: 50
+    }))
+  } catch (error) {
+    console.error('Indeed error:', error)
+    return []
+  }
+}
+
+// Fetch Glassdoor jobs
+async function fetchGlassdoorJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+  const input: Record<string, unknown> = {
+    keyword: parsedData.target_roles[0] || 'developer',
+    location: parsedData.location || 'France',
+    maxItems: 35,
+    parseCompanyDetails: true
+  }
+
+  try {
+    const jobs = await runApifyActor<GlassdoorJobOutput>({
+      actorId: APIFY_ACTORS.GLASSDOOR_JOBS,
+      input,
+      timeoutSecs: 90
+    })
+
+    return jobs.map(job => ({
+      search_id: '',
+      external_id: `glassdoor_${job.key}`,
+      source: 'glassdoor',
+      job_url: job.applyUrl || job.jobUrl,
+      job_title: job.title,
+      company_name: job.company?.companyName || 'Unknown',
+      location: job.location_city ? `${job.location_city}, ${job.location_country}` : 'Remote',
+      description: (job.description_text || '').substring(0, 2000),
+      posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
+      matching_details: {
+        contract_type: 'permanent',
+        remote_type: (job.remoteWorkTypes || []).join(' ').toLowerCase().includes('remote') ? 'remote' : 'on_site',
+        salary_min: job.baseSalary_min || null,
+        salary_max: job.baseSalary_max || null,
+        full_description: job.description_text || ''
+      },
+      prefilter_score: 50
+    }))
+  } catch (error) {
+    console.error('Glassdoor error:', error)
+    return []
+  }
+}
+
+// Fetch WTTJ jobs
+async function fetchWTTJJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+  const input: Record<string, unknown> = {
+    query: parsedData.target_roles[0] || 'developer',
+    location: parsedData.location || 'France',
+    maxItems: 35
+  }
+
+  try {
+    const jobs = await runApifyActor<WTTJJobOutput>({
+      actorId: APIFY_ACTORS.WTTJ_JOBS,
+      input,
+      timeoutSecs: 90
+    })
+
+    return jobs.map(job => ({
+      search_id: '',
+      external_id: `wttj_${job.job_id || job.url?.split('/').pop()}`,
+      source: 'wttj',
+      job_url: job.url,
+      job_title: job.title,
+      company_name: job.company || 'Unknown',
+      location: job.location || 'Remote',
+      description: (job.description_text || '').substring(0, 2000),
+      posted_date: job.date_posted ? job.date_posted.split('T')[0] : null,
+      matching_details: {
+        contract_type: (job.contract_type || '').toLowerCase().includes('cdd') ? 'contract' : 'permanent',
+        remote_type: (job.remote || '').toLowerCase().includes('full') ? 'remote' : 'on_site',
+        salary_min: null,
+        salary_max: null,
+        full_description: job.description_text || ''
+      },
+      prefilter_score: 50
+    }))
+  } catch (error) {
+    console.error('WTTJ error:', error)
+    return []
+  }
+}
+
+// Filter agencies and score jobs
+function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchId: string, excludeAgencies: boolean): NormalizedJob[] {
+  let filtered = jobs
+
+  // Filter agencies
+  if (excludeAgencies) {
+    filtered = jobs.filter(job => {
+      const companyName = (job.company_name || '').toLowerCase()
+      const description = (job.description || '').toLowerCase()
+      return !RECRUITMENT_AGENCIES.some(agency => companyName.includes(agency) || description.includes(agency))
+    })
+  }
+
+  // Score each job
+  filtered.forEach(job => {
+    job.search_id = searchId
+    let score = 0
+    const jobText = (job.job_title + ' ' + job.description).toLowerCase()
+    const jobTitle = (job.job_title || '').toLowerCase()
+    const cvSkills = (parsedData.skills || []).map(s => s.toLowerCase())
+    const targetRoles = (parsedData.target_roles || []).map(r => r.toLowerCase())
+
+    // Role matching (25 points)
+    let roleMatch = false
+    targetRoles.forEach(role => {
+      const roleWords = role.split(/\s+/)
+      if (roleWords.some(word => word.length > 2 && jobTitle.includes(word))) roleMatch = true
+    })
+    score += roleMatch ? 25 : 0
+
+    // Skill matching (up to 60 points)
+    let skillMatches = 0
+    cvSkills.forEach(skill => { if (jobText.includes(skill)) skillMatches++ })
+
+    if (cvSkills.length > 0) {
+      if (skillMatches === 0 && !roleMatch) {
+        job.prefilter_score = 0
+        return
+      }
+      score += (skillMatches / cvSkills.length) * 60
+    }
+
+    // Location matching (10 points)
+    const cvLocation = (parsedData.location || '').toLowerCase()
+    if (cvLocation && job.location.toLowerCase().includes(cvLocation)) score += 10
+
+    // Contract type bonus (5 points)
+    if (job.matching_details?.contract_type === 'permanent') score += 5
+
+    job.prefilter_score = Math.round(score)
+  })
+
+  // Deduplicate and sort
+  const seen = new Map<string, boolean>()
+  const result: NormalizedJob[] = []
+
+  for (const job of filtered.sort((a, b) => (b.prefilter_score || 0) - (a.prefilter_score || 0))) {
+    if ((job.prefilter_score || 0) === 0) continue
+    const key = `${job.job_title.toLowerCase().replace(/[^a-z0-9]/g, '')}_${job.company_name.toLowerCase().replace(/[^a-z0-9]/g, '')}`
+    if (!seen.has(key)) {
+      seen.set(key, true)
+      result.push(job)
+      if (result.length >= 50) break
+    }
+  }
+
+  return result
+}
+
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: searchId } = await params
+  const supabase = getSupabase()
+
+  try {
+    // 1. Get search data
+    const { data: search, error: searchError } = await supabase
+      .from('searches')
+      .select('*')
+      .eq('id', searchId)
+      .single()
+
+    if (searchError || !search) {
+      return NextResponse.json({ error: 'Search not found' }, { status: 404 })
+    }
+
+    if (search.status !== 'processing') {
+      return NextResponse.json({ error: 'Search already processed' }, { status: 400 })
+    }
+
+    const parsedData: ParsedCV = search.parsed_data
+    const excludeAgencies = search.exclude_agencies !== false
+
+    // 2. Fetch jobs from all sources in parallel
+    await updateStep(supabase, searchId, 'scraping')
+
+    // Launch all scrapers in parallel with individual step updates
+    const [adzunaJobs, linkedInJobs, indeedJobs, glassdoorJobs, wttjJobs] = await Promise.all([
+      fetchAdzunaJobs(parsedData).then(jobs => {
+        console.log(`[${searchId}] Adzuna: ${jobs.length} jobs`)
+        return jobs
+      }),
+      fetchLinkedInJobs(parsedData).then(jobs => {
+        console.log(`[${searchId}] LinkedIn: ${jobs.length} jobs`)
+        return jobs
+      }),
+      fetchIndeedJobs(parsedData).then(jobs => {
+        console.log(`[${searchId}] Indeed: ${jobs.length} jobs`)
+        return jobs
+      }),
+      fetchGlassdoorJobs(parsedData).then(jobs => {
+        console.log(`[${searchId}] Glassdoor: ${jobs.length} jobs`)
+        return jobs
+      }),
+      fetchWTTJJobs(parsedData).then(jobs => {
+        console.log(`[${searchId}] WTTJ: ${jobs.length} jobs`)
+        return jobs
+      })
+    ])
+
+    const allJobs = [...adzunaJobs, ...linkedInJobs, ...indeedJobs, ...glassdoorJobs, ...wttjJobs]
+    console.log(`[${searchId}] Total raw jobs: ${allJobs.length}`)
+
+    if (allJobs.length === 0) {
+      await supabase
+        .from('searches')
+        .update({ status: 'completed', processing_step: null })
+        .eq('id', searchId)
+      return NextResponse.json({ success: true, matches_inserted: 0 })
+    }
+
+    // 3. Filter and score
+    await updateStep(supabase, searchId, 'filtering')
+    const top50Jobs = filterAndScoreJobs(allJobs, parsedData, searchId, excludeAgencies)
+    console.log(`[${searchId}] After filtering: ${top50Jobs.length} jobs`)
+
+    if (top50Jobs.length === 0) {
+      await supabase
+        .from('searches')
+        .update({ status: 'completed', processing_step: null })
+        .eq('id', searchId)
+      return NextResponse.json({ success: true, matches_inserted: 0 })
+    }
+
+    // 4. Score top 10 with Claude
+    await updateStep(supabase, searchId, 'scoring')
+    let claudeScores: Array<{ job_index: number; score: number; justification: string }> = []
+    try {
+      claudeScores = await scoreTopJobsWithClaude(top50Jobs, parsedData)
+    } catch (error) {
+      console.error(`[${searchId}] Claude scoring failed:`, error)
+      // Continue without Claude scores
+    }
+
+    // 5. Build matches
+    await updateStep(supabase, searchId, 'saving')
+
+    const top10Matches = claudeScores.map((scoreData, index) => {
+      const job = top50Jobs[scoreData.job_index - 1]
+      if (!job) return null
+      return {
+        search_id: searchId,
+        job_title: job.job_title,
+        company_name: job.company_name,
+        location: job.location,
+        posted_date: job.posted_date,
+        job_url: job.job_url,
+        score: scoreData.score,
+        score_type: 'claude_ai',
+        justification: scoreData.justification,
+        status: 'nouveau',
+        external_id: job.external_id,
+        source: job.source,
+        matching_details: job.matching_details,
+        rank: index + 1
+      }
+    }).filter(Boolean)
+
+    const other40Matches = top50Jobs.slice(claudeScores.length > 0 ? 10 : 0, 50).map((job, index) => ({
+      search_id: searchId,
+      job_title: job.job_title,
+      company_name: job.company_name,
+      location: job.location,
+      posted_date: job.posted_date,
+      job_url: job.job_url,
+      score: job.prefilter_score || 0,
+      score_type: 'js_prefilter',
+      justification: 'Match basé sur compétences et critères',
+      status: 'nouveau',
+      external_id: job.external_id,
+      source: job.source,
+      matching_details: job.matching_details,
+      rank: (claudeScores.length > 0 ? 10 : 0) + index + 1
+    }))
+
+    const allMatches = [...top10Matches, ...other40Matches]
+
+    // 6. Save matches
+    if (allMatches.length > 0) {
+      const { error: matchesError } = await supabase
+        .from('matches')
+        .insert(allMatches)
+
+      if (matchesError) {
+        console.error(`[${searchId}] Error saving matches:`, matchesError)
+      }
+    }
+
+    // 7. Mark as completed
+    await supabase
+      .from('searches')
+      .update({ status: 'completed', processing_step: null })
+      .eq('id', searchId)
+
+    console.log(`[${searchId}] Completed with ${allMatches.length} matches`)
+
+    return NextResponse.json({
+      success: true,
+      matches_inserted: allMatches.length
+    })
+
+  } catch (error) {
+    console.error(`[${searchId}] Processing error:`, error)
+    await setError(supabase, searchId, error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
+  }
+}

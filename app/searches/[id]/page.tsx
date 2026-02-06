@@ -32,12 +32,56 @@ type Match = {
     full_description?: string
     recruiter_name?: string
     recruiter_url?: string
-    post_engagement?: {
-      likes?: number
-      comments?: number
-      shares?: number
-    }
+    poster_name?: string
+    poster_url?: string
+    experience_level?: string
+    sector?: string
+    company_rating?: number
+    company_industry?: string
+    company_size?: string
+    is_easy_apply?: boolean
+    salary_text?: string
+    company_slug?: string
+    enriched_contacts?: EnrichedContact[]
   }
+}
+
+type EnrichedContact = {
+  full_name: string | null
+  first_name: string | null
+  last_name: string | null
+  job_title: string | null
+  email: string | null
+  email_status: string | null
+  phone: string | null
+  linkedin_url: string | null
+  company_name: string | null
+}
+
+// Processing step indicator component
+function StepItem({ label, done, active }: { label: string; done: boolean; active: boolean }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+          done
+            ? 'bg-green-500 text-white'
+            : active
+            ? 'bg-indigo-500 text-white animate-pulse'
+            : 'bg-gray-200 text-gray-400'
+        }`}
+      >
+        {done ? '✓' : active ? '...' : '○'}
+      </div>
+      <span
+        className={`text-sm ${
+          done ? 'text-green-600' : active ? 'text-indigo-600 font-medium' : 'text-gray-400'
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+  )
 }
 
 export default function SearchDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -48,11 +92,59 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna' | 'indeed' | 'linkedin_post'>('all')
+  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna' | 'indeed' | 'glassdoor' | 'wttj'>('all')
+  const [enrichedContacts, setEnrichedContacts] = useState<EnrichedContact[]>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [contactsError, setContactsError] = useState<string | null>(null)
 
+  // Processing state
+  const [searchStatus, setSearchStatus] = useState<'processing' | 'completed' | 'error'>('processing')
+  const [processingStep, setProcessingStep] = useState<string | null>(null)
+  const [stepLabel, setStepLabel] = useState<string>('')
+  const [progress, setProgress] = useState(0)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // Poll for status while processing
   useEffect(() => {
-    loadMatches()
-  }, [])
+    let pollInterval: NodeJS.Timeout | null = null
+
+    const pollStatus = async () => {
+      try {
+        const response = await fetch(`/api/search-status/${resolvedParams.id}`)
+        const data = await response.json()
+
+        if (response.ok) {
+          setSearchName(data.name || searchName)
+          setSearchStatus(data.status)
+          setProcessingStep(data.processing_step)
+          setStepLabel(data.step_label || '')
+          setProgress(data.progress || 0)
+          setErrorMessage(data.error_message)
+
+          // If completed, stop polling and load matches
+          if (data.status === 'completed') {
+            if (pollInterval) clearInterval(pollInterval)
+            loadMatches()
+          } else if (data.status === 'error') {
+            if (pollInterval) clearInterval(pollInterval)
+            setLoading(false)
+          }
+        }
+      } catch (error) {
+        console.error('Error polling status:', error)
+      }
+    }
+
+    // Initial check
+    pollStatus()
+
+    // Start polling
+    pollInterval = setInterval(pollStatus, 2000)
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+    }
+  }, [resolvedParams.id])
 
   const loadMatches = async () => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -90,13 +182,16 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     if (filter === 'linkedin') return match.source === 'linkedin'
     if (filter === 'adzuna') return match.source === 'adzuna'
     if (filter === 'indeed') return match.source === 'indeed'
-    if (filter === 'linkedin_post') return match.source === 'linkedin_post'
+    if (filter === 'glassdoor') return match.source === 'glassdoor'
+    if (filter === 'wttj') return match.source === 'wttj'
     return true
   })
 
   const openPanel = async (match: Match) => {
     setSelectedMatch(match)
     setIsPanelOpen(true)
+    setEnrichedContacts([])  // Reset contacts when opening new panel
+    setContactsError(null)
 
     if (!match.viewed_at) {
       const now = new Date().toISOString()
@@ -181,6 +276,137 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     } catch {
       return null
     }
+  }
+
+  const enrichContacts = async (companyName: string, matchId: string) => {
+    setContactsLoading(true)
+    setContactsError(null)
+    setEnrichedContacts([])
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setContactsError('Vous devez être connecté')
+        return
+      }
+
+      const response = await fetch('/api/enrich-contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_name: companyName,
+          match_id: matchId,
+          user_id: session.user.id
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la récupération des contacts')
+      }
+
+      setEnrichedContacts(data.contacts || [])
+
+      // Update local match state with enriched contacts
+      if (selectedMatch && data.contacts?.length > 0) {
+        const updatedMatch = {
+          ...selectedMatch,
+          matching_details: {
+            ...selectedMatch.matching_details,
+            enriched_contacts: data.contacts
+          }
+        }
+        setSelectedMatch(updatedMatch)
+        setMatches(prev => prev.map(m => m.id === matchId ? updatedMatch : m))
+      }
+    } catch (error) {
+      console.error('Error enriching contacts:', error)
+      setContactsError(error instanceof Error ? error.message : 'Erreur inconnue')
+    } finally {
+      setContactsLoading(false)
+    }
+  }
+
+  // Show processing state
+  if (loading && searchStatus === 'processing') {
+    return (
+      <AppLayout>
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Card className="max-w-md w-full p-8">
+            <div className="text-center">
+              <h2 className="text-xl font-bold mb-2" style={{ color: '#1D3557' }}>
+                {searchName || 'Recherche en cours...'}
+              </h2>
+              <p className="text-sm mb-6" style={{ color: '#457B9D' }}>
+                {stepLabel || 'Initialisation...'}
+              </p>
+
+              {/* Progress bar */}
+              <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+                <div
+                  className="h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%`, backgroundColor: '#6366F1' }}
+                />
+              </div>
+
+              <p className="text-xs" style={{ color: '#9CA3AF' }}>{progress}%</p>
+
+              {/* Processing steps indicator */}
+              <div className="mt-8 space-y-3 text-left">
+                <StepItem
+                  label="Analyse du CV"
+                  done={progress > 10}
+                  active={processingStep === 'parsing'}
+                />
+                <StepItem
+                  label="Recherche LinkedIn, Indeed, Glassdoor, WTTJ"
+                  done={progress > 50}
+                  active={processingStep === 'scraping'}
+                />
+                <StepItem
+                  label="Filtrage et déduplication"
+                  done={progress > 70}
+                  active={processingStep === 'filtering'}
+                />
+                <StepItem
+                  label="Scoring IA des meilleurs matchs"
+                  done={progress > 85}
+                  active={processingStep === 'scoring'}
+                />
+                <StepItem
+                  label="Sauvegarde des résultats"
+                  done={progress >= 100}
+                  active={processingStep === 'saving'}
+                />
+              </div>
+            </div>
+          </Card>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  // Show error state
+  if (searchStatus === 'error') {
+    return (
+      <AppLayout>
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Card className="max-w-md w-full p-8 text-center">
+            <div className="text-red-500 text-5xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold mb-2" style={{ color: '#1D3557' }}>
+              Erreur lors de la recherche
+            </h2>
+            <p className="text-sm mb-6" style={{ color: '#EF4444' }}>
+              {errorMessage || 'Une erreur est survenue'}
+            </p>
+            <Button onClick={() => router.push('/new-search')}>
+              Nouvelle recherche
+            </Button>
+          </Card>
+        </div>
+      </AppLayout>
+    )
   }
 
   if (loading) {
@@ -278,18 +504,26 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   Indeed ({matches.filter(m => m.source === 'indeed').length})
                 </button>
               )}
-              {matches.some(m => m.source === 'linkedin_post') && (
+              {matches.some(m => m.source === 'glassdoor') && (
                 <button
-                  onClick={() => setFilter('linkedin_post')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
-                    filter === 'linkedin_post' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setFilter('glassdoor')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    filter === 'glassdoor' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
-                  style={filter === 'linkedin_post' ? { backgroundColor: '#0A66C2' } : {}}
+                  style={filter === 'glassdoor' ? { backgroundColor: '#0CAA41' } : {}}
                 >
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                  </svg>
-                  LinkedIn Post ({matches.filter(m => m.source === 'linkedin_post').length})
+                  Glassdoor ({matches.filter(m => m.source === 'glassdoor').length})
+                </button>
+              )}
+              {matches.some(m => m.source === 'wttj') && (
+                <button
+                  onClick={() => setFilter('wttj')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    filter === 'wttj' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  style={filter === 'wttj' ? { backgroundColor: '#FFCD00', color: '#1D1D1D' } : {}}
+                >
+                  WTTJ ({matches.filter(m => m.source === 'wttj').length})
                 </button>
               )}
             </div>
@@ -335,18 +569,13 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                         )}
                         {match.source && (
                           <span
-                            className="px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
+                            className="px-2 py-1 rounded text-xs font-medium"
                             style={{
-                              backgroundColor: match.source === 'linkedin_post' ? '#0A66C2' : match.source === 'linkedin' ? '#0A66C2' : match.source === 'indeed' ? '#6B5CE7' : '#FF6B35',
-                              color: 'white'
+                              backgroundColor: match.source === 'linkedin' ? '#0A66C2' : match.source === 'indeed' ? '#6B5CE7' : match.source === 'glassdoor' ? '#0CAA41' : match.source === 'wttj' ? '#FFCD00' : '#FF6B35',
+                              color: match.source === 'wttj' ? '#1D1D1D' : 'white'
                             }}
                           >
-                            {match.source === 'linkedin_post' && (
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                            {match.source === 'linkedin_post' ? 'LinkedIn Post' : match.source === 'linkedin' ? 'LinkedIn' : match.source === 'indeed' ? 'Indeed' : 'Adzuna'}
+                            {match.source === 'linkedin' ? 'LinkedIn' : match.source === 'indeed' ? 'Indeed' : match.source === 'glassdoor' ? 'Glassdoor' : match.source === 'wttj' ? 'WTTJ' : 'Adzuna'}
                           </span>
                         )}
                       </div>
@@ -429,18 +658,13 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   )}
                   {selectedMatch.source && (
                     <span
-                      className="px-3 py-1 rounded text-sm font-medium flex items-center gap-1"
+                      className="px-3 py-1 rounded text-sm font-medium"
                       style={{
-                        backgroundColor: selectedMatch.source === 'linkedin_post' ? '#0A66C2' : selectedMatch.source === 'linkedin' ? '#0A66C2' : selectedMatch.source === 'indeed' ? '#6B5CE7' : '#FF6B35',
-                        color: 'white'
+                        backgroundColor: selectedMatch.source === 'linkedin' ? '#0A66C2' : selectedMatch.source === 'indeed' ? '#6B5CE7' : selectedMatch.source === 'glassdoor' ? '#0CAA41' : selectedMatch.source === 'wttj' ? '#FFCD00' : '#FF6B35',
+                        color: selectedMatch.source === 'wttj' ? '#1D1D1D' : 'white'
                       }}
                     >
-                      {selectedMatch.source === 'linkedin_post' && (
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                      {selectedMatch.source === 'linkedin_post' ? 'LinkedIn Post' : selectedMatch.source === 'linkedin' ? 'LinkedIn' : selectedMatch.source === 'indeed' ? 'Indeed' : 'Adzuna'}
+                      {selectedMatch.source === 'linkedin' ? 'LinkedIn' : selectedMatch.source === 'indeed' ? 'Indeed' : selectedMatch.source === 'glassdoor' ? 'Glassdoor' : selectedMatch.source === 'wttj' ? 'WTTJ' : 'Adzuna'}
                     </span>
                   )}
                 </div>
@@ -505,12 +729,6 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                     </p>
                   </div>
                 )}
-                {selectedMatch.source === 'linkedin_post' && selectedMatch.matching_details?.recruiter_name && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#457B9D' }}>Publie par</p>
-                    <p className="font-medium" style={{ color: '#1D3557' }}>{selectedMatch.matching_details.recruiter_name}</p>
-                  </div>
-                )}
               </div>
 
               {/* Stacks / Technologies */}
@@ -534,39 +752,10 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 </div>
               )}
 
-              {/* Engagement metrics for LinkedIn Posts */}
-              {selectedMatch.source === 'linkedin_post' && selectedMatch.matching_details?.post_engagement && (
-                <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F0F7FF' }}>
-                  <h3 className="font-semibold mb-3" style={{ color: '#0A66C2' }}>Engagement du post</h3>
-                  <div className="flex gap-6">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" style={{ color: '#0A66C2' }} fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                      </svg>
-                      <span className="text-sm font-medium" style={{ color: '#1D3557' }}>{selectedMatch.matching_details.post_engagement.likes || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" style={{ color: '#0A66C2' }} fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-sm font-medium" style={{ color: '#1D3557' }}>{selectedMatch.matching_details.post_engagement.comments || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" style={{ color: '#0A66C2' }} fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                      </svg>
-                      <span className="text-sm font-medium" style={{ color: '#1D3557' }}>{selectedMatch.matching_details.post_engagement.shares || 0}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Justification */}
               {selectedMatch.justification && (
                 <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F1FAEE' }}>
-                  <h3 className="font-semibold mb-2" style={{ color: '#1D3557' }}>
-                    {selectedMatch.source === 'linkedin_post' ? 'Description de l\'offre' : 'Analyse de correspondance'}
-                  </h3>
+                  <h3 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Analyse de correspondance</h3>
                   <p className="text-sm" style={{ color: '#457B9D' }}>{selectedMatch.justification}</p>
                 </div>
               )}
@@ -587,28 +776,114 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 </Select>
               </div>
 
+              {/* Contacts - Only for TOP 10 */}
+              {selectedMatch.rank <= 10 && (
+                <div className="mb-6 p-4 rounded-lg border-2 border-dashed" style={{ borderColor: '#6366F1', backgroundColor: '#F8F7FF' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold flex items-center gap-2" style={{ color: '#1D3557' }}>
+                      <svg className="w-5 h-5" style={{ color: '#6366F1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      Décideurs chez {selectedMatch.company_name}
+                    </h3>
+                    {selectedMatch.matching_details?.enriched_contacts || enrichedContacts.length > 0 ? (
+                      <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
+                        Débloqué
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Show enriched contacts if available */}
+                  {(selectedMatch.matching_details?.enriched_contacts || enrichedContacts).length > 0 ? (
+                    <div className="space-y-3">
+                      {(selectedMatch.matching_details?.enriched_contacts || enrichedContacts).slice(0, 5).map((contact, index) => (
+                        <div key={index} className="bg-white p-3 rounded-lg shadow-sm">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium" style={{ color: '#1D3557' }}>{contact.full_name || 'Nom inconnu'}</p>
+                              <p className="text-sm" style={{ color: '#457B9D' }}>{contact.job_title || 'Poste non spécifié'}</p>
+                            </div>
+                            {contact.linkedin_url && (
+                              <a
+                                href={contact.linkedin_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 rounded hover:bg-gray-100"
+                              >
+                                <svg className="w-5 h-5" style={{ color: '#0A66C2' }} fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                          {(contact.email || contact.phone) && (
+                            <div className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap gap-3">
+                              {contact.email && (
+                                <a href={`mailto:${contact.email}`} className="flex items-center gap-1 text-sm hover:underline" style={{ color: '#6366F1' }}>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                  {contact.email}
+                                </a>
+                              )}
+                              {contact.phone && (
+                                <a href={`tel:${contact.phone}`} className="flex items-center gap-1 text-sm hover:underline" style={{ color: '#6366F1' }}>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                  </svg>
+                                  {contact.phone}
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      {contactsError && (
+                        <p className="text-sm text-red-600 mb-3">{contactsError}</p>
+                      )}
+                      <Button
+                        onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id)}
+                        disabled={contactsLoading}
+                        className="w-full"
+                        style={{ backgroundColor: '#6366F1', color: 'white' }}
+                      >
+                        {contactsLoading ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Recherche des contacts...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Débloquer les contacts
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-center mt-2" style={{ color: '#457B9D' }}>
+                        Trouvez les emails et téléphones des décideurs
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Liens */}
               <div className="space-y-3">
-                {selectedMatch.source === 'linkedin_post' ? (
-                  <Button
-                    onClick={() => window.open(selectedMatch.job_url, '_blank')}
-                    className="w-full"
-                    style={{ backgroundColor: '#0A66C2', color: 'white' }}
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                    </svg>
-                    Voir le post LinkedIn
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => window.open(selectedMatch.job_url, '_blank')}
-                    className="w-full"
-                    style={{ backgroundColor: '#6366F1', color: 'white' }}
-                  >
-                    Voir l'offre complète →
-                  </Button>
-                )}
+                <Button
+                  onClick={() => window.open(selectedMatch.job_url, '_blank')}
+                  className="w-full"
+                  style={{ backgroundColor: '#6366F1', color: 'white' }}
+                >
+                  Voir l'offre complète →
+                </Button>
 
                 {selectedMatch.matching_details?.recruiter_url && (
                   <Button
@@ -619,10 +894,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                     <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                     </svg>
-                    {selectedMatch.source === 'linkedin_post'
-                      ? `Contacter ${selectedMatch.matching_details.recruiter_name || 'l\'auteur'}`
-                      : 'Contacter le recruteur'
-                    }
+                    Contacter le recruteur
                   </Button>
                 )}
 

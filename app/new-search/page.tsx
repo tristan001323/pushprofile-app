@@ -11,41 +11,43 @@ import AppLayout from '@/components/AppLayout'
 import { supabase } from '@/lib/supabase'
 
 // Messages de chargement
-const LOADING_MESSAGES = [
+const LOADING_MESSAGES_CV = [
+  { text: "Analyse du CV avec l'IA...", icon: "🧠" },
   { text: "Connexion aux jobboards...", icon: "🔌" },
-  { text: "Recherche sur Adzuna...", icon: "🔍" },
   { text: "Recherche sur LinkedIn...", icon: "💼" },
   { text: "Recherche sur Indeed...", icon: "🏢" },
+  { text: "Recherche sur Glassdoor...", icon: "🔍" },
+  { text: "Recherche sur WTTJ...", icon: "🌴" },
   { text: "Analyse des offres trouvées...", icon: "📊" },
   { text: "Filtrage des cabinets de recrutement...", icon: "🚫" },
   { text: "Scoring des meilleures offres avec l'IA...", icon: "🤖" },
   { text: "Préparation de vos résultats...", icon: "✨" },
 ]
 
-const LINKEDIN_POSTS_LOADING_MESSAGES = [
-  { text: "Construction des requêtes de recherche...", icon: "🔧" },
-  { text: "Recherche de posts LinkedIn...", icon: "🔍" },
-  { text: "Scraping des publications en cours...", icon: "📡" },
-  { text: "Collecte des posts pertinents...", icon: "📥" },
-  { text: "Analyse des publications avec l'IA...", icon: "📝" },
-  { text: "Extraction des offres d'emploi...", icon: "🤖" },
-  { text: "Identification des postes ouverts...", icon: "🎯" },
-  { text: "Filtrage et scoring des résultats...", icon: "📊" },
-  { text: "Encore quelques instants...", icon: "⏳" },
+const LOADING_MESSAGES_LINKEDIN = [
+  { text: "Récupération du profil LinkedIn...", icon: "🔗" },
+  { text: "Extraction des compétences...", icon: "🎯" },
+  { text: "Connexion aux jobboards...", icon: "🔌" },
+  { text: "Recherche sur LinkedIn...", icon: "💼" },
+  { text: "Recherche sur Indeed...", icon: "🏢" },
+  { text: "Recherche sur Glassdoor...", icon: "🔍" },
+  { text: "Recherche sur WTTJ...", icon: "🌴" },
+  { text: "Analyse des offres trouvées...", icon: "📊" },
+  { text: "Filtrage des cabinets de recrutement...", icon: "🚫" },
+  { text: "Scoring des meilleures offres avec l'IA...", icon: "🤖" },
   { text: "Préparation de vos résultats...", icon: "✨" },
 ]
+
+const LOADING_MESSAGES = LOADING_MESSAGES_CV // Default
 
 export default function NewSearchPage() {
   const router = useRouter()
 
-  // Onglet actif
-  const [activeTab, setActiveTab] = useState<'standard' | 'linkedin'>('standard')
-
-  // États du formulaire standard
+  // États du formulaire
   const [searchTitle, setSearchTitle] = useState('')
   const [excludeAgencies, setExcludeAgencies] = useState(true)
 
-  // Champs Standard
+  // Champs de recherche
   const [jobTitle, setJobTitle] = useState('')
   const [location, setLocation] = useState('')
   const [contractTypes, setContractTypes] = useState<string[]>([])
@@ -58,24 +60,27 @@ export default function NewSearchPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
 
+  // LinkedIn URL
+  const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [inputMode, setInputMode] = useState<'cv' | 'linkedin'>('cv')
+
   // Récurrence
   const [recurrence, setRecurrence] = useState<'none' | '2days' | 'weekly' | 'monthly'>('none')
-
-  // LinkedIn Posts search
-  const [lpSearchTitle, setLpSearchTitle] = useState('')
-  const [lpKeywords, setLpKeywords] = useState('')
-  const [lpLocation, setLpLocation] = useState('')
-  const [lpContractTypes, setLpContractTypes] = useState<string[]>([])
-  const [lpExcludeAgencies, setLpExcludeAgencies] = useState(true)
-  const [lpPostedLimit, setLpPostedLimit] = useState<string>('week')
-  const [lpLoading, setLpLoading] = useState(false)
-  const [lpError, setLpError] = useState('')
-  const [lpLoadingMessageIndex, setLpLoadingMessageIndex] = useState(0)
 
   // États UI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+
+  // Get the appropriate loading messages based on input mode
+  const getLoadingMessages = () => {
+    if (linkedinUrl && linkedinUrl.trim().length > 0) {
+      return LOADING_MESSAGES_LINKEDIN
+    }
+    return LOADING_MESSAGES_CV
+  }
+
+  const currentLoadingMessages = getLoadingMessages()
 
   // Cycle through loading messages
   useEffect(() => {
@@ -84,31 +89,18 @@ export default function NewSearchPage() {
       return
     }
 
+    const messages = linkedinUrl && linkedinUrl.trim().length > 0
+      ? LOADING_MESSAGES_LINKEDIN
+      : LOADING_MESSAGES_CV
+
     const interval = setInterval(() => {
       setLoadingMessageIndex(prev =>
-        prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev
+        prev < messages.length - 1 ? prev + 1 : prev
       )
     }, 4000)
 
     return () => clearInterval(interval)
-  }, [loading])
-
-  // Cycle through LinkedIn posts loading messages
-  useEffect(() => {
-    if (!lpLoading) {
-      setLpLoadingMessageIndex(0)
-      return
-    }
-
-    const interval = setInterval(() => {
-      setLpLoadingMessageIndex(prev => {
-        if (prev >= LINKEDIN_POSTS_LOADING_MESSAGES.length - 1) return 4
-        return prev + 1
-      })
-    }, 10000)
-
-    return () => clearInterval(interval)
-  }, [lpLoading])
+  }, [loading, linkedinUrl])
 
   // Extraction texte PDF
   const extractPdfText = async (file: File): Promise<string> => {
@@ -181,6 +173,12 @@ export default function NewSearchPage() {
     setCvText('')
   }
 
+  // Validation LinkedIn URL
+  const isValidLinkedInUrl = (url: string): boolean => {
+    const pattern = /^https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+\/?(\?.*)?$/
+    return pattern.test(url)
+  }
+
   // Validation formulaire
   const validateForm = (): boolean => {
     if (!searchTitle.trim()) {
@@ -188,62 +186,26 @@ export default function NewSearchPage() {
       return false
     }
 
-    if (!cvText && !jobTitle && !location && !brief) {
-      setError('Remplissez au moins un champ (CV ou critères de recherche)')
+    // Check if we have at least one valid input source
+    const hasCV = cvText && cvText.trim().length > 0
+    const hasLinkedIn = linkedinUrl && linkedinUrl.trim().length > 0
+    const hasManualCriteria = jobTitle || location || brief
+
+    if (!hasCV && !hasLinkedIn && !hasManualCriteria) {
+      setError('Remplissez au moins un champ (CV, URL LinkedIn, ou critères de recherche)')
+      return false
+    }
+
+    // Validate LinkedIn URL format if provided
+    if (hasLinkedIn && !isValidLinkedInUrl(linkedinUrl)) {
+      setError('URL LinkedIn invalide. Format attendu: https://linkedin.com/in/nom-prenom')
       return false
     }
 
     return true
   }
 
-  // Soumission LinkedIn Posts
-  const handleLinkedInPostsSubmit = async () => {
-    setLpError('')
-
-    if (!lpKeywords.trim()) {
-      setLpError('Les mots-clés sont obligatoires')
-      return
-    }
-
-    setLpLoading(true)
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setLpError('Vous devez être connecté pour lancer une recherche')
-        setLpLoading(false)
-        return
-      }
-
-      const response = await fetch('/api/search-linkedin-posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: lpSearchTitle || null,
-          keywords: lpKeywords,
-          location: lpLocation || null,
-          contract_types: lpContractTypes.length > 0 ? lpContractTypes : null,
-          posted_limit: lpPostedLimit,
-          exclude_agencies: lpExcludeAgencies,
-          user_id: session.user.id,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la recherche')
-      }
-
-      router.push(`/searches/${data.search_id}`)
-    } catch (err: any) {
-      setLpError(err.message || 'Une erreur est survenue')
-    } finally {
-      setLpLoading(false)
-    }
-  }
-
-  // Soumission du formulaire standard
+  // Soumission du formulaire
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -260,6 +222,11 @@ export default function NewSearchPage() {
         return
       }
 
+      // Determine input type
+      const hasLinkedIn = linkedinUrl && linkedinUrl.trim().length > 0
+      const hasCV = cvText && cvText.trim().length > 0
+      const inputType = hasLinkedIn ? 'linkedin' : hasCV ? 'cv' : 'manual'
+
       const response = await fetch('/api/analyze-cv', {
         method: 'POST',
         headers: {
@@ -268,6 +235,7 @@ export default function NewSearchPage() {
         body: JSON.stringify({
           name: searchTitle,
           search_type: 'both',
+          input_type: inputType,
           exclude_agencies: excludeAgencies,
 
           job_title: jobTitle || null,
@@ -278,6 +246,7 @@ export default function NewSearchPage() {
           brief: brief || null,
 
           cv_text: cvText || null,
+          linkedin_url: linkedinUrl || null,
 
           recurrence: recurrence !== 'none' ? recurrence : null,
 
@@ -301,8 +270,6 @@ export default function NewSearchPage() {
     }
   }
 
-  const accentColor = activeTab === 'standard' ? '#6366F1' : '#0A66C2'
-
   return (
     <AppLayout>
       <div className="p-4 md:p-8">
@@ -311,426 +278,184 @@ export default function NewSearchPage() {
           {/* Page Header */}
           <h1 className="text-3xl font-bold text-text mb-2">Nouvelle Recherche</h1>
           <p className="mb-6" style={{ color: '#457B9D' }}>
-            Trouvez les meilleures opportunités pour votre profil ou vos critères
+            Trouvez les meilleures opportunités sur LinkedIn, Indeed, Glassdoor et WTTJ
           </p>
 
-          {/* Segmented Control */}
-          <div className="flex bg-gray-100 rounded-xl p-1.5 mb-6 gap-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('standard')}
-              className={`flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-lg transition-all duration-300 ${
-                activeTab === 'standard'
-                  ? 'bg-white shadow-sm'
-                  : 'hover:bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <svg className={`w-4 h-4 ${activeTab === 'standard' ? 'text-indigo-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <span className={`text-sm font-semibold ${activeTab === 'standard' ? 'text-indigo-600' : 'text-gray-500'}`}>
-                  Recherche standard
-                </span>
-              </div>
-              <span className={`text-xs ${activeTab === 'standard' ? 'text-gray-500' : 'text-gray-400'}`}>
-                LinkedIn, Indeed et autres jobboards
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('linkedin')}
-              className={`flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-lg transition-all duration-300 ${
-                activeTab === 'linkedin'
-                  ? 'bg-white shadow-sm'
-                  : 'hover:bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <svg className={`w-4 h-4 ${activeTab === 'linkedin' ? '' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 24 24" style={activeTab === 'linkedin' ? { color: '#0A66C2' } : {}}>
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                </svg>
-                <span className={`text-sm font-semibold`} style={activeTab === 'linkedin' ? { color: '#0A66C2' } : { color: '#9CA3AF' }}>
-                  Posts LinkedIn
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: '#0A66C2' }}>BETA</span>
-              </div>
-              <span className={`text-xs ${activeTab === 'linkedin' ? 'text-gray-500' : 'text-gray-400'}`}>
-                Offres publiees directement par les recruteurs
-              </span>
-            </button>
-          </div>
-
           {/* Card unique avec accent top border */}
-          <Card
-            className="p-4 md:p-8 border-t-4 transition-colors duration-300"
-            style={{ borderTopColor: accentColor }}
-          >
-            {activeTab === 'standard' ? (
-              /* ========== FORMULAIRE STANDARD ========== */
-              <form onSubmit={handleSubmit} className="space-y-6">
+          <Card className="p-4 md:p-8 border-t-4 border-indigo-500">
+            <form onSubmit={handleSubmit} className="space-y-6">
 
-                {/* Titre de la recherche */}
-                <div>
-                  <Label htmlFor="searchTitle" className="text-lg font-semibold">
-                    Titre de la recherche <span className="text-accent">*</span>
-                  </Label>
-                  <Input
-                    id="searchTitle"
-                    value={searchTitle}
-                    onChange={(e) => setSearchTitle(e.target.value)}
-                    placeholder="Ex: Dev React Senior - Janvier 2026"
-                    className="mt-2"
-                    required
-                  />
+              {/* Titre de la recherche */}
+              <div>
+                <Label htmlFor="searchTitle" className="text-lg font-semibold">
+                  Titre de la recherche <span className="text-accent">*</span>
+                </Label>
+                <Input
+                  id="searchTitle"
+                  value={searchTitle}
+                  onChange={(e) => setSearchTitle(e.target.value)}
+                  placeholder="Ex: Dev React Senior - Janvier 2026"
+                  className="mt-2"
+                  required
+                />
+              </div>
+
+              {/* Profil du candidat : CV ou LinkedIn */}
+              <div className="p-5 bg-secondary rounded-lg">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-semibold text-base">Profil du candidat</h3>
+                  <span className="text-xs text-muted">- optionnel</span>
                 </div>
 
-                {/* CV Upload */}
-                <div className="p-5 bg-secondary rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <h3 className="font-semibold text-base">CV</h3>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600">BETA</span>
-                    <span className="text-xs text-muted">- optionnel</span>
-                  </div>
-                  <Label htmlFor="fileUpload" className="cursor-pointer">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-accent transition-colors">
-                      {uploadedFile ? (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">✅ {uploadedFile.name}</p>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={removeFile}
-                          >
-                            Supprimer
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <p className="text-sm">
-                            📁 <span className="text-accent underline">Parcourir</span> ou déposer un fichier ici
-                          </p>
-                          <p className="text-xs text-muted mt-1">
-                            PDF, DOCX ou TXT (max 5MB)
-                          </p>
-                        </>
-                      )}
-                    </div>
-                    <input
-                      id="fileUpload"
-                      type="file"
-                      accept=".pdf,.docx,.doc,.txt"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </Label>
-
-                  {extracting && (
-                    <p className="text-sm text-muted mt-2">⏳ Extraction en cours...</p>
-                  )}
+                {/* Tabs CV / LinkedIn */}
+                <div className="flex bg-gray-100 rounded-xl p-1 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setInputMode('cv')}
+                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      inputMode === 'cv'
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    📄 Upload CV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputMode('linkedin')}
+                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+                      inputMode === 'linkedin'
+                        ? 'bg-white shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    style={inputMode === 'linkedin' ? { color: '#0A66C2' } : {}}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    URL LinkedIn
+                  </button>
                 </div>
 
-                {/* Critères de recherche */}
-                <div className="p-5 bg-secondary rounded-lg space-y-4">
-                  <h3 className="font-semibold text-base">Critères de recherche (optionnel)</h3>
+                {/* CV Upload Mode */}
+                {inputMode === 'cv' && (
+                  <>
+                    <Label htmlFor="fileUpload" className="cursor-pointer">
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-accent transition-colors">
+                        {uploadedFile ? (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">✅ {uploadedFile.name}</p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={removeFile}
+                            >
+                              Supprimer
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-sm">
+                              📁 <span className="text-accent underline">Parcourir</span> ou déposer un fichier ici
+                            </p>
+                            <p className="text-xs text-muted mt-1">
+                              PDF, DOCX ou TXT (max 5MB)
+                            </p>
+                          </>
+                        )}
+                      </div>
+                      <input
+                        id="fileUpload"
+                        type="file"
+                        accept=".pdf,.docx,.doc,.txt"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </Label>
 
-                  {/* Grille 3 colonnes */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="jobTitle">Titre du job</Label>
+                    {extracting && (
+                      <p className="text-sm text-muted mt-2">⏳ Extraction en cours...</p>
+                    )}
+                  </>
+                )}
+
+                {/* LinkedIn URL Mode */}
+                {inputMode === 'linkedin' && (
+                  <div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                        </svg>
+                      </div>
                       <Input
-                        id="jobTitle"
-                        value={jobTitle}
-                        onChange={(e) => setJobTitle(e.target.value)}
-                        placeholder="Ex: Product Owner"
-                        className="mt-1"
+                        value={linkedinUrl}
+                        onChange={(e) => setLinkedinUrl(e.target.value)}
+                        placeholder="https://linkedin.com/in/jean-dupont"
+                        className="pl-10"
                       />
                     </div>
-
-                    <div>
-                      <Label htmlFor="location">Lieu</Label>
-                      <Input
-                        id="location"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        placeholder="Ex: Paris"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="seniority">Séniorité</Label>
-                      <select
-                        id="seniority"
-                        value={seniority}
-                        onChange={(e) => setSeniority(e.target.value)}
-                        className="mt-1 w-full px-3 py-2 border rounded-md"
-                      >
-                        <option value="">Choisir...</option>
-                        <option value="junior">Junior (0-2 ans)</option>
-                        <option value="confirmé">Confirmé (2-5 ans)</option>
-                        <option value="senior">Senior (5+ ans)</option>
-                        <option value="expert">Expert (10+ ans)</option>
-                      </select>
-                    </div>
+                    <p className="text-xs text-muted mt-2">
+                      Collez l'URL du profil LinkedIn du candidat. PushProfile extraira automatiquement les compétences, expériences et critères de recherche.
+                    </p>
+                    {linkedinUrl && !isValidLinkedInUrl(linkedinUrl) && (
+                      <p className="text-xs text-red-500 mt-1">
+                        ⚠️ Format invalide. Ex: https://linkedin.com/in/jean-dupont
+                      </p>
+                    )}
+                    {linkedinUrl && isValidLinkedInUrl(linkedinUrl) && (
+                      <p className="text-xs text-green-600 mt-1">
+                        ✓ URL valide
+                      </p>
+                    )}
                   </div>
+                )}
+              </div>
 
-                  {/* Type de contrat */}
-                  <div>
-                    <Label>Type de contrat</Label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {['CDI', 'CDD', 'Freelance', 'Stage'].map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => {
-                            setContractTypes(prev =>
-                              prev.includes(type)
-                                ? prev.filter(t => t !== type)
-                                : [...prev, type]
-                            )
-                          }}
-                          className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                            contractTypes.includes(type)
-                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                          }`}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              {/* Critères de recherche */}
+              <div className="p-5 bg-secondary rounded-lg space-y-4">
+                <h3 className="font-semibold text-base">Critères de recherche (optionnel)</h3>
 
-                  {/* Remote */}
+                {/* Grille 3 colonnes */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label>Remote</Label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {['On-site', 'Hybrid', 'Full remote'].map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => {
-                            setRemoteOptions(prev =>
-                              prev.includes(option)
-                                ? prev.filter(o => o !== option)
-                                : [...prev, option]
-                            )
-                          }}
-                          className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                            remoteOptions.includes(option)
-                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Brief */}
-                  <div>
-                    <Label htmlFor="brief">Infos/Brief rapide (compétences, stacks...)</Label>
-                    <Textarea
-                      id="brief"
-                      value={brief}
-                      onChange={(e) => setBrief(e.target.value)}
-                      placeholder="Ex: React, TypeScript, Node.js, expérience startup, etc."
-                      rows={3}
+                    <Label htmlFor="jobTitle">Titre du job</Label>
+                    <Input
+                      id="jobTitle"
+                      value={jobTitle}
+                      onChange={(e) => setJobTitle(e.target.value)}
+                      placeholder="Ex: Product Owner"
                       className="mt-1"
                     />
                   </div>
-                </div>
 
-                {/* Exclure cabinets */}
-                <div className="flex items-center space-x-3 p-4 bg-secondary rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="excludeAgencies"
-                    checked={excludeAgencies}
-                    onChange={(e) => setExcludeAgencies(e.target.checked)}
-                    className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-accent"
-                  />
-                  <label htmlFor="excludeAgencies" className="text-sm">
-                    <span className="font-medium">Exclure les cabinets de recrutement</span>
-                    <span className="text-muted block text-xs mt-1">
-                      (Michael Page, Robert Half, Hays, etc.)
-                    </span>
-                  </label>
-                </div>
-
-                {/* Récurrence */}
-                <div className="p-5 bg-secondary rounded-lg">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A8DADC' }}>
-                      <span className="text-xl">🔄</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-base">Recherche récurrente</h3>
-                      <p className="text-sm text-muted">Relancer automatiquement cette recherche</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
-                      { value: 'none' as const, label: 'Une seule fois', sub: 'Pas de récurrence' },
-                      { value: '2days' as const, label: 'Tous les 2 jours', sub: '~15/mois' },
-                      { value: 'weekly' as const, label: 'Hebdomadaire', sub: '~4/mois' },
-                      { value: 'monthly' as const, label: 'Mensuel', sub: '1/mois' },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setRecurrence(opt.value)}
-                        className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                          recurrence === opt.value
-                            ? 'border-accent bg-accent/10'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <p className="font-medium" style={{ color: recurrence === opt.value ? '#6366F1' : '#1D3557' }}>{opt.label}</p>
-                        <p className="text-xs mt-1" style={{ color: '#457B9D' }}>{opt.sub}</p>
-                      </button>
-                    ))}
-                  </div>
-
-                  {recurrence !== 'none' && (
-                    <p className="text-sm mt-4 p-3 rounded-lg" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
-                      ⚡ Les nouvelles offres seront automatiquement ajoutées à cette recherche {
-                        recurrence === '2days' ? 'tous les 2 jours' :
-                        recurrence === 'weekly' ? 'chaque semaine' :
-                        'chaque mois'
-                      }.
-                    </p>
-                  )}
-                </div>
-
-                {/* Messages d'erreur */}
-                {error && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-600">❌ {error}</p>
-                  </div>
-                )}
-
-                {/* Boutons submit */}
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push('/searches')}
-                    disabled={loading}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading || extracting}
-                    className="flex-1"
-                  >
-                    {loading ? '⏳ Analyse en cours...' : '🚀 Lancer l\'analyse'}
-                  </Button>
-                </div>
-
-                {/* Barre de progression */}
-                {loading && (
-                  <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="text-3xl animate-bounce">
-                        {LOADING_MESSAGES[loadingMessageIndex].icon}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-800">
-                          {LOADING_MESSAGES[loadingMessageIndex].text}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Un instant, on trouve les meilleures offres...
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
-                      <div
-                        className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
-                        style={{
-                          width: `${((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100}%`
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-center gap-2 mt-4">
-                      {LOADING_MESSAGES.map((_, index) => (
-                        <div
-                          key={index}
-                          className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                            index <= loadingMessageIndex
-                              ? 'bg-indigo-500 scale-110'
-                              : 'bg-gray-300'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </form>
-            ) : (
-              /* ========== FORMULAIRE LINKEDIN ========== */
-              <div className="space-y-6">
-                {/* Header LinkedIn */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#0A66C2' }}>
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                    </svg>
-                  </div>
                   <div>
-                    <h2 className="text-lg font-bold" style={{ color: '#1D3557' }}>Recherche LinkedIn</h2>
-                    <p className="text-sm" style={{ color: '#457B9D' }}>
-                      Scanne les posts LinkedIn pour trouver les personnes qui publient activement des offres d&apos;embauche (CDI, freelance, alternance...). Identifiez les opportunites avant tout le monde.
-                    </p>
+                    <Label htmlFor="location">Lieu</Label>
+                    <Input
+                      id="location"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Ex: Paris"
+                      className="mt-1"
+                    />
                   </div>
-                </div>
 
-                {/* Nom de la recherche */}
-                <div>
-                  <Label htmlFor="lpSearchTitle">Nom de la recherche</Label>
-                  <Input
-                    id="lpSearchTitle"
-                    value={lpSearchTitle}
-                    onChange={(e) => setLpSearchTitle(e.target.value)}
-                    placeholder="Ex: Posts recruteurs React Paris"
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Mots-cles */}
-                <div>
-                  <Label htmlFor="lpKeywords">
-                    Mots-cles / Titre du poste <span style={{ color: '#0A66C2' }}>*</span>
-                  </Label>
-                  <Input
-                    id="lpKeywords"
-                    value={lpKeywords}
-                    onChange={(e) => setLpKeywords(e.target.value)}
-                    placeholder="Ex: developpeur react, data engineer, product manager..."
-                    className="mt-1"
-                    required
-                  />
-                </div>
-
-                {/* Localisation */}
-                <div>
-                  <Label htmlFor="lpLocation">Localisation</Label>
-                  <Input
-                    id="lpLocation"
-                    value={lpLocation}
-                    onChange={(e) => setLpLocation(e.target.value)}
-                    placeholder="Ex: Paris, Lyon, Remote..."
-                    className="mt-1"
-                  />
+                  <div>
+                    <Label htmlFor="seniority">Séniorité</Label>
+                    <select
+                      id="seniority"
+                      value={seniority}
+                      onChange={(e) => setSeniority(e.target.value)}
+                      className="mt-1 w-full px-3 py-2 border rounded-md"
+                    >
+                      <option value="">Choisir...</option>
+                      <option value="junior">Junior (0-2 ans)</option>
+                      <option value="confirmé">Confirmé (2-5 ans)</option>
+                      <option value="senior">Senior (5+ ans)</option>
+                      <option value="expert">Expert (10+ ans)</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Type de contrat */}
@@ -742,18 +467,17 @@ export default function NewSearchPage() {
                         key={type}
                         type="button"
                         onClick={() => {
-                          setLpContractTypes(prev =>
+                          setContractTypes(prev =>
                             prev.includes(type)
                               ? prev.filter(t => t !== type)
                               : [...prev, type]
                           )
                         }}
                         className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                          lpContractTypes.includes(type)
-                            ? 'text-white'
+                          contractTypes.includes(type)
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                         }`}
-                        style={lpContractTypes.includes(type) ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
                       >
                         {type}
                       </button>
@@ -761,112 +485,179 @@ export default function NewSearchPage() {
                   </div>
                 </div>
 
-                {/* Filtre date de publication */}
+                {/* Remote */}
                 <div>
-                  <Label>Publie il y a</Label>
+                  <Label>Remote</Label>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    {[
-                      { value: '24h', label: '- 24h' },
-                      { value: '3days', label: '- 3 jours' },
-                      { value: 'week', label: '- 1 semaine' },
-                      { value: 'older_week', label: '+ 1 semaine' },
-                    ].map((opt) => (
+                    {['On-site', 'Hybrid', 'Full remote'].map((option) => (
                       <button
-                        key={opt.value}
+                        key={option}
                         type="button"
-                        onClick={() => setLpPostedLimit(opt.value)}
+                        onClick={() => {
+                          setRemoteOptions(prev =>
+                            prev.includes(option)
+                              ? prev.filter(o => o !== option)
+                              : [...prev, option]
+                          )
+                        }}
                         className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                          lpPostedLimit === opt.value
-                            ? 'text-white'
+                          remoteOptions.includes(option)
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                         }`}
-                        style={lpPostedLimit === opt.value ? { borderColor: '#0A66C2', backgroundColor: '#0A66C2' } : {}}
                       >
-                        {opt.label}
+                        {option}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Exclure cabinets */}
-                <div className="flex items-center space-x-3 p-3 bg-secondary rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="lpExcludeAgencies"
-                    checked={lpExcludeAgencies}
-                    onChange={(e) => setLpExcludeAgencies(e.target.checked)}
-                    className="w-5 h-5 rounded focus:ring-2"
-                    style={{ accentColor: '#0A66C2' }}
+                {/* Brief */}
+                <div>
+                  <Label htmlFor="brief">Infos/Brief rapide (compétences, stacks...)</Label>
+                  <Textarea
+                    id="brief"
+                    value={brief}
+                    onChange={(e) => setBrief(e.target.value)}
+                    placeholder="Ex: React, TypeScript, Node.js, expérience startup, etc."
+                    rows={3}
+                    className="mt-1"
                   />
-                  <label htmlFor="lpExcludeAgencies" className="text-sm">
-                    <span className="font-medium">Exclure les cabinets de recrutement</span>
-                  </label>
+                </div>
+              </div>
+
+              {/* Exclure cabinets */}
+              <div className="flex items-center space-x-3 p-4 bg-secondary rounded-lg">
+                <input
+                  type="checkbox"
+                  id="excludeAgencies"
+                  checked={excludeAgencies}
+                  onChange={(e) => setExcludeAgencies(e.target.checked)}
+                  className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-accent"
+                />
+                <label htmlFor="excludeAgencies" className="text-sm">
+                  <span className="font-medium">Exclure les cabinets de recrutement</span>
+                  <span className="text-muted block text-xs mt-1">
+                    (Michael Page, Robert Half, Hays, etc.)
+                  </span>
+                </label>
+              </div>
+
+              {/* Récurrence */}
+              <div className="p-5 bg-secondary rounded-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A8DADC' }}>
+                    <span className="text-xl">🔄</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base">Recherche récurrente</h3>
+                    <p className="text-sm text-muted">Relancer automatiquement cette recherche</p>
+                  </div>
                 </div>
 
-                {/* Error */}
-                {lpError && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-600">{lpError}</p>
-                  </div>
-                )}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { value: 'none' as const, label: 'Une seule fois', sub: 'Pas de récurrence' },
+                    { value: '2days' as const, label: 'Tous les 2 jours', sub: '~15/mois' },
+                    { value: 'weekly' as const, label: 'Hebdomadaire', sub: '~4/mois' },
+                    { value: 'monthly' as const, label: 'Mensuel', sub: '1/mois' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setRecurrence(opt.value)}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                        recurrence === opt.value
+                          ? 'border-accent bg-accent/10'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <p className="font-medium" style={{ color: recurrence === opt.value ? '#6366F1' : '#1D3557' }}>{opt.label}</p>
+                      <p className="text-xs mt-1" style={{ color: '#457B9D' }}>{opt.sub}</p>
+                    </button>
+                  ))}
+                </div>
 
-                {/* Submit button */}
-                <Button
-                  type="button"
-                  onClick={handleLinkedInPostsSubmit}
-                  disabled={lpLoading || !lpKeywords.trim()}
-                  className="w-full"
-                  style={{ backgroundColor: '#0A66C2', color: 'white' }}
-                >
-                  {lpLoading ? 'Recherche en cours...' : 'Lancer la recherche LinkedIn'}
-                </Button>
-
-                {/* Loading progress */}
-                {lpLoading && (
-                  <div className="p-6 rounded-xl border" style={{ backgroundColor: '#F0F7FF', borderColor: '#0A66C2' }}>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="text-3xl animate-bounce">
-                        {LINKEDIN_POSTS_LOADING_MESSAGES[lpLoadingMessageIndex].icon}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-800">
-                          {LINKEDIN_POSTS_LOADING_MESSAGES[lpLoadingMessageIndex].text}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Analyse des posts LinkedIn...
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
-                      <div
-                        className="h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden"
-                        style={{
-                          backgroundColor: '#0A66C2',
-                          width: `${((lpLoadingMessageIndex + 1) / LINKEDIN_POSTS_LOADING_MESSAGES.length) * 100}%`
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-center gap-2 mt-4">
-                      {LINKEDIN_POSTS_LOADING_MESSAGES.map((_, index) => (
-                        <div
-                          key={index}
-                          className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                            index <= lpLoadingMessageIndex
-                              ? 'scale-110'
-                              : 'bg-gray-300'
-                          }`}
-                          style={index <= lpLoadingMessageIndex ? { backgroundColor: '#0A66C2' } : {}}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                {recurrence !== 'none' && (
+                  <p className="text-sm mt-4 p-3 rounded-lg" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
+                    ⚡ Les nouvelles offres seront automatiquement ajoutées à cette recherche {
+                      recurrence === '2days' ? 'tous les 2 jours' :
+                      recurrence === 'weekly' ? 'chaque semaine' :
+                      'chaque mois'
+                    }.
+                  </p>
                 )}
               </div>
-            )}
+
+              {/* Messages d'erreur */}
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">❌ {error}</p>
+                </div>
+              )}
+
+              {/* Boutons submit */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push('/searches')}
+                  disabled={loading}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading || extracting}
+                  className="flex-1"
+                >
+                  {loading ? '⏳ Analyse en cours...' : '🚀 Lancer l\'analyse'}
+                </Button>
+              </div>
+
+              {/* Barre de progression */}
+              {loading && (
+                <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="text-3xl animate-bounce">
+                      {currentLoadingMessages[loadingMessageIndex]?.icon || "⏳"}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">
+                        {currentLoadingMessages[loadingMessageIndex]?.text || "Chargement..."}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Un instant, on trouve les meilleures offres...
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                    <div
+                      className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                      style={{
+                        width: `${((loadingMessageIndex + 1) / currentLoadingMessages.length) * 100}%`
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center gap-2 mt-4">
+                    {currentLoadingMessages.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                          index <= loadingMessageIndex
+                            ? 'bg-indigo-500 scale-110'
+                            : 'bg-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </form>
           </Card>
         </div>
       </div>

@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Docs with secrets
+PUSHPROFILE_V2_SPEC_COMPLETE.md
+CONTEXT_CLAUDE.md
+FEATURE_LINKEDIN_PROFILE_INPUT.md
+SALES_INTELLIGENCE_ROADMAP.md
+*.docx
