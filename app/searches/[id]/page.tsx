@@ -790,7 +790,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       </svg>
                       Décideurs chez {selectedMatch.company_name}
                     </h3>
-                    {(selectedMatch.matching_details?.enriched_contacts?.length > 0 || enrichedContacts.length > 0) && (
+                    {((selectedMatch.matching_details?.enriched_contacts?.length ?? 0) > 0 || enrichedContacts.length > 0) && (
                       <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
                         {(selectedMatch.matching_details?.enriched_contacts || enrichedContacts).length} contact(s)
                       </span>
