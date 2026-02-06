@@ -10,9 +10,9 @@ import { Card } from '@/components/ui/card'
 import AppLayout from '@/components/AppLayout'
 import { supabase } from '@/lib/supabase'
 
-// Messages de chargement
-const LOADING_MESSAGES_CV = [
-  { text: "Analyse du CV avec l'IA...", icon: "🧠" },
+// Messages de chargement - Recherche standard
+const LOADING_MESSAGES_STANDARD = [
+  { text: "Analyse du profil avec l'IA...", icon: "🧠" },
   { text: "Connexion aux jobboards...", icon: "🔌" },
   { text: "Recherche sur LinkedIn...", icon: "💼" },
   { text: "Recherche sur Indeed...", icon: "🏢" },
@@ -24,26 +24,22 @@ const LOADING_MESSAGES_CV = [
   { text: "Préparation de vos résultats...", icon: "✨" },
 ]
 
-const LOADING_MESSAGES_LINKEDIN = [
-  { text: "Récupération du profil LinkedIn...", icon: "🔗" },
-  { text: "Extraction des compétences...", icon: "🎯" },
-  { text: "Connexion aux jobboards...", icon: "🔌" },
-  { text: "Recherche sur LinkedIn...", icon: "💼" },
-  { text: "Recherche sur Indeed...", icon: "🏢" },
-  { text: "Recherche sur Glassdoor...", icon: "🔍" },
-  { text: "Recherche sur WTTJ...", icon: "🌴" },
-  { text: "Analyse des offres trouvées...", icon: "📊" },
+// Messages de chargement - Recherche LinkedIn Posts
+const LOADING_MESSAGES_LINKEDIN_POSTS = [
+  { text: "Connexion à LinkedIn...", icon: "🔗" },
+  { text: "Recherche des offres...", icon: "🔍" },
+  { text: "Analyse des résultats...", icon: "📊" },
   { text: "Filtrage des cabinets de recrutement...", icon: "🚫" },
-  { text: "Scoring des meilleures offres avec l'IA...", icon: "🤖" },
   { text: "Préparation de vos résultats...", icon: "✨" },
 ]
-
-const LOADING_MESSAGES = LOADING_MESSAGES_CV // Default
 
 export default function NewSearchPage() {
   const router = useRouter()
 
-  // États du formulaire
+  // Onglet principal
+  const [activeTab, setActiveTab] = useState<'standard' | 'linkedin'>('standard')
+
+  // États du formulaire standard
   const [searchTitle, setSearchTitle] = useState('')
   const [excludeAgencies, setExcludeAgencies] = useState(true)
 
@@ -60,27 +56,30 @@ export default function NewSearchPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
 
-  // LinkedIn URL
+  // LinkedIn URL (pour profil dans recherche standard)
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [inputMode, setInputMode] = useState<'cv' | 'linkedin'>('cv')
 
   // Récurrence
   const [recurrence, setRecurrence] = useState<'none' | '2days' | 'weekly' | 'monthly'>('none')
 
+  // États LinkedIn Posts
+  const [linkedinKeywords, setLinkedinKeywords] = useState('')
+  const [linkedinLocation, setLinkedinLocation] = useState('')
+  const [linkedinContractTypes, setLinkedinContractTypes] = useState<string[]>([])
+  const [linkedinPostedWithin, setLinkedinPostedWithin] = useState<string>('week')
+  const [linkedinSearchName, setLinkedinSearchName] = useState('')
+  const [linkedinExcludeAgencies, setLinkedinExcludeAgencies] = useState(true)
+
   // États UI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
 
-  // Get the appropriate loading messages based on input mode
-  const getLoadingMessages = () => {
-    if (linkedinUrl && linkedinUrl.trim().length > 0) {
-      return LOADING_MESSAGES_LINKEDIN
-    }
-    return LOADING_MESSAGES_CV
-  }
-
-  const currentLoadingMessages = getLoadingMessages()
+  // Get the appropriate loading messages based on active tab
+  const currentLoadingMessages = activeTab === 'linkedin'
+    ? LOADING_MESSAGES_LINKEDIN_POSTS
+    : LOADING_MESSAGES_STANDARD
 
   // Cycle through loading messages
   useEffect(() => {
@@ -89,18 +88,14 @@ export default function NewSearchPage() {
       return
     }
 
-    const messages = linkedinUrl && linkedinUrl.trim().length > 0
-      ? LOADING_MESSAGES_LINKEDIN
-      : LOADING_MESSAGES_CV
-
     const interval = setInterval(() => {
       setLoadingMessageIndex(prev =>
-        prev < messages.length - 1 ? prev + 1 : prev
+        prev < currentLoadingMessages.length - 1 ? prev + 1 : prev
       )
     }, 4000)
 
     return () => clearInterval(interval)
-  }, [loading, linkedinUrl])
+  }, [loading, currentLoadingMessages.length])
 
   // Extraction texte PDF
   const extractPdfText = async (file: File): Promise<string> => {
@@ -270,6 +265,74 @@ export default function NewSearchPage() {
     }
   }
 
+  // Soumission du formulaire LinkedIn Posts
+  const handleLinkedInPostsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!linkedinSearchName.trim()) {
+      setError('Le nom de la recherche est obligatoire')
+      return
+    }
+
+    if (!linkedinKeywords.trim()) {
+      setError('Les mots-clés sont obligatoires')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('Vous devez être connecté pour lancer une recherche')
+        setLoading(false)
+        return
+      }
+
+      // For LinkedIn posts search, we use the same API but with specific parameters
+      const response = await fetch('/api/analyze-cv', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: linkedinSearchName,
+          search_type: 'both',
+          input_type: 'manual',
+          exclude_agencies: linkedinExcludeAgencies,
+
+          job_title: linkedinKeywords,
+          location: linkedinLocation || null,
+          contract_types: linkedinContractTypes.length > 0 ? linkedinContractTypes : null,
+          remote_options: null,
+          seniority: null,
+          brief: `Recherche LinkedIn - Publié: ${linkedinPostedWithin}`,
+
+          cv_text: null,
+          linkedin_url: null,
+          recurrence: null,
+
+          user_id: session.user.id,
+          filename: null,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la recherche')
+      }
+
+      router.push(`/searches/${data.search_id}`)
+
+    } catch (err: any) {
+      setError(err.message || 'Une erreur est survenue')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <AppLayout>
       <div className="p-4 md:p-8">
@@ -281,27 +344,60 @@ export default function NewSearchPage() {
             Trouvez les meilleures opportunités sur LinkedIn, Indeed, Glassdoor et WTTJ
           </p>
 
+          {/* Segmented Control - Main tabs */}
+          <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+            <button
+              type="button"
+              onClick={() => setActiveTab('standard')}
+              className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
+                activeTab === 'standard'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Recherche standard
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('linkedin')}
+              className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
+                activeTab === 'linkedin'
+                  ? 'bg-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              style={activeTab === 'linkedin' ? { color: '#0A66C2' } : {}}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+              Recherche LinkedIn
+            </button>
+          </div>
+
           {/* Card unique avec accent top border */}
-          <Card className="p-4 md:p-8 border-t-4 border-indigo-500">
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <Card className={`p-4 md:p-8 border-t-4 ${activeTab === 'standard' ? 'border-indigo-500' : ''}`} style={activeTab === 'linkedin' ? { borderTopColor: '#0A66C2' } : {}}>
 
-              {/* Titre de la recherche */}
-              <div>
-                <Label htmlFor="searchTitle" className="text-lg font-semibold">
-                  Titre de la recherche <span className="text-accent">*</span>
-                </Label>
-                <Input
-                  id="searchTitle"
-                  value={searchTitle}
-                  onChange={(e) => setSearchTitle(e.target.value)}
-                  placeholder="Ex: Dev React Senior - Janvier 2026"
-                  className="mt-2"
-                  required
-                />
-              </div>
+            {/* ==================== FORMULAIRE STANDARD ==================== */}
+            {activeTab === 'standard' && (
+              <form onSubmit={handleSubmit} className="space-y-6">
 
-              {/* Profil du candidat : CV ou LinkedIn */}
-              <div className="p-5 bg-secondary rounded-lg">
+                {/* Titre de la recherche */}
+                <div>
+                  <Label htmlFor="searchTitle" className="text-lg font-semibold">
+                    Titre de la recherche <span className="text-accent">*</span>
+                  </Label>
+                  <Input
+                    id="searchTitle"
+                    value={searchTitle}
+                    onChange={(e) => setSearchTitle(e.target.value)}
+                    placeholder="Ex: Dev React Senior - Janvier 2026"
+                    className="mt-2"
+                    required
+                  />
+                </div>
+
+                {/* Profil du candidat : CV ou LinkedIn */}
+                <div className="p-5 bg-secondary rounded-lg">
                 <div className="flex items-center gap-2 mb-4">
                   <h3 className="font-semibold text-base">Profil du candidat</h3>
                   <span className="text-xs text-muted">- optionnel</span>
@@ -657,7 +753,201 @@ export default function NewSearchPage() {
                   </div>
                 </div>
               )}
-            </form>
+              </form>
+            )}
+
+            {/* ==================== FORMULAIRE LINKEDIN POSTS ==================== */}
+            {activeTab === 'linkedin' && (
+              <form onSubmit={handleLinkedInPostsSubmit} className="space-y-6">
+
+                {/* Nom de la recherche */}
+                <div>
+                  <Label htmlFor="linkedinSearchName" className="text-lg font-semibold">
+                    Nom de la recherche <span className="text-accent">*</span>
+                  </Label>
+                  <Input
+                    id="linkedinSearchName"
+                    value={linkedinSearchName}
+                    onChange={(e) => setLinkedinSearchName(e.target.value)}
+                    placeholder="Ex: Recherche Product Manager Paris"
+                    className="mt-2"
+                    required
+                  />
+                </div>
+
+                {/* Mots-clés */}
+                <div>
+                  <Label htmlFor="linkedinKeywords" className="text-lg font-semibold">
+                    Mots-clés <span className="text-accent">*</span>
+                  </Label>
+                  <Input
+                    id="linkedinKeywords"
+                    value={linkedinKeywords}
+                    onChange={(e) => setLinkedinKeywords(e.target.value)}
+                    placeholder="Ex: Product Manager, Chef de projet digital, PM..."
+                    className="mt-2"
+                    required
+                  />
+                  <p className="text-xs text-muted mt-1">
+                    Entrez les termes qui correspondent au poste recherché
+                  </p>
+                </div>
+
+                {/* Localisation */}
+                <div>
+                  <Label htmlFor="linkedinLocation">Localisation</Label>
+                  <Input
+                    id="linkedinLocation"
+                    value={linkedinLocation}
+                    onChange={(e) => setLinkedinLocation(e.target.value)}
+                    placeholder="Ex: Paris, Lyon, Remote..."
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Type de contrat */}
+                <div>
+                  <Label>Type de contrat</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {['CDI', 'CDD', 'Freelance', 'Stage'].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          setLinkedinContractTypes(prev =>
+                            prev.includes(type)
+                              ? prev.filter(t => t !== type)
+                              : [...prev, type]
+                          )
+                        }}
+                        className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                          linkedinContractTypes.includes(type)
+                            ? 'border-[#0A66C2] bg-blue-50 text-[#0A66C2]'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Publié il y a */}
+                <div>
+                  <Label>Publié il y a</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {[
+                      { value: '24h', label: '24 heures' },
+                      { value: 'week', label: '7 jours' },
+                      { value: 'month', label: '30 jours' },
+                      { value: 'any', label: 'Toutes' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setLinkedinPostedWithin(opt.value)}
+                        className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                          linkedinPostedWithin === opt.value
+                            ? 'border-[#0A66C2] bg-blue-50 text-[#0A66C2]'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Exclure cabinets */}
+                <div className="flex items-center space-x-3 p-4 bg-secondary rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="linkedinExcludeAgencies"
+                    checked={linkedinExcludeAgencies}
+                    onChange={(e) => setLinkedinExcludeAgencies(e.target.checked)}
+                    className="w-5 h-5 rounded focus:ring-2"
+                    style={{ accentColor: '#0A66C2' }}
+                  />
+                  <label htmlFor="linkedinExcludeAgencies" className="text-sm">
+                    <span className="font-medium">Exclure les cabinets de recrutement</span>
+                    <span className="text-muted block text-xs mt-1">
+                      (Michael Page, Robert Half, Hays, etc.)
+                    </span>
+                  </label>
+                </div>
+
+                {/* Messages d'erreur */}
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
+                {/* Boutons submit */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push('/searches')}
+                    disabled={loading}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1"
+                    style={{ backgroundColor: '#0A66C2' }}
+                  >
+                    {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
+                  </Button>
+                </div>
+
+                {/* Barre de progression */}
+                {loading && (
+                  <div className="mt-6 p-6 rounded-xl border" style={{ backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }}>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="text-3xl animate-bounce">
+                        {currentLoadingMessages[loadingMessageIndex]?.icon || "⏳"}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">
+                          {currentLoadingMessages[loadingMessageIndex]?.text || "Chargement..."}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Un instant, on recherche sur LinkedIn...
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                      <div
+                        className="h-full rounded-full transition-all duration-700 ease-out"
+                        style={{
+                          backgroundColor: '#0A66C2',
+                          width: `${((loadingMessageIndex + 1) / currentLoadingMessages.length) * 100}%`
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex justify-center gap-2 mt-4">
+                      {currentLoadingMessages.map((_, index) => (
+                        <div
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                            index <= loadingMessageIndex
+                              ? 'scale-110'
+                              : 'bg-gray-300'
+                          }`}
+                          style={index <= loadingMessageIndex ? { backgroundColor: '#0A66C2' } : {}}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </form>
+            )}
+
           </Card>
         </div>
       </div>
