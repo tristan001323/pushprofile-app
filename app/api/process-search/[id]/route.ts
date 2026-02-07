@@ -94,7 +94,7 @@ async function scoreTopJobsWithClaude(jobs: NormalizedJob[], cvData: ParsedCV): 
   return JSON.parse(cleanJsonResponse(response.text))
 }
 
-// Fetch Adzuna jobs
+// Fetch Adzuna jobs (limited to 20 - secondary source)
 async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const { appId, appKey } = getAdzunaCredentials()
   if (!appId || !appKey) return []
@@ -102,7 +102,8 @@ async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const location = parsedData.location || 'france'
   const jobTitle = parsedData.target_roles[0] || 'developer'
   const baseUrl = 'https://api.adzuna.com/v1/api/jobs/fr/search/1'
-  const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=50&where=${encodeURIComponent(location)}&distance=50&max_days_old=30&what=${encodeURIComponent(jobTitle)}`
+  // Limited to 20 results - Adzuna is secondary source
+  const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=20&where=${encodeURIComponent(location)}&distance=50&max_days_old=30&what=${encodeURIComponent(jobTitle)}`
 
   try {
     const response = await fetch(baseUrl + params)
@@ -159,7 +160,7 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
     sources: ALL_ATS_SOURCES,
     is_remote: false,
     page: 1,
-    page_size: 50
+    page_size: 100  // Priority source - get more results
   }
 
   console.log('ATS Jobs input:', JSON.stringify(input, null, 2))
@@ -222,7 +223,7 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   }
 }
 
-// Fetch Indeed jobs
+// Fetch Indeed jobs (limited to 20 - secondary source)
 async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const input: Record<string, unknown> = {
     keywords: [parsedData.target_roles[0] || 'developer'],
@@ -238,7 +239,8 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
       timeoutSecs: 90
     })
 
-    return jobs.map(job => ({
+    // Limit to 20 results - Indeed is secondary source
+    return jobs.slice(0, 20).map(job => ({
       search_id: '',
       external_id: `indeed_${job.key}`,
       source: 'indeed',
@@ -330,9 +332,9 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
     // Contract type bonus (5 points)
     if (job.matching_details?.contract_type === 'permanent') score += 5
 
-    // Quality source bonus (15 points for direct company ATS)
+    // Quality source bonus (25 points for direct company ATS - highest priority)
     if (QUALITY_ATS_SOURCES.includes(job.source)) {
-      score += 15
+      score += 25
     }
 
     job.prefilter_score = Math.round(score)
