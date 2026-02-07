@@ -286,150 +286,320 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Sources Schema */}
-      <section className="py-16 border-y border-gray-200 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <p className="text-center text-sm font-medium uppercase tracking-wider mb-12" style={{ color: '#457B9D' }}>
-            Toutes vos sources en un seul endroit
-          </p>
+      {/* Sources Schema - Premium Design */}
+      <section className="py-20 bg-gradient-to-b from-gray-50 to-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
+          {/* Header with subtle animation feel */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 text-indigo-600 text-sm font-medium mb-4">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+              Agrégation en temps réel
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#1D3557' }}>
+              Toutes vos sources. Un seul dashboard.
+            </h2>
+          </div>
 
-          <div className="flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-6">
-            {/* Job Boards - Gauche */}
-            <div className="flex flex-col gap-2.5 w-full lg:w-auto">
+          {/* Desktop Layout */}
+          <div className="hidden lg:flex items-center justify-center gap-8">
+            {/* Job Boards - Left Column */}
+            <div className="flex flex-col gap-3">
               {/* LinkedIn */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#0A66C2] p-2">
-                  <Image src="/logos/linkedin.svg" alt="LinkedIn" width={24} height={24} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-[#0A66C2]/30 hover:shadow-xl hover:shadow-[#0A66C2]/10 transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-[#0A66C2] flex items-center justify-center shadow-lg shadow-[#0A66C2]/30">
+                  <Image src="/logos/linkedin.svg" alt="LinkedIn" width={28} height={28} className="brightness-0 invert" />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>LinkedIn</span>
+                <div>
+                  <span className="font-semibold text-gray-900">LinkedIn</span>
+                  <p className="text-xs text-gray-500">Jobs & Posts</p>
+                </div>
               </div>
               {/* Indeed */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#003A9B] p-2">
-                  <Image src="/logos/indeed.svg" alt="Indeed" width={24} height={24} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-[#2164F3]/30 hover:shadow-xl hover:shadow-[#2164F3]/10 transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-[#2164F3] flex items-center justify-center shadow-lg shadow-[#2164F3]/30">
+                  <Image src="/logos/indeed.svg" alt="Indeed" width={28} height={28} className="brightness-0 invert" />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Indeed</span>
+                <div>
+                  <span className="font-semibold text-gray-900">Indeed</span>
+                  <p className="text-xs text-gray-500">Offres d'emploi</p>
+                </div>
               </div>
               {/* Glassdoor */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#0CAA41] p-2">
-                  <Image src="/logos/glassdoor.svg" alt="Glassdoor" width={24} height={24} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-[#0CAA41]/30 hover:shadow-xl hover:shadow-[#0CAA41]/10 transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-[#0CAA41] flex items-center justify-center shadow-lg shadow-[#0CAA41]/30">
+                  <Image src="/logos/glassdoor.svg" alt="Glassdoor" width={28} height={28} className="brightness-0 invert" />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Glassdoor</span>
+                <div>
+                  <span className="font-semibold text-gray-900">Glassdoor</span>
+                  <p className="text-xs text-gray-500">Jobs & Avis</p>
+                </div>
               </div>
               {/* WTTJ */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden">
-                  <Image src="/logos/wttj.svg" alt="Welcome to the Jungle" width={40} height={40} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-[#FFCD00]/50 hover:shadow-xl hover:shadow-[#FFCD00]/10 transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-[#FFCD00] flex items-center justify-center shadow-lg shadow-[#FFCD00]/30">
+                  <Image src="/logos/wttj.svg" alt="WTTJ" width={28} height={28} />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>WTTJ</span>
+                <div>
+                  <span className="font-semibold text-gray-900">WTTJ</span>
+                  <p className="text-xs text-gray-500">Welcome to the Jungle</p>
+                </div>
               </div>
               {/* HelloWork */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden">
-                  <Image src="/logos/hellowork.svg" alt="HelloWork" width={40} height={40} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-gray-300 hover:shadow-xl transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center">
+                  <Image src="/logos/hellowork.svg" alt="HelloWork" width={32} height={32} />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>HelloWork</span>
+                <div>
+                  <span className="font-semibold text-gray-900">HelloWork</span>
+                  <p className="text-xs text-gray-500">Offres France</p>
+                </div>
               </div>
             </div>
 
-            {/* Flèche gauche */}
-            <div className="hidden lg:flex items-center justify-center px-2">
-              <svg className="w-10 h-10" style={{ color: '#6366F1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-            {/* Flèche mobile (vers le bas) */}
-            <div className="lg:hidden flex items-center justify-center py-2">
-              <svg className="w-8 h-8" style={{ color: '#6366F1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
+            {/* Animated Arrows Left */}
+            <div className="flex flex-col items-center gap-2 px-4">
+              <div className="flex items-center">
+                <div className="w-16 h-0.5 bg-gradient-to-r from-gray-200 to-indigo-400"></div>
+                <svg className="w-6 h-6 text-indigo-500 -ml-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Job Boards</span>
             </div>
 
-            {/* Result - Centre */}
-            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl w-full lg:w-auto lg:min-w-[280px]">
-              <div className="text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="text-2xl">🎯</span>
+            {/* Center Result Card - Hero Element */}
+            <div className="relative">
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl blur-2xl opacity-20 scale-105"></div>
+
+              <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-3xl p-8 text-white shadow-2xl shadow-indigo-500/30 min-w-[320px]">
+                {/* Decorative elements */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+
+                <div className="relative">
+                  {/* Icon */}
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+                    <span className="text-3xl">🎯</span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-xl font-bold text-center mb-6">Vos résultats</h3>
+
+                  {/* Features */}
+                  <ul className="space-y-3">
+                    <li className="flex items-center gap-3 bg-white/10 backdrop-blur rounded-xl px-4 py-2.5">
+                      <div className="w-6 h-6 rounded-full bg-green-400 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">~50 jobs pertinents</span>
+                    </li>
+                    <li className="flex items-center gap-3 bg-white/10 backdrop-blur rounded-xl px-4 py-2.5">
+                      <div className="w-6 h-6 rounded-full bg-green-400 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">Scoring IA intelligent</span>
+                    </li>
+                    <li className="flex items-center gap-3 bg-white/10 backdrop-blur rounded-xl px-4 py-2.5">
+                      <div className="w-6 h-6 rounded-full bg-green-400 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">Contacts directs</span>
+                    </li>
+                    <li className="flex items-center gap-3 bg-white/10 backdrop-blur rounded-xl px-4 py-2.5">
+                      <div className="w-6 h-6 rounded-full bg-green-400 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">Dédupliqués & classés</span>
+                    </li>
+                  </ul>
                 </div>
-                <ul className="text-sm space-y-2.5 text-left">
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>~50 jobs pertinents</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Scores de matching IA</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Contacts directs</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Dédupliqués & classés</span>
-                  </li>
-                </ul>
               </div>
             </div>
 
-            {/* Flèche droite */}
-            <div className="hidden lg:flex items-center justify-center px-2">
-              <svg className="w-10 h-10 rotate-180" style={{ color: '#10B981' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-            {/* Flèche mobile (vers le bas) */}
-            <div className="lg:hidden flex items-center justify-center py-2">
-              <svg className="w-8 h-8 rotate-180" style={{ color: '#10B981' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
+            {/* Animated Arrows Right */}
+            <div className="flex flex-col items-center gap-2 px-4">
+              <div className="flex items-center">
+                <svg className="w-6 h-6 text-emerald-500 -mr-1 rotate-180" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                <div className="w-16 h-0.5 bg-gradient-to-l from-gray-200 to-emerald-400"></div>
+              </div>
+              <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">ATS Directs</span>
             </div>
 
-            {/* ATS Directs - Droite */}
-            <div className="flex flex-col gap-2.5 w-full lg:w-auto">
+            {/* ATS - Right Column */}
+            <div className="flex flex-col gap-3">
               {/* Greenhouse */}
-              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#24A148] p-2">
-                  <Image src="/logos/greenhouse.svg" alt="Greenhouse" width={24} height={24} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-[#4CB398]/30 hover:shadow-xl hover:shadow-[#4CB398]/10 transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-[#4CB398] flex items-center justify-center shadow-lg shadow-[#4CB398]/30">
+                  <Image src="/logos/greenhouse.svg" alt="Greenhouse" width={28} height={28} className="brightness-0 invert" />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Greenhouse</span>
+                <div>
+                  <span className="font-semibold text-gray-900">Greenhouse</span>
+                  <p className="text-xs text-gray-500">ATS Enterprise</p>
+                </div>
               </div>
               {/* Lever */}
-              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden">
-                  <Image src="/logos/lever.svg" alt="Lever" width={40} height={40} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-[#6C5CE7]/30 hover:shadow-xl hover:shadow-[#6C5CE7]/10 transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-[#6C5CE7] flex items-center justify-center shadow-lg shadow-[#6C5CE7]/30">
+                  <Image src="/logos/lever.svg" alt="Lever" width={28} height={28} className="brightness-0 invert" />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Lever</span>
+                <div>
+                  <span className="font-semibold text-gray-900">Lever</span>
+                  <p className="text-xs text-gray-500">ATS Startups</p>
+                </div>
               </div>
               {/* Workday */}
-              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden">
-                  <Image src="/logos/workday.svg" alt="Workday" width={40} height={40} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-[#0057AE]/30 hover:shadow-xl hover:shadow-[#0057AE]/10 transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-[#0057AE] flex items-center justify-center shadow-lg shadow-[#0057AE]/30">
+                  <Image src="/logos/workday.svg" alt="Workday" width={28} height={28} className="brightness-0 invert" />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Workday</span>
+                <div>
+                  <span className="font-semibold text-gray-900">Workday</span>
+                  <p className="text-xs text-gray-500">ATS Corporate</p>
+                </div>
               </div>
               {/* Ashby */}
-              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg overflow-hidden">
-                  <Image src="/logos/ashby.svg" alt="Ashby" width={40} height={40} />
+              <div className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:border-[#5046E5]/30 hover:shadow-xl hover:shadow-[#5046E5]/10 transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-[#5046E5] flex items-center justify-center shadow-lg shadow-[#5046E5]/30">
+                  <Image src="/logos/ashby.svg" alt="Ashby" width={28} height={28} className="brightness-0 invert" />
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Ashby</span>
+                <div>
+                  <span className="font-semibold text-gray-900">Ashby</span>
+                  <p className="text-xs text-gray-500">ATS Modern</p>
+                </div>
               </div>
               {/* +9 autres */}
-              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#10B981' }}>
-                  <span className="text-white font-bold text-sm">+9</span>
+              <div className="group flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl px-5 py-4 border border-emerald-200 hover:shadow-xl transition-all duration-300 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                  <span className="text-white font-bold text-lg">+9</span>
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>autres ATS</span>
+                <div>
+                  <span className="font-semibold text-gray-900">Et plus</span>
+                  <p className="text-xs text-gray-500">BambooHR, Jobvite...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Layout */}
+          <div className="lg:hidden">
+            {/* Center Result Card First on Mobile */}
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl blur-xl opacity-20 scale-105"></div>
+              <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-3xl p-6 text-white shadow-2xl shadow-indigo-500/30">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+                  <span className="text-2xl">🎯</span>
+                </div>
+                <h3 className="text-lg font-bold text-center mb-4">Vos résultats</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                    <svg className="w-4 h-4 text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm">~50 jobs</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                    <svg className="w-4 h-4 text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm">Scoring IA</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                    <svg className="w-4 h-4 text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm">Contacts</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                    <svg className="w-4 h-4 text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm">Dédupliqués</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Two columns for sources */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Job Boards */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider text-center mb-2">Job Boards</p>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-gray-100">
+                  <div className="w-8 h-8 rounded-lg bg-[#0A66C2] flex items-center justify-center">
+                    <Image src="/logos/linkedin.svg" alt="LinkedIn" width={18} height={18} className="brightness-0 invert" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">LinkedIn</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-gray-100">
+                  <div className="w-8 h-8 rounded-lg bg-[#2164F3] flex items-center justify-center">
+                    <Image src="/logos/indeed.svg" alt="Indeed" width={18} height={18} className="brightness-0 invert" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">Indeed</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-gray-100">
+                  <div className="w-8 h-8 rounded-lg bg-[#0CAA41] flex items-center justify-center">
+                    <Image src="/logos/glassdoor.svg" alt="Glassdoor" width={18} height={18} className="brightness-0 invert" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">Glassdoor</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-gray-100">
+                  <div className="w-8 h-8 rounded-lg bg-[#FFCD00] flex items-center justify-center">
+                    <Image src="/logos/wttj.svg" alt="WTTJ" width={18} height={18} />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">WTTJ</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-gray-100">
+                  <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                    <Image src="/logos/hellowork.svg" alt="HelloWork" width={22} height={22} />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">HelloWork</span>
+                </div>
+              </div>
+
+              {/* ATS */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider text-center mb-2">ATS Directs</p>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-emerald-100">
+                  <div className="w-8 h-8 rounded-lg bg-[#4CB398] flex items-center justify-center">
+                    <Image src="/logos/greenhouse.svg" alt="Greenhouse" width={18} height={18} className="brightness-0 invert" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">Greenhouse</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-emerald-100">
+                  <div className="w-8 h-8 rounded-lg bg-[#6C5CE7] flex items-center justify-center">
+                    <Image src="/logos/lever.svg" alt="Lever" width={18} height={18} className="brightness-0 invert" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">Lever</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-emerald-100">
+                  <div className="w-8 h-8 rounded-lg bg-[#0057AE] flex items-center justify-center">
+                    <Image src="/logos/workday.svg" alt="Workday" width={18} height={18} className="brightness-0 invert" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">Workday</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-emerald-100">
+                  <div className="w-8 h-8 rounded-lg bg-[#5046E5] flex items-center justify-center">
+                    <Image src="/logos/ashby.svg" alt="Ashby" width={18} height={18} className="brightness-0 invert" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">Ashby</span>
+                </div>
+                <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl px-3 py-2.5 border border-emerald-200">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                    <span className="text-white font-bold text-xs">+9</span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">Et plus</span>
+                </div>
               </div>
             </div>
           </div>
