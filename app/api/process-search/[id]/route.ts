@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import {
   runApifyActor,
+  runApifyActorAsync,
   APIFY_ACTORS,
   IndeedJobOutput,
   ATSJobOutput
@@ -157,10 +158,11 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   }
 
   try {
-    const jobs = await runApifyActor<ATSJobOutput>({
+    // Use async method - this actor doesn't support sync endpoint (returns 502)
+    const jobs = await runApifyActorAsync<ATSJobOutput>({
       actorId: APIFY_ACTORS.ATS_JOBS,
       input,
-      timeoutSecs: 60
+      timeoutSecs: 120
     })
 
     return jobs
