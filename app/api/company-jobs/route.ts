@@ -59,11 +59,10 @@ export async function POST(request: NextRequest) {
       const linkedinJobs = await runApifyActor<LinkedInJobOutput>({
         actorId: APIFY_ACTORS.LINKEDIN_JOBS,
         input: {
-          searchQueries: [company_name],
+          keyword: [company_name],
           location: 'France',
-          maxResults: 50,
           publishedAt: 'r2592000',
-          rows: 50
+          enrichCompanyData: false
         },
         timeoutSecs: 60
       })
@@ -95,9 +94,8 @@ export async function POST(request: NextRequest) {
         input: {
           keywords: [company_name],
           location: 'France',
-          country: 'fr',
-          maxItems: 50,
-          parseCompanyDetails: false
+          country: 'France',
+          datePosted: '30'
         },
         timeoutSecs: 60
       })
@@ -129,9 +127,8 @@ export async function POST(request: NextRequest) {
         input: {
           keywords: [company_name],
           location: 'France',
-          country: 'fr',
-          maxItems: 50,
-          parseCompanyDetails: false
+          country: 'France',
+          datePosted: '30'
         },
         timeoutSecs: 60
       })

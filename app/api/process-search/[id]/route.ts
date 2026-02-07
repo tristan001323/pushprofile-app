@@ -138,11 +138,10 @@ async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 // Fetch LinkedIn jobs
 async function fetchLinkedInJobs(parsedData: ParsedCV, contractTypes?: string[], remoteOptions?: string[]): Promise<NormalizedJob[]> {
   const input: Record<string, unknown> = {
-    searchQueries: [parsedData.target_roles[0] || 'developer'],
+    keyword: [parsedData.target_roles[0] || 'developer'],
     location: parsedData.location || 'France',
-    maxResults: 35,
-    publishedAt: 'r2592000', // past month
-    rows: 35
+    publishedAt: 'r2592000', // past month (r86400=day, r604800=week, r2592000=month)
+    enrichCompanyData: false
   }
 
   try {
@@ -187,9 +186,8 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const input: Record<string, unknown> = {
     keywords: [parsedData.target_roles[0] || 'developer'],
     location: parsedData.location || 'France',
-    country: 'fr',
-    maxItems: 35,
-    parseCompanyDetails: true
+    country: 'France',
+    datePosted: '30' // last 30 days
   }
 
   try {
@@ -229,9 +227,8 @@ async function fetchGlassdoorJobs(parsedData: ParsedCV): Promise<NormalizedJob[]
   const input: Record<string, unknown> = {
     keywords: [parsedData.target_roles[0] || 'developer'],
     location: parsedData.location || 'France',
-    country: 'fr',
-    maxItems: 35,
-    parseCompanyDetails: true
+    country: 'France',
+    datePosted: '30' // last 30 days
   }
 
   try {
@@ -269,9 +266,10 @@ async function fetchGlassdoorJobs(parsedData: ParsedCV): Promise<NormalizedJob[]
 // Fetch WTTJ jobs
 async function fetchWTTJJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const input: Record<string, unknown> = {
-    query: parsedData.target_roles[0] || 'developer',
+    keyword: parsedData.target_roles[0] || 'developer', // STRING, not array
     location: parsedData.location || 'France',
-    maxItems: 35
+    max_pages: 3,
+    results_wanted: 35
   }
 
   try {
