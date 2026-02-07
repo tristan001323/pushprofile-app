@@ -3,9 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import {
   runApifyActor,
   APIFY_ACTORS,
-  LinkedInJobOutput,
-  IndeedJobOutput,
-  GlassdoorJobOutput
+  IndeedJobOutput
 } from '@/lib/apify'
 
 const getSupabase = () => {
@@ -54,40 +52,7 @@ export async function POST(request: NextRequest) {
       return jobCompanyLower.includes(companyNameLower) || companyNameLower.includes(jobCompanyLower)
     }
 
-    // Fetch from LinkedIn
-    try {
-      const linkedinJobs = await runApifyActor<LinkedInJobOutput>({
-        actorId: APIFY_ACTORS.LINKEDIN_JOBS,
-        input: {
-          keyword: [company_name],
-          location: 'France',
-          publishedAt: 'r2592000',
-          enrichCompanyData: false
-        },
-        timeoutSecs: 60
-      })
-
-      for (const job of linkedinJobs) {
-        if (matchesCompany(job.companyName)) {
-          allJobs.push({
-            title: job.jobTitle,
-            location: job.location || 'Non specifie',
-            url: job.applyUrl || job.jobUrl,
-            source: 'linkedin',
-            posted_date: job.publishedAt ? job.publishedAt.split('T')[0] : null,
-            contract_type: job.contractType === 'C' ? 'CDD' : job.contractType === 'I' ? 'Stage' : 'CDI',
-            remote: (job.workType || '').toLowerCase().includes('remote') ? 'Remote' : null,
-            salary_min: null,
-            salary_max: null
-          })
-        }
-      }
-      console.log(`LinkedIn: found ${allJobs.length} jobs for ${company_name}`)
-    } catch (error) {
-      console.error('LinkedIn jobs error:', error)
-    }
-
-    // Fetch from Indeed
+    // Fetch from Indeed (main source for company jobs)
     try {
       const indeedJobs = await runApifyActor<IndeedJobOutput>({
         actorId: APIFY_ACTORS.INDEED_JOBS,
@@ -115,42 +80,9 @@ export async function POST(request: NextRequest) {
           })
         }
       }
-      console.log(`Indeed: total ${allJobs.length} jobs for ${company_name}`)
+      console.log(`Indeed: found ${allJobs.length} jobs for ${company_name}`)
     } catch (error) {
       console.error('Indeed jobs error:', error)
-    }
-
-    // Fetch from Glassdoor
-    try {
-      const glassdoorJobs = await runApifyActor<GlassdoorJobOutput>({
-        actorId: APIFY_ACTORS.GLASSDOOR_JOBS,
-        input: {
-          keywords: [company_name],
-          location: 'France',
-          country: 'France',
-          datePosted: '30'
-        },
-        timeoutSecs: 60
-      })
-
-      for (const job of glassdoorJobs) {
-        if (matchesCompany(job.company?.companyName)) {
-          allJobs.push({
-            title: job.title,
-            location: job.location_city ? `${job.location_city}, ${job.location_country}` : 'Non specifie',
-            url: job.jobUrl,
-            source: 'glassdoor',
-            posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
-            contract_type: job.jobTypes?.[0] || null,
-            remote: job.remoteWorkTypes?.[0] || null,
-            salary_min: job.baseSalary_min || null,
-            salary_max: job.baseSalary_max || null
-          })
-        }
-      }
-      console.log(`Glassdoor: total ${allJobs.length} jobs for ${company_name}`)
-    } catch (error) {
-      console.error('Glassdoor jobs error:', error)
     }
 
     // Deduplicate by title + location
@@ -175,13 +107,13 @@ export async function POST(request: NextRequest) {
         .eq('slug', company_slug)
     }
 
-    // Log usage (~$0.15-0.17 for job search across 3 platforms)
+    // Log usage
     await supabase
       .from('api_usage')
       .insert({
         user_id,
         api_name: 'company-jobs',
-        credits_used: 3, // 3 API calls (LinkedIn, Indeed, Glassdoor)
+        credits_used: 1, // 1 API call (Indeed only)
         metadata: {
           company_name,
           jobs_found: uniqueJobs.length
