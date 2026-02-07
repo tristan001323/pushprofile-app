@@ -58,6 +58,28 @@ type EnrichedContact = {
   company_name: string | null
 }
 
+// ATS Sources (high-quality direct company job boards)
+const ATS_SOURCES = [
+  'greenhouse', 'lever_co', 'ashby', 'workable', 'rippling', 'polymer',
+  'workday', 'smartrecruiters', 'bamboohr', 'breezy', 'jazzhr', 'recruitee', 'personio'
+]
+
+const isATSSource = (source: string) => ATS_SOURCES.includes(source)
+
+const getSourceDisplay = (source: string): { label: string; bgColor: string; textColor: string } => {
+  if (source === 'linkedin') return { label: 'LinkedIn', bgColor: '#0A66C2', textColor: 'white' }
+  if (source === 'indeed') return { label: 'Indeed', bgColor: '#6B5CE7', textColor: 'white' }
+  if (source === 'glassdoor') return { label: 'Glassdoor', bgColor: '#0CAA41', textColor: 'white' }
+  if (source === 'wttj') return { label: 'WTTJ', bgColor: '#FFCD00', textColor: '#1D1D1D' }
+  if (source === 'adzuna') return { label: 'Adzuna', bgColor: '#FF6B35', textColor: 'white' }
+  if (isATSSource(source)) {
+    // Capitalize source name for display (e.g., 'greenhouse' -> 'Greenhouse')
+    const label = source === 'lever_co' ? 'Lever' : source.charAt(0).toUpperCase() + source.slice(1)
+    return { label, bgColor: '#10B981', textColor: 'white' } // Green for ATS
+  }
+  return { label: source, bgColor: '#6B7280', textColor: 'white' }
+}
+
 // Processing step indicator component
 function StepItem({ label, done, active }: { label: string; done: boolean; active: boolean }) {
   return (
@@ -185,6 +207,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     if (filter === 'indeed') return match.source === 'indeed'
     if (filter === 'glassdoor') return match.source === 'glassdoor'
     if (filter === 'wttj') return match.source === 'wttj'
+    if (filter === 'ats') return isATSSource(match.source)
     return true
   })
 
@@ -486,6 +509,17 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   LinkedIn ({matches.filter(m => m.source === 'linkedin').length})
                 </button>
               )}
+              {matches.some(m => isATSSource(m.source)) && (
+                <button
+                  onClick={() => setFilter('ats')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    filter === 'ats' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  style={filter === 'ats' ? { backgroundColor: '#10B981' } : {}}
+                >
+                  ATS ({matches.filter(m => isATSSource(m.source)).length})
+                </button>
+              )}
               {matches.some(m => m.source === 'adzuna') && (
                 <button
                   onClick={() => setFilter('adzuna')}
@@ -575,11 +609,11 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                           <span
                             className="px-2 py-1 rounded text-xs font-medium"
                             style={{
-                              backgroundColor: match.source === 'linkedin' ? '#0A66C2' : match.source === 'indeed' ? '#6B5CE7' : match.source === 'glassdoor' ? '#0CAA41' : match.source === 'wttj' ? '#FFCD00' : '#FF6B35',
-                              color: match.source === 'wttj' ? '#1D1D1D' : 'white'
+                              backgroundColor: getSourceDisplay(match.source).bgColor,
+                              color: getSourceDisplay(match.source).textColor
                             }}
                           >
-                            {match.source === 'linkedin' ? 'LinkedIn' : match.source === 'indeed' ? 'Indeed' : match.source === 'glassdoor' ? 'Glassdoor' : match.source === 'wttj' ? 'WTTJ' : 'Adzuna'}
+                            {getSourceDisplay(match.source).label}
                           </span>
                         )}
                       </div>
