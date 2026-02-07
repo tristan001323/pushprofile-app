@@ -266,6 +266,12 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 // DISABLED: Glassdoor (memory limit issues) and WTTJ (timeout issues)
 // These scrapers have been replaced by ATS Jobs Search which covers 13 platforms
 
+// High-quality ATS sources (direct company career pages)
+const QUALITY_ATS_SOURCES = [
+  'greenhouse', 'lever_co', 'ashby', 'workable', 'rippling', 'polymer',
+  'workday', 'smartrecruiters', 'bamboohr', 'breezy', 'jazzhr', 'recruitee', 'personio'
+]
+
 // Filter agencies and score jobs
 function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchId: string, excludeAgencies: boolean): NormalizedJob[] {
   let filtered = jobs
@@ -278,6 +284,13 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
       return !RECRUITMENT_AGENCIES.some(agency => companyName.includes(agency) || description.includes(agency))
     })
   }
+
+  // Count by source before scoring
+  const sourceCountBefore: Record<string, number> = {}
+  filtered.forEach(job => {
+    sourceCountBefore[job.source] = (sourceCountBefore[job.source] || 0) + 1
+  })
+  console.log('Jobs by source before scoring:', sourceCountBefore)
 
   // Score each job
   filtered.forEach(job => {
@@ -296,16 +309,18 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
     })
     score += roleMatch ? 25 : 0
 
-    // Skill matching (up to 60 points)
+    // Skill matching (up to 50 points)
     let skillMatches = 0
     cvSkills.forEach(skill => { if (jobText.includes(skill)) skillMatches++ })
 
     if (cvSkills.length > 0) {
-      if (skillMatches === 0 && !roleMatch) {
+      // Less aggressive filtering: only exclude if no role match AND no skill match AND not from quality source
+      const isQualitySource = QUALITY_ATS_SOURCES.includes(job.source)
+      if (skillMatches === 0 && !roleMatch && !isQualitySource) {
         job.prefilter_score = 0
         return
       }
-      score += (skillMatches / cvSkills.length) * 60
+      score += (skillMatches / cvSkills.length) * 50
     }
 
     // Location matching (10 points)
@@ -315,8 +330,20 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
     // Contract type bonus (5 points)
     if (job.matching_details?.contract_type === 'permanent') score += 5
 
+    // Quality source bonus (15 points for direct company ATS)
+    if (QUALITY_ATS_SOURCES.includes(job.source)) {
+      score += 15
+    }
+
     job.prefilter_score = Math.round(score)
   })
+
+  // Count by source after scoring (non-zero only)
+  const sourceCountAfter: Record<string, number> = {}
+  filtered.filter(j => (j.prefilter_score || 0) > 0).forEach(job => {
+    sourceCountAfter[job.source] = (sourceCountAfter[job.source] || 0) + 1
+  })
+  console.log('Jobs by source after scoring (score > 0):', sourceCountAfter)
 
   // Deduplicate and sort
   const seen = new Map<string, boolean>()
