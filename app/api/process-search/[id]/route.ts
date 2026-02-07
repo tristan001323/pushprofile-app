@@ -1,3 +1,4 @@
+// Process search endpoint - handles job scraping and scoring
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import {
