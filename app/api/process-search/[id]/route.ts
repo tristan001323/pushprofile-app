@@ -140,11 +140,20 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const postedAfter = thirtyDaysAgo.toISOString()
 
+  // Include Remote jobs to capture more opportunities for French candidates
+  const locationInput = parsedData.location || 'France'
+  const locations = [locationInput]
+  // Add Remote if not already searching for remote
+  if (!locationInput.toLowerCase().includes('remote')) {
+    locations.push('Remote')
+  }
+
   const input: Record<string, unknown> = {
     queries: [parsedData.target_roles[0] || 'developer'],
-    locations: [parsedData.location || 'France'],
+    locations: locations,
     posted_after: postedAfter,
-    page_size: 50
+    page: 1,
+    page_size: 100  // Increased to get more results
   }
 
   try {
