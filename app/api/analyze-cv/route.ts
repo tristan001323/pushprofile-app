@@ -191,10 +191,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Build search name
-    const searchName = name
-      || (parsedData as LinkedInCvData).name
-        ? `${(parsedData as LinkedInCvData).name} - ${parsedData.location || 'France'}`
-        : `${parsedData.target_roles[0] || 'Profil'} - ${parsedData.location || 'France'}`
+    let searchName = name
+    if (!searchName) {
+      const profileName = (parsedData as LinkedInCvData).name
+      const targetRole = parsedData.target_roles[0]
+      const loc = parsedData.location || 'France'
+      searchName = profileName
+        ? `${profileName} - ${loc}`
+        : `${targetRole || 'Recherche'} - ${loc}`
+    }
 
     // 2. Create search with status "processing"
     const { data: searchData, error: searchError } = await supabase

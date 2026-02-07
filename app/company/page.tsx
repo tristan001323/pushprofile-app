@@ -66,6 +66,52 @@ export default function CompanyIntelligencePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [company, setCompany] = useState<CompanyProfile | null>(null)
+  const [loadingJobs, setLoadingJobs] = useState(false)
+  const [jobsError, setJobsError] = useState<string | null>(null)
+
+  const loadCompanyJobs = async () => {
+    if (!company) return
+
+    setLoadingJobs(true)
+    setJobsError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setJobsError('Vous devez etre connecte')
+        setLoadingJobs(false)
+        return
+      }
+
+      const response = await fetch('/api/company-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_name: company.name,
+          company_slug: company.slug,
+          user_id: session.user.id
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la recherche des offres')
+      }
+
+      // Update company with the fetched jobs
+      setCompany({
+        ...company,
+        jobs: data.jobs,
+        jobs_count: data.jobs_count
+      })
+    } catch (err) {
+      console.error('Error fetching jobs:', err)
+      setJobsError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setLoadingJobs(false)
+    }
+  }
 
   const searchCompanyByName = async (name: string) => {
     setSearchUrl(name)
@@ -497,14 +543,15 @@ export default function CompanyIntelligencePage() {
               )}
 
               {/* Jobs */}
-              {company.jobs && company.jobs.length > 0 && (
-                <Card className="p-6">
-                  <h3 className="font-semibold mb-4" style={{ color: '#1D3557' }}>
-                    Postes ouverts ({company.jobs_count})
-                  </h3>
+              <Card className="p-6">
+                <h3 className="font-semibold mb-4" style={{ color: '#1D3557' }}>
+                  Postes ouverts {company.jobs && company.jobs.length > 0 ? `(${company.jobs_count})` : ''}
+                </h3>
+
+                {/* Show jobs if available */}
+                {company.jobs && company.jobs.length > 0 ? (
                   <div className="space-y-3">
                     {company.jobs.map((job, i) => {
-                      // Handle both WTTJ and job board formats
                       const jobTitle = job.name || job.title || 'Poste non specifie'
                       const jobUrl = job.url || (job.slug ? `https://www.welcometothejungle.com/fr/companies/${company.slug}/jobs/${job.slug}` : '#')
                       const contractType = job.contract_type === 'permanent' ? 'CDI'
@@ -561,8 +608,43 @@ export default function CompanyIntelligencePage() {
                       )
                     })}
                   </div>
-                </Card>
-              )}
+                ) : (
+                  /* Button to load jobs */
+                  <div className="text-center py-6">
+                    <p className="text-sm mb-4" style={{ color: '#457B9D' }}>
+                      Recherchez les offres d'emploi sur LinkedIn, Indeed et Glassdoor
+                    </p>
+                    <Button
+                      onClick={loadCompanyJobs}
+                      disabled={loadingJobs}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      {loadingJobs ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Recherche en cours...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          Voir les offres d'emploi
+                        </>
+                      )}
+                    </Button>
+                    {jobsError && (
+                      <p className="mt-3 text-sm text-red-600">{jobsError}</p>
+                    )}
+                    <p className="text-xs mt-3" style={{ color: '#9CA3AF' }}>
+                      Cout supplementaire : ~0.15 EUR
+                    </p>
+                  </div>
+                )}
+              </Card>
 
               {/* Metadata */}
               <p className="text-xs text-center" style={{ color: '#9CA3AF' }}>

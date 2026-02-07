@@ -359,7 +359,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
               {/* Processing steps indicator */}
               <div className="mt-8 space-y-3 text-left">
                 <StepItem
-                  label="Analyse du CV"
+                  label="Analyse des critères"
                   done={progress > 10}
                   active={processingStep === 'parsing'}
                 />

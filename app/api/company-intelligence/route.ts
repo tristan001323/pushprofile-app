@@ -4,10 +4,7 @@ import {
   runApifyActor,
   APIFY_ACTORS,
   WTTJCompanyOutput,
-  LinkedInCompanyOutput,
-  LinkedInJobOutput,
-  IndeedJobOutput,
-  GlassdoorJobOutput
+  LinkedInCompanyOutput
 } from '@/lib/apify'
 
 const getSupabase = () => {
@@ -132,151 +129,6 @@ function normalizeLinkedInData(data: LinkedInCompanyOutput) {
     funding_rounds: data.fundingData?.numFundingRounds || null,
     source: 'linkedin',
   }
-}
-
-// Normalized job structure for company jobs
-interface CompanyJob {
-  title: string
-  location: string
-  url: string
-  source: string
-  posted_date: string | null
-  contract_type: string | null
-  remote: string | null
-  salary_min: number | null
-  salary_max: number | null
-}
-
-// Helper: Fetch all jobs for a company from multiple sources
-async function fetchCompanyJobs(companyName: string): Promise<CompanyJob[]> {
-  console.log(`Fetching jobs for company: ${companyName}`)
-
-  const allJobs: CompanyJob[] = []
-  const companyNameLower = companyName.toLowerCase().trim()
-
-  // Helper to check if job matches company
-  const matchesCompany = (jobCompanyName: string | undefined): boolean => {
-    if (!jobCompanyName) return false
-    const jobCompanyLower = jobCompanyName.toLowerCase().trim()
-    // Check if names match (allowing for variations like "Company" vs "Company Inc.")
-    return jobCompanyLower.includes(companyNameLower) || companyNameLower.includes(jobCompanyLower)
-  }
-
-  // Fetch from LinkedIn
-  try {
-    const linkedinJobs = await runApifyActor<LinkedInJobOutput>({
-      actorId: APIFY_ACTORS.LINKEDIN_JOBS,
-      input: {
-        searchQueries: [companyName],
-        location: 'France',
-        maxResults: 50,
-        publishedAt: 'pastMonth',
-        rows: 50
-      },
-      timeoutSecs: 60
-    })
-
-    for (const job of linkedinJobs) {
-      if (matchesCompany(job.companyName)) {
-        allJobs.push({
-          title: job.jobTitle,
-          location: job.location || 'Non specifie',
-          url: job.applyUrl || job.jobUrl,
-          source: 'linkedin',
-          posted_date: job.publishedAt ? job.publishedAt.split('T')[0] : null,
-          contract_type: job.contractType === 'C' ? 'CDD' : job.contractType === 'I' ? 'Stage' : 'CDI',
-          remote: (job.workType || '').toLowerCase().includes('remote') ? 'Remote' : null,
-          salary_min: null,
-          salary_max: null
-        })
-      }
-    }
-    console.log(`LinkedIn: found ${allJobs.length} jobs for ${companyName}`)
-  } catch (error) {
-    console.error('LinkedIn jobs error:', error)
-  }
-
-  // Fetch from Indeed
-  try {
-    const indeedJobs = await runApifyActor<IndeedJobOutput>({
-      actorId: APIFY_ACTORS.INDEED_JOBS,
-      input: {
-        keyword: companyName,
-        location: 'France',
-        country: 'fr',
-        maxItems: 50,
-        parseCompanyDetails: false
-      },
-      timeoutSecs: 60
-    })
-
-    for (const job of indeedJobs) {
-      if (matchesCompany(job.company?.companyName)) {
-        allJobs.push({
-          title: job.title,
-          location: job.location?.city ? `${job.location.city}, ${job.location.country}` : 'Non specifie',
-          url: job.applyUrl || job.jobUrl,
-          source: 'indeed',
-          posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
-          contract_type: null,
-          remote: null,
-          salary_min: job.baseSalary_min || null,
-          salary_max: job.baseSalary_max || null
-        })
-      }
-    }
-    console.log(`Indeed: total ${allJobs.length} jobs for ${companyName}`)
-  } catch (error) {
-    console.error('Indeed jobs error:', error)
-  }
-
-  // Fetch from Glassdoor
-  try {
-    const glassdoorJobs = await runApifyActor<GlassdoorJobOutput>({
-      actorId: APIFY_ACTORS.GLASSDOOR_JOBS,
-      input: {
-        keyword: companyName,
-        location: 'France',
-        maxItems: 50,
-        parseCompanyDetails: false
-      },
-      timeoutSecs: 60
-    })
-
-    for (const job of glassdoorJobs) {
-      if (matchesCompany(job.company?.companyName)) {
-        allJobs.push({
-          title: job.title,
-          location: job.location_city ? `${job.location_city}, ${job.location_country}` : 'Non specifie',
-          url: job.jobUrl,
-          source: 'glassdoor',
-          posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
-          contract_type: job.jobTypes?.[0] || null,
-          remote: job.remoteWorkTypes?.[0] || null,
-          salary_min: job.baseSalary_min || null,
-          salary_max: job.baseSalary_max || null
-        })
-      }
-    }
-    console.log(`Glassdoor: total ${allJobs.length} jobs for ${companyName}`)
-  } catch (error) {
-    console.error('Glassdoor jobs error:', error)
-  }
-
-  // Deduplicate by title + location
-  const seen = new Map<string, boolean>()
-  const uniqueJobs: CompanyJob[] = []
-
-  for (const job of allJobs) {
-    const key = `${job.title.toLowerCase().trim()}|${job.location.toLowerCase().trim()}`
-    if (!seen.has(key)) {
-      seen.set(key, true)
-      uniqueJobs.push(job)
-    }
-  }
-
-  console.log(`Total unique jobs for ${companyName}: ${uniqueJobs.length}`)
-  return uniqueJobs
 }
 
 // Helper: Merge profiles (base + complement, no duplicates)
@@ -504,19 +356,8 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // 3. If no jobs from WTTJ, fetch from job boards
-    const existingJobs = (companyProfile.jobs as unknown[]) || []
-    if (existingJobs.length === 0 && companyProfile.name) {
-      console.log(`No WTTJ jobs, fetching from job boards for: ${companyProfile.name}`)
-
-      const jobBoardJobs = await fetchCompanyJobs(companyProfile.name as string)
-
-      if (jobBoardJobs.length > 0) {
-        companyProfile.jobs = jobBoardJobs
-        companyProfile.jobs_count = jobBoardJobs.length
-        console.log(`Added ${jobBoardJobs.length} jobs from job boards`)
-      }
-    }
+    // Note: Job fetching from job boards is now optional (separate endpoint)
+    // This reduces base cost from ~$0.18 to ~$0.01-0.02
 
     // Add timestamps
     companyProfile.scraped_at = new Date().toISOString()

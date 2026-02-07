@@ -10,7 +10,7 @@ const getSupabase = () => {
 
 // Step labels for frontend display
 const STEP_LABELS: Record<string, { label: string; progress: number }> = {
-  'parsing': { label: 'Analyse du CV...', progress: 10 },
+  'parsing': { label: 'Analyse des critères...', progress: 10 },
   'scraping': { label: 'Recherche sur les jobboards...', progress: 30 },
   'filtering': { label: 'Filtrage des résultats...', progress: 70 },
   'scoring': { label: 'Scoring IA des meilleurs matchs...', progress: 85 },
