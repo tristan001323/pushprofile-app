@@ -114,7 +114,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna' | 'indeed' | 'glassdoor' | 'wttj'>('all')
+  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna' | 'indeed' | 'glassdoor' | 'wttj' | 'ats'>('all')
   const [enrichedContacts, setEnrichedContacts] = useState<EnrichedContact[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
   const [contactsError, setContactsError] = useState<string | null>(null)
