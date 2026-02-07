@@ -235,19 +235,27 @@ export async function POST(request: NextRequest) {
     const searchId = searchData.id
     console.log(`Search created: ${searchId}`)
 
-    // 3. Trigger background processing (fire and forget)
+    // 3. Trigger background processing
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
       || 'http://localhost:3000'
 
-    // Fire and forget - don't await
-    fetch(`${baseUrl}/api/process-search/${searchId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    }).catch(err => console.error('Failed to trigger processing:', err))
+    console.log(`Triggering process-search at: ${baseUrl}/api/process-search/${searchId}`)
 
-    // 4. Return immediately with search ID
+    // Must await the fetch to ensure request is sent before function terminates
+    try {
+      const processResponse = await fetch(`${baseUrl}/api/process-search/${searchId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      console.log(`Process-search triggered, status: ${processResponse.status}`)
+    } catch (err) {
+      console.error('Failed to trigger processing:', err)
+      // Don't fail the whole request, just log the error
+    }
+
+    // 4. Return with search ID
     return NextResponse.json({
       success: true,
       search_id: searchId,
