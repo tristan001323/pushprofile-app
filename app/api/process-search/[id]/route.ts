@@ -157,15 +157,24 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
     return jobs
       .filter(job => job.title)
       .map(job => {
-        const location = job.locations?.[0]
-        const locationStr = location?.city
-          ? `${location.city}${location.state ? `, ${location.state}` : ''}${location.country ? `, ${location.country}` : ''}`
-          : (location?.is_remote ? 'Remote' : 'Unknown')
+        // Build location string from first location
+        const loc = job.locations?.[0]
+        let locationStr = 'Unknown'
+        if (loc?.location) {
+          locationStr = loc.location
+        } else if (loc?.city) {
+          locationStr = `${loc.city}${loc.state ? `, ${loc.state}` : ''}${loc.country ? `, ${loc.country}` : ''}`
+        } else if (job.is_remote || job.workplace_type === 'remote') {
+          locationStr = 'Remote'
+        }
+
+        // Determine remote type from workplace_type or is_remote flag
+        const isRemote = job.is_remote || job.workplace_type === 'remote' || job.workplace_type === 'hybrid'
 
         return {
           search_id: '',
           external_id: `ats_${job.source}_${job.id}`,
-          source: job.source, // greenhouse, lever_co, workday, etc.
+          source: job.source, // greenhouse, lever_co, workday, ashby, etc.
           job_url: job.apply_url || job.listing_url,
           job_title: job.title,
           company_name: job.company?.name || 'Unknown',
@@ -173,15 +182,18 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
           description: (job.description || '').substring(0, 2000),
           posted_date: job.date_posted ? job.date_posted.split('T')[0] : null,
           matching_details: {
-            contract_type: job.employment_type === 'contract' ? 'contract' : 'permanent',
-            remote_type: job.locations?.[0]?.is_remote ? 'remote' : 'on_site',
+            contract_type: job.employment_type === 'contract' || job.employment_type === 'temporary' ? 'contract'
+              : job.employment_type === 'internship' ? 'internship' : 'permanent',
+            remote_type: isRemote ? 'remote' : 'on_site',
+            workplace_type: job.workplace_type || null,
             salary_min: job.compensation?.min || null,
             salary_max: job.compensation?.max || null,
             salary_currency: job.compensation?.currency || null,
+            salary_period: job.compensation?.period || null,
             experience_level: job.experience_level || null,
+            employment_type: job.employment_type || null,
             full_description: job.description || '',
-            company_website: job.company?.website || null,
-            company_logo: job.company?.logo_url || null
+            source_id: job.source_id || null
           },
           prefilter_score: 50
         }

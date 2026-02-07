@@ -371,29 +371,38 @@ export interface ATSJobOutput {
   id: string
   title: string
   company: {
+    id?: string
     name: string
-    logo_url?: string
-    website?: string
   }
-  locations: Array<{
-    city?: string
-    state?: string
-    country?: string
-    is_remote?: boolean
-  }>
-  compensation?: {
-    min?: number
-    max?: number
-    currency?: string
-    period?: string
-  }
-  employment_type?: string
-  experience_level?: string
+  description?: string  // HTML format
   listing_url: string
   apply_url?: string
-  source: string  // greenhouse, lever_co, workday, ashby, etc.
-  date_posted?: string
-  description?: string
+  locations: Array<{
+    location?: string | null
+    city?: string | null
+    state?: string | null
+    country?: string | null
+    latitude?: number | null
+    longitude?: number | null
+  }>
+  compensation?: {
+    min?: number | null
+    max?: number | null
+    currency?: string | null
+    period?: 'hour' | 'day' | 'week' | 'month' | 'year' | null
+    raw_text?: string | null
+    is_estimated?: boolean
+  } | null
+  employment_type?: 'full_time' | 'part_time' | 'contract' | 'temporary' | 'internship' | 'volunteer' | 'other' | null
+  workplace_type?: 'onsite' | 'hybrid' | 'remote' | null
+  experience_level?: 'internship' | 'entry' | 'mid' | 'senior' | 'lead' | 'manager' | 'director' | 'executive' | null
+  source: string  // greenhouse, lever_co, workday, ashby, smartrecruiters, etc.
+  source_id?: string
+  created_at?: string
+  updated_at?: string
+  date_posted?: string | null
+  valid_through?: string | null
+  is_remote?: boolean
 }
 
 // WTTJ Company (saswave)
