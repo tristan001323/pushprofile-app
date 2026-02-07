@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
           searchQueries: [company_name],
           location: 'France',
           maxResults: 50,
-          publishedAt: 'pastMonth',
+          publishedAt: 'r2592000',
           rows: 50
         },
         timeoutSecs: 60
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       const indeedJobs = await runApifyActor<IndeedJobOutput>({
         actorId: APIFY_ACTORS.INDEED_JOBS,
         input: {
-          keyword: company_name,
+          keywords: company_name,
           location: 'France',
           country: 'fr',
           maxItems: 50,
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       const glassdoorJobs = await runApifyActor<GlassdoorJobOutput>({
         actorId: APIFY_ACTORS.GLASSDOOR_JOBS,
         input: {
-          keyword: company_name,
+          keywords: company_name,
           location: 'France',
           maxItems: 50,
           parseCompanyDetails: false

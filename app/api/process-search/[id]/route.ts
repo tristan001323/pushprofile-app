@@ -141,7 +141,7 @@ async function fetchLinkedInJobs(parsedData: ParsedCV, contractTypes?: string[],
     searchQueries: [parsedData.target_roles[0] || 'developer'],
     location: parsedData.location || 'France',
     maxResults: 35,
-    publishedAt: 'pastMonth',
+    publishedAt: 'r2592000', // past month
     rows: 35
   }
 
@@ -183,7 +183,7 @@ async function fetchLinkedInJobs(parsedData: ParsedCV, contractTypes?: string[],
 // Fetch Indeed jobs
 async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const input: Record<string, unknown> = {
-    keyword: parsedData.target_roles[0] || 'developer',
+    keywords: parsedData.target_roles[0] || 'developer',
     location: parsedData.location || 'France',
     country: 'fr',
     maxItems: 35,
@@ -225,7 +225,7 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 // Fetch Glassdoor jobs
 async function fetchGlassdoorJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const input: Record<string, unknown> = {
-    keyword: parsedData.target_roles[0] || 'developer',
+    keywords: parsedData.target_roles[0] || 'developer',
     location: parsedData.location || 'France',
     maxItems: 35,
     parseCompanyDetails: true
