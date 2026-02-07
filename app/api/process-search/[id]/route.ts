@@ -320,7 +320,7 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
   filtered.forEach(job => {
     job.search_id = searchId
     let score = 0
-    const jobText = (job.job_title + ' ' + job.description).toLowerCase()
+    const jobText = ((job.job_title || '') + ' ' + (job.description || '')).toLowerCase()
     const jobTitle = (job.job_title || '').toLowerCase()
     const cvSkills = (parsedData.skills || []).map(s => s.toLowerCase())
     const targetRoles = (parsedData.target_roles || []).map(r => r.toLowerCase())
@@ -347,7 +347,7 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
 
     // Location matching (10 points)
     const cvLocation = (parsedData.location || '').toLowerCase()
-    if (cvLocation && job.location.toLowerCase().includes(cvLocation)) score += 10
+    if (cvLocation && (job.location || '').toLowerCase().includes(cvLocation)) score += 10
 
     // Contract type bonus (5 points)
     if (job.matching_details?.contract_type === 'permanent') score += 5
@@ -361,7 +361,7 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
 
   for (const job of filtered.sort((a, b) => (b.prefilter_score || 0) - (a.prefilter_score || 0))) {
     if ((job.prefilter_score || 0) === 0) continue
-    const key = `${job.job_title.toLowerCase().replace(/[^a-z0-9]/g, '')}_${job.company_name.toLowerCase().replace(/[^a-z0-9]/g, '')}`
+    const key = `${(job.job_title || '').toLowerCase().replace(/[^a-z0-9]/g, '')}_${(job.company_name || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`
     if (!seen.has(key)) {
       seen.set(key, true)
       result.push(job)
