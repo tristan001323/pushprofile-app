@@ -136,26 +136,33 @@ async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 
 // Fetch ATS Jobs (Greenhouse, Lever, Workday, Ashby, etc. - 13 platforms)
 async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
-  // Calculate posted_after date (30 days ago)
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  const postedAfter = thirtyDaysAgo.toISOString()
-
-  // Include Remote jobs to capture more opportunities for French candidates
-  const locationInput = parsedData.location || 'France'
-  const locations = [locationInput]
-  // Add Remote if not already searching for remote
-  if (!locationInput.toLowerCase().includes('remote')) {
-    locations.push('Remote')
-  }
+  // All 13 ATS platforms supported by this actor
+  const ALL_ATS_SOURCES = [
+    'greenhouse',
+    'lever_co',
+    'ashby',
+    'workable',
+    'rippling',
+    'polymer',
+    'workday',
+    'smartrecruiters',
+    'bamboohr',
+    'breezy',
+    'jazzhr',
+    'recruitee',
+    'personio'
+  ]
 
   const input: Record<string, unknown> = {
     queries: [parsedData.target_roles[0] || 'developer'],
-    locations: locations,
-    posted_after: postedAfter,
+    locations: [parsedData.location || 'Paris'],
+    sources: ALL_ATS_SOURCES,
+    is_remote: false,
     page: 1,
-    page_size: 100  // Increased to get more results
+    page_size: 50
   }
+
+  console.log('ATS Jobs input:', JSON.stringify(input, null, 2))
 
   try {
     // Use async method - this actor doesn't support sync endpoint (returns 502)
