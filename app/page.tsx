@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function LandingPage() {
   const router = useRouter()
@@ -294,45 +295,41 @@ export default function LandingPage() {
 
           <div className="flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-6">
             {/* Job Boards - Gauche */}
-            <div className="flex flex-col gap-2 w-full lg:w-auto">
+            <div className="flex flex-col gap-2.5 w-full lg:w-auto">
               {/* LinkedIn */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#0A66C2' }}>
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                  </svg>
+              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#0A66C2] p-2">
+                  <Image src="/logos/linkedin.svg" alt="LinkedIn" width={24} height={24} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>LinkedIn</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>LinkedIn</span>
               </div>
               {/* Indeed */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#003A9B' }}>
-                  <span className="text-white font-bold text-lg" style={{ fontFamily: 'serif' }}>i</span>
+              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#003A9B] p-2">
+                  <Image src="/logos/indeed.svg" alt="Indeed" width={24} height={24} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>Indeed</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Indeed</span>
               </div>
               {/* Glassdoor */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#0CAA41' }}>
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6.25 3C4.46 3 3 4.46 3 6.25v11.5C3 19.54 4.46 21 6.25 21h5v-3H6.25a.25.25 0 01-.25-.25V6.25c0-.138.112-.25.25-.25H9v11h3V3H6.25zm5.75 0v3h5.75c.138 0 .25.112.25.25v8.5a.25.25 0 01-.25.25H15V18h2.75c1.79 0 3.25-1.46 3.25-3.25V6.25C21 4.46 19.54 3 17.75 3H12z"/>
-                  </svg>
+              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#0CAA41] p-2">
+                  <Image src="/logos/glassdoor.svg" alt="Glassdoor" width={24} height={24} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>Glassdoor</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Glassdoor</span>
               </div>
               {/* WTTJ */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FFCD00' }}>
-                  <span className="font-black text-sm" style={{ color: '#1D1D1D' }}>W</span>
+              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden">
+                  <Image src="/logos/wttj.svg" alt="Welcome to the Jungle" width={40} height={40} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>WTTJ</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>WTTJ</span>
               </div>
               {/* HelloWork */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FF5A5F' }}>
-                  <span className="text-white font-bold text-sm">H</span>
+              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden">
+                  <Image src="/logos/hellowork.svg" alt="HelloWork" width={40} height={40} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>HelloWork</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>HelloWork</span>
               </div>
             </div>
 
@@ -398,47 +395,41 @@ export default function LandingPage() {
             </div>
 
             {/* ATS Directs - Droite */}
-            <div className="flex flex-col gap-2 w-full lg:w-auto">
+            <div className="flex flex-col gap-2.5 w-full lg:w-auto">
               {/* Greenhouse */}
-              <div className="flex items-center gap-3 bg-white border border-green-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#24A148' }}>
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2 15h-4v-1h4v1zm0-2h-4v-1h4v1zm1-3.04V13h-6v-.96C7.18 10.88 6 9.06 6 9c0-3.31 2.69-6 6-6s6 2.69 6 6c0 2.06-1.18 3.88-3 4.96z"/>
-                  </svg>
+              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-[#24A148] p-2">
+                  <Image src="/logos/greenhouse.svg" alt="Greenhouse" width={24} height={24} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>Greenhouse</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Greenhouse</span>
               </div>
               {/* Lever */}
-              <div className="flex items-center gap-3 bg-white border border-green-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#4B48EC' }}>
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  </svg>
+              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden">
+                  <Image src="/logos/lever.svg" alt="Lever" width={40} height={40} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>Lever</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Lever</span>
               </div>
               {/* Workday */}
-              <div className="flex items-center gap-3 bg-white border border-green-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F68D2E' }}>
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="12" cy="12" r="8"/>
-                  </svg>
+              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden">
+                  <Image src="/logos/workday.svg" alt="Workday" width={40} height={40} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>Workday</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Workday</span>
               </div>
               {/* Ashby */}
-              <div className="flex items-center gap-3 bg-white border border-green-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#5046E5' }}>
-                  <span className="text-white font-bold text-xs">A</span>
+              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg overflow-hidden">
+                  <Image src="/logos/ashby.svg" alt="Ashby" width={40} height={40} />
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>Ashby</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>Ashby</span>
               </div>
               {/* +9 autres */}
-              <div className="flex items-center gap-3 bg-white border border-green-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#10B981' }}>
-                  <span className="text-white font-bold text-xs">+9</span>
+              <div className="flex items-center gap-3 bg-white border border-emerald-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#10B981' }}>
+                  <span className="text-white font-bold text-sm">+9</span>
                 </div>
-                <span className="font-medium text-sm" style={{ color: '#1D3557' }}>autres ATS</span>
+                <span className="font-medium" style={{ color: '#1D3557' }}>autres ATS</span>
               </div>
             </div>
           </div>
