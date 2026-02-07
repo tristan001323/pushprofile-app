@@ -11,13 +11,14 @@ const APIFY_BASE = 'https://api.apify.com/v2'
 
 // Actor IDs for all scrapers
 export const APIFY_ACTORS = {
-  // Job scrapers (cheap_scraper)
-  LINKEDIN_JOBS: '2rJKkhh7vjpX7pvjg',    // cheap_scraper/linkedin-job-scraper - $0.70/1000
+  // Job scrapers - ACTIVE
   INDEED_JOBS: 'nlZZi3lZre4fM9IET',      // cheap_scraper/indeed-scraper - $1.00/1000
-  GLASSDOOR_JOBS: 'bYSAbQqxwImLaf2nb',   // cheap_scraper/glassdoor-jobs-scraper - $1.00/1000
+  ATS_JOBS: 'NDli5o5pYKW1atJAY',         // jobo.world/ats-jobs-search - 13 ATS platforms (Greenhouse, Lever, Workday, etc.)
 
-  // WTTJ scraper (shahidirfan)
-  WTTJ_JOBS: 'TtyMcBQsSh3wzxbl9',        // shahidirfan/jungle-job-scraper - ~$0.003/job
+  // Job scrapers - DISABLED (slow/memory issues)
+  // LINKEDIN_JOBS: '2rJKkhh7vjpX7pvjg',    // cheap_scraper/linkedin-job-scraper - DISABLED: timeout
+  // GLASSDOOR_JOBS: 'bYSAbQqxwImLaf2nb',   // cheap_scraper/glassdoor-jobs-scraper - DISABLED: memory limit
+  // WTTJ_JOBS: 'TtyMcBQsSh3wzxbl9',        // shahidirfan/jungle-job-scraper - DISABLED: timeout
 
   // Company Intelligence (saswave) - $15/month + usage
   WTTJ_COMPANY: 'OdeZQS0Wd7OV62KFe',     // saswave/welcome-to-the-jungle-scraper
@@ -348,7 +349,7 @@ export interface GlassdoorJobOutput {
   description_html?: string
 }
 
-// WTTJ Jobs (shahidirfan)
+// WTTJ Jobs (shahidirfan) - DISABLED
 export interface WTTJJobOutput {
   title: string
   company: string
@@ -363,6 +364,36 @@ export interface WTTJJobOutput {
   description_text?: string
   url: string
   job_id?: string
+}
+
+// ATS Jobs Search (jobo.world) - 13 ATS platforms
+export interface ATSJobOutput {
+  id: string
+  title: string
+  company: {
+    name: string
+    logo_url?: string
+    website?: string
+  }
+  locations: Array<{
+    city?: string
+    state?: string
+    country?: string
+    is_remote?: boolean
+  }>
+  compensation?: {
+    min?: number
+    max?: number
+    currency?: string
+    period?: string
+  }
+  employment_type?: string
+  experience_level?: string
+  listing_url: string
+  apply_url?: string
+  source: string  // greenhouse, lever_co, workday, ashby, etc.
+  date_posted?: string
+  description?: string
 }
 
 // WTTJ Company (saswave)

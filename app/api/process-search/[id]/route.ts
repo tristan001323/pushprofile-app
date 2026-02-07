@@ -4,10 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 import {
   runApifyActor,
   APIFY_ACTORS,
-  LinkedInJobOutput,
   IndeedJobOutput,
-  GlassdoorJobOutput,
-  WTTJJobOutput
+  ATSJobOutput
 } from '@/lib/apify'
 import { callClaude, cleanJsonResponse } from '@/lib/claude'
 
@@ -135,48 +133,61 @@ async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   }
 }
 
-// Fetch LinkedIn jobs
-async function fetchLinkedInJobs(parsedData: ParsedCV, contractTypes?: string[], remoteOptions?: string[]): Promise<NormalizedJob[]> {
+// Fetch ATS Jobs (Greenhouse, Lever, Workday, Ashby, etc. - 13 platforms)
+async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+  // Calculate posted_after date (30 days ago)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const postedAfter = thirtyDaysAgo.toISOString()
+
   const input: Record<string, unknown> = {
-    keyword: [parsedData.target_roles[0] || 'developer'],
-    location: parsedData.location || 'France',
-    publishedAt: 'r2592000', // past month (r86400=day, r604800=week, r2592000=month)
-    enrichCompanyData: false
+    queries: [parsedData.target_roles[0] || 'developer'],
+    locations: [parsedData.location || 'France'],
+    posted_after: postedAfter,
+    page_size: 50
   }
 
   try {
-    const jobs = await runApifyActor<LinkedInJobOutput>({
-      actorId: APIFY_ACTORS.LINKEDIN_JOBS,
+    const jobs = await runApifyActor<ATSJobOutput>({
+      actorId: APIFY_ACTORS.ATS_JOBS,
       input,
-      timeoutSecs: 90
+      timeoutSecs: 60
     })
 
     return jobs
-      .filter(job => job.jobTitle) // Filter out jobs without title
-      .map(job => ({
-        search_id: '',
-        external_id: `linkedin_${job.jobId}`,
-        source: 'linkedin',
-        job_url: job.applyUrl || job.jobUrl,
-        job_title: job.jobTitle,
-        company_name: job.companyName || 'Unknown',
-        location: job.location || 'Remote',
-        description: (job.jobDescription || '').substring(0, 2000),
-        posted_date: job.publishedAt ? job.publishedAt.split('T')[0] : null,
-        matching_details: {
-          contract_type: job.contractType === 'C' ? 'contract' : job.contractType === 'I' ? 'internship' : 'permanent',
-          remote_type: (job.workType || '').toLowerCase().includes('remote') ? 'remote' : 'on_site',
-          salary_min: null,
-          salary_max: null,
-          full_description: job.jobDescription || '',
-          // Recruiter info from LinkedIn
-          recruiter_name: job.posterFullName || null,
-          recruiter_url: job.posterProfileUrl || null
-        },
-        prefilter_score: 50
-      }))
+      .filter(job => job.title)
+      .map(job => {
+        const location = job.locations?.[0]
+        const locationStr = location?.city
+          ? `${location.city}${location.state ? `, ${location.state}` : ''}${location.country ? `, ${location.country}` : ''}`
+          : (location?.is_remote ? 'Remote' : 'Unknown')
+
+        return {
+          search_id: '',
+          external_id: `ats_${job.source}_${job.id}`,
+          source: job.source, // greenhouse, lever_co, workday, etc.
+          job_url: job.apply_url || job.listing_url,
+          job_title: job.title,
+          company_name: job.company?.name || 'Unknown',
+          location: locationStr,
+          description: (job.description || '').substring(0, 2000),
+          posted_date: job.date_posted ? job.date_posted.split('T')[0] : null,
+          matching_details: {
+            contract_type: job.employment_type === 'contract' ? 'contract' : 'permanent',
+            remote_type: job.locations?.[0]?.is_remote ? 'remote' : 'on_site',
+            salary_min: job.compensation?.min || null,
+            salary_max: job.compensation?.max || null,
+            salary_currency: job.compensation?.currency || null,
+            experience_level: job.experience_level || null,
+            full_description: job.description || '',
+            company_website: job.company?.website || null,
+            company_logo: job.company?.logo_url || null
+          },
+          prefilter_score: 50
+        }
+      })
   } catch (error) {
-    console.error('LinkedIn error:', error)
+    console.error('ATS Jobs error:', error)
     return []
   }
 }
@@ -222,87 +233,8 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   }
 }
 
-// Fetch Glassdoor jobs
-async function fetchGlassdoorJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
-  const input: Record<string, unknown> = {
-    keywords: [parsedData.target_roles[0] || 'developer'],
-    location: parsedData.location || 'France',
-    country: 'France',
-    datePosted: '30' // last 30 days
-  }
-
-  try {
-    const jobs = await runApifyActor<GlassdoorJobOutput>({
-      actorId: APIFY_ACTORS.GLASSDOOR_JOBS,
-      input,
-      timeoutSecs: 90
-    })
-
-    return jobs.map(job => ({
-      search_id: '',
-      external_id: `glassdoor_${job.key}`,
-      source: 'glassdoor',
-      job_url: job.applyUrl || job.jobUrl,
-      job_title: job.title,
-      company_name: job.company?.companyName || 'Unknown',
-      location: job.location_city ? `${job.location_city}, ${job.location_country}` : 'Remote',
-      description: (job.description_text || '').substring(0, 2000),
-      posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
-      matching_details: {
-        contract_type: 'permanent',
-        remote_type: (job.remoteWorkTypes || []).join(' ').toLowerCase().includes('remote') ? 'remote' : 'on_site',
-        salary_min: job.baseSalary_min || null,
-        salary_max: job.baseSalary_max || null,
-        full_description: job.description_text || ''
-      },
-      prefilter_score: 50
-    }))
-  } catch (error) {
-    console.error('Glassdoor error:', error)
-    return []
-  }
-}
-
-// Fetch WTTJ jobs
-async function fetchWTTJJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
-  const input: Record<string, unknown> = {
-    keyword: parsedData.target_roles[0] || 'developer', // STRING, not array
-    location: parsedData.location || 'France',
-    max_pages: 3,
-    results_wanted: 35
-  }
-
-  try {
-    const jobs = await runApifyActor<WTTJJobOutput>({
-      actorId: APIFY_ACTORS.WTTJ_JOBS,
-      input,
-      timeoutSecs: 90
-    })
-
-    return jobs.map(job => ({
-      search_id: '',
-      external_id: `wttj_${job.job_id || job.url?.split('/').pop()}`,
-      source: 'wttj',
-      job_url: job.url,
-      job_title: job.title,
-      company_name: job.company || 'Unknown',
-      location: job.location || 'Remote',
-      description: (job.description_text || '').substring(0, 2000),
-      posted_date: job.date_posted ? job.date_posted.split('T')[0] : null,
-      matching_details: {
-        contract_type: (job.contract_type || '').toLowerCase().includes('cdd') ? 'contract' : 'permanent',
-        remote_type: (job.remote || '').toLowerCase().includes('full') ? 'remote' : 'on_site',
-        salary_min: null,
-        salary_max: null,
-        full_description: job.description_text || ''
-      },
-      prefilter_score: 50
-    }))
-  } catch (error) {
-    console.error('WTTJ error:', error)
-    return []
-  }
-}
+// DISABLED: Glassdoor (memory limit issues) and WTTJ (timeout issues)
+// These scrapers have been replaced by ATS Jobs Search which covers 13 platforms
 
 // Filter agencies and score jobs
 function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchId: string, excludeAgencies: boolean): NormalizedJob[] {
@@ -399,31 +331,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // 2. Fetch jobs from all sources in parallel
     await updateStep(supabase, searchId, 'scraping')
 
-    // Launch all scrapers in parallel with individual step updates
-    const [adzunaJobs, linkedInJobs, indeedJobs, glassdoorJobs, wttjJobs] = await Promise.all([
+    // Launch all scrapers in parallel (Adzuna + Indeed + ATS Jobs)
+    const [adzunaJobs, indeedJobs, atsJobs] = await Promise.all([
       fetchAdzunaJobs(parsedData).then(jobs => {
         console.log(`[${searchId}] Adzuna: ${jobs.length} jobs`)
-        return jobs
-      }),
-      fetchLinkedInJobs(parsedData).then(jobs => {
-        console.log(`[${searchId}] LinkedIn: ${jobs.length} jobs`)
         return jobs
       }),
       fetchIndeedJobs(parsedData).then(jobs => {
         console.log(`[${searchId}] Indeed: ${jobs.length} jobs`)
         return jobs
       }),
-      fetchGlassdoorJobs(parsedData).then(jobs => {
-        console.log(`[${searchId}] Glassdoor: ${jobs.length} jobs`)
-        return jobs
-      }),
-      fetchWTTJJobs(parsedData).then(jobs => {
-        console.log(`[${searchId}] WTTJ: ${jobs.length} jobs`)
+      fetchATSJobs(parsedData).then(jobs => {
+        console.log(`[${searchId}] ATS (13 platforms): ${jobs.length} jobs`)
         return jobs
       })
     ])
 
-    const allJobs = [...adzunaJobs, ...linkedInJobs, ...indeedJobs, ...glassdoorJobs, ...wttjJobs]
+    const allJobs = [...adzunaJobs, ...indeedJobs, ...atsJobs]
     console.log(`[${searchId}] Total raw jobs: ${allJobs.length}`)
 
     if (allJobs.length === 0) {
