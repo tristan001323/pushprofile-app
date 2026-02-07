@@ -287,80 +287,159 @@ export default function LandingPage() {
 
       {/* Sources Schema */}
       <section className="py-16 border-y border-gray-200 bg-white">
-        <div className="max-w-5xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-6">
           <p className="text-center text-sm font-medium uppercase tracking-wider mb-10" style={{ color: '#457B9D' }}>
             Toutes vos sources en un seul endroit
           </p>
 
-          <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-4">
-            {/* Sources */}
-            <div className="flex flex-col gap-3 w-full md:w-auto">
-              <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#0A66C2' }}>
-                  <span className="text-white font-bold text-sm">in</span>
+          <div className="grid md:grid-cols-3 gap-8 items-start">
+            {/* Job Boards */}
+            <div>
+              <h4 className="text-center font-semibold mb-4" style={{ color: '#1D3557' }}>
+                Job Boards
+              </h4>
+              <div className="flex flex-col gap-3">
+                {/* LinkedIn */}
+                <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#0A66C2' }}>
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>LinkedIn Jobs</span>
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>LinkedIn Jobs</span>
-              </div>
-              <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#2164F3' }}>
-                  <span className="text-white font-bold text-sm">in</span>
+                {/* Indeed */}
+                <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#2164F3' }}>
+                    <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M11.566 21.552v-8.456c0-2.328.678-4.09 2.033-5.283 1.128-1.015 2.71-1.523 4.746-1.523.452 0 .79.023 1.016.068v3.473c-.339-.068-.768-.09-1.242-.09-1.016 0-1.806.294-2.372.882-.565.588-.848 1.425-.848 2.508v8.421h-3.333z"/>
+                      <circle cx="13.232" cy="3.558" r="2.063"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>Indeed</span>
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Indeed</span>
-              </div>
-              <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FFCD00' }}>
-                  <span className="font-bold text-sm" style={{ color: '#1D3557' }}>W</span>
+                {/* Glassdoor */}
+                <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#0CAA41' }}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.144 20.572H6.856A3.857 3.857 0 0 1 3 16.715V7.286A3.857 3.857 0 0 1 6.856 3.43h.429v13.713h9.859v3.429zm.857-6.857H7.286V3.43h10.715a3.857 3.857 0 0 1 3.856 3.856v2.572a3.857 3.857 0 0 1-3.856 3.857z"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>Glassdoor</span>
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Welcome to the Jungle</span>
-              </div>
-              <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F1FAEE' }}>
-                  <span className="text-lg">🌐</span>
+                {/* WTTJ */}
+                <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FFCD00' }}>
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#1D1D1D">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6zm4 4h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>Welcome to the Jungle</span>
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>+50K offres sites spécialisés</span>
-              </div>
-              <div className="flex items-center gap-3 bg-white border-2 border-green-100 rounded-xl px-4 py-3 shadow-sm">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#D1FAE5' }}>
-                  <span className="text-lg">📇</span>
+                {/* HelloWork */}
+                <div className="flex items-center gap-3 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FF6550' }}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>HelloWork</span>
                 </div>
-                <span className="font-medium" style={{ color: '#1D3557' }}>Contacts enrichis des recruteurs</span>
               </div>
             </div>
 
-            {/* Arrow */}
-            <div className="flex items-center justify-center py-4 md:py-0 md:px-6">
-              <svg className="w-12 h-12 md:w-16 md:h-16 rotate-90 md:rotate-0" style={{ color: '#6366F1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
+            {/* ATS Directs */}
+            <div>
+              <h4 className="text-center font-semibold mb-4" style={{ color: '#1D3557' }}>
+                Offres directes entreprises
+              </h4>
+              <div className="flex flex-col gap-3">
+                {/* Greenhouse */}
+                <div className="flex items-center gap-3 bg-white border-2 border-green-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#24A148' }}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>Greenhouse</span>
+                </div>
+                {/* Lever */}
+                <div className="flex items-center gap-3 bg-white border-2 border-green-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#4B48EC' }}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2v20M2 12h20"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>Lever</span>
+                </div>
+                {/* Workday */}
+                <div className="flex items-center gap-3 bg-white border-2 border-green-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#0066FF' }}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>Workday</span>
+                </div>
+                {/* Ashby */}
+                <div className="flex items-center gap-3 bg-white border-2 border-green-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#6366F1' }}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M4 4h16v16H4z"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>Ashby</span>
+                </div>
+                {/* +10 autres */}
+                <div className="flex items-center gap-3 bg-white border-2 border-green-100 rounded-xl px-4 py-3 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#10B981' }}>
+                    <span className="text-white font-bold text-sm">+9</span>
+                  </div>
+                  <span className="font-medium" style={{ color: '#1D3557' }}>autres ATS</span>
+                </div>
+              </div>
+              <p className="text-xs text-center mt-3" style={{ color: '#457B9D' }}>
+                On va chercher les offres directement à la source
+              </p>
             </div>
 
             {/* Result */}
-            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl w-full md:w-auto">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="text-3xl">🎯</span>
+            <div>
+              <h4 className="text-center font-semibold mb-4" style={{ color: '#1D3557' }}>
+                Vos résultats
+              </h4>
+              <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
+                    <span className="text-3xl">🎯</span>
+                  </div>
+                  <ul className="text-sm space-y-3 text-left">
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>~50 jobs pertinents</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>Scores de matching IA</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>Contacts directs</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>Dédupliqués & classés</span>
+                    </li>
+                  </ul>
                 </div>
-                <h4 className="text-xl font-bold mb-2">Vos résultats</h4>
-                <ul className="text-sm space-y-2 text-indigo-100">
-                  <li className="flex items-center gap-2 justify-center">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    ~50 jobs pertinents
-                  </li>
-                  <li className="flex items-center gap-2 justify-center">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Scores de matching IA
-                  </li>
-                  <li className="flex items-center gap-2 justify-center">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Contacts directs
-                  </li>
-                </ul>
               </div>
             </div>
           </div>
@@ -420,7 +499,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-bold mb-3" style={{ color: '#1D3557' }}>Matching Multi-Sources</h3>
               <p style={{ color: '#457B9D' }}>
-                Recherche simultanée sur Indeed, LinkedIn, WTTJ, Adzuna et 50K+ offres. Fini les heures à chercher sur chaque site.
+                Recherche simultanée sur LinkedIn, Indeed, Glassdoor, WTTJ, HelloWork + directement sur les ATS des entreprises. Fini les heures à chercher partout.
               </p>
             </div>
 
@@ -493,7 +572,7 @@ export default function LandingPage() {
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                      <span style={{ color: '#1D3557' }}>Multi-sources : Indeed + LinkedIn + WTTJ + 50K jobs</span>
+                      <span style={{ color: '#1D3557' }}>Multi-sources : LinkedIn, Indeed, Glassdoor, WTTJ + ATS entreprises</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -542,7 +621,7 @@ export default function LandingPage() {
                     Trouvez un job 2x plus vite
                   </h3>
                   <p className="text-lg mb-6" style={{ color: '#457B9D' }}>
-                    Fini les 10h/semaine à chercher sur Indeed, LinkedIn, WTTJ. Uploadez, on fait le reste.
+                    Fini les 10h/semaine à chercher sur LinkedIn, Indeed, WTTJ, Glassdoor... Uploadez, on fait le reste.
                   </p>
                   <ul className="space-y-4 mb-8">
                     <li className="flex items-start gap-3">

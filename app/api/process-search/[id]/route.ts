@@ -49,6 +49,7 @@ interface NormalizedJob {
   search_id: string
   external_id: string
   source: string
+  source_engine: 'adzuna' | 'indeed' | 'ats_direct'  // Internal tracking
   job_url: string
   job_title: string
   company_name: string
@@ -57,6 +58,33 @@ interface NormalizedJob {
   posted_date: string | null
   matching_details: Record<string, unknown>
   prefilter_score?: number
+}
+
+// Detect original source from Adzuna redirect URL
+// Adzuna aggregates 50+ job boards - we want to show the REAL source to clients
+function detectOriginalSource(redirectUrl: string, companyName: string): string {
+  const url = (redirectUrl || '').toLowerCase()
+  const company = (companyName || '').toLowerCase()
+
+  // Check URL patterns for known job boards
+  if (url.includes('pole-emploi') || url.includes('francetravail')) return 'France Travail'
+  if (url.includes('apec.fr')) return 'APEC'
+  if (url.includes('cadremploi')) return 'Cadremploi'
+  if (url.includes('monster')) return 'Monster'
+  if (url.includes('meteojob')) return 'Meteojob'
+  if (url.includes('regionsjob')) return 'RegionsJob'
+  if (url.includes('hellowork')) return 'HelloWork'
+  if (url.includes('indeed')) return 'Indeed'
+  if (url.includes('linkedin')) return 'LinkedIn'
+  if (url.includes('welcometothejungle') || url.includes('wttj')) return 'WTTJ'
+  if (url.includes('talent.com')) return 'Talent.com'
+  if (url.includes('jobijoba')) return 'Jobijoba'
+  if (url.includes('lesjeudis')) return 'LesJeudis'
+  if (url.includes('chooseyourboss')) return 'ChooseYourBoss'
+  if (url.includes('free-work') || url.includes('freework')) return 'Free-Work'
+
+  // Fallback: never show "Adzuna" to client
+  return 'Offre directe'
 }
 
 // Update processing step
@@ -113,7 +141,8 @@ async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
     return data.results.map((job: any) => ({
       search_id: '',
       external_id: `adzuna_${job.id}`,
-      source: 'adzuna',
+      source: detectOriginalSource(job.redirect_url, job.company?.display_name),  // Show real source to client
+      source_engine: 'adzuna' as const,  // Internal tracking - for compliance badge
       job_url: job.redirect_url,
       job_title: job.title,
       company_name: job.company?.display_name || 'Unknown',
@@ -194,6 +223,7 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
           search_id: '',
           external_id: `ats_${job.source}_${job.id}`,
           source: job.source, // greenhouse, lever_co, workday, ashby, etc.
+          source_engine: 'ats_direct' as const,  // Internal tracking
           job_url: job.apply_url || job.listing_url,
           job_title: job.title,
           company_name: job.company?.name || 'Unknown',
@@ -243,7 +273,8 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
     return jobs.slice(0, 20).map(job => ({
       search_id: '',
       external_id: `indeed_${job.key}`,
-      source: 'indeed',
+      source: 'Indeed',  // Capitalized for display
+      source_engine: 'indeed' as const,  // Internal tracking
       job_url: job.applyUrl || job.jobUrl,
       job_title: job.title,
       company_name: job.company?.companyName || 'Unknown',
@@ -459,6 +490,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         status: 'nouveau',
         external_id: job.external_id,
         source: job.source,
+        source_engine: job.source_engine,  // Internal tracking for compliance
         matching_details: job.matching_details,
         rank: index + 1
       }
@@ -477,6 +509,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       status: 'nouveau',
       external_id: job.external_id,
       source: job.source,
+      source_engine: job.source_engine,  // Internal tracking for compliance
       matching_details: job.matching_details,
       rank: (claudeScores.length > 0 ? 10 : 0) + index + 1
     }))

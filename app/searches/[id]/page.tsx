@@ -5,8 +5,9 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import AppLayout from '@/components/AppLayout'
+import JobCard from '@/components/JobCard'
+import JobDetailModal from '@/components/JobDetailModal'
 
 type Match = {
   id: string
@@ -24,6 +25,7 @@ type Match = {
   viewed_at: string | null
   is_favorite: boolean
   source: string
+  source_engine?: 'adzuna' | 'indeed' | 'ats_direct' | null  // Internal tracking for compliance
   matching_details: {
     contract_type?: string
     remote_type?: string
@@ -58,27 +60,6 @@ type EnrichedContact = {
   company_name: string | null
 }
 
-// ATS Sources (high-quality direct company job boards)
-const ATS_SOURCES = [
-  'greenhouse', 'lever_co', 'ashby', 'workable', 'rippling', 'polymer',
-  'workday', 'smartrecruiters', 'bamboohr', 'breezy', 'jazzhr', 'recruitee', 'personio'
-]
-
-const isATSSource = (source: string) => ATS_SOURCES.includes(source)
-
-const getSourceDisplay = (source: string): { label: string; bgColor: string; textColor: string } => {
-  if (source === 'linkedin') return { label: 'LinkedIn', bgColor: '#0A66C2', textColor: 'white' }
-  if (source === 'indeed') return { label: 'Indeed', bgColor: '#6B5CE7', textColor: 'white' }
-  if (source === 'glassdoor') return { label: 'Glassdoor', bgColor: '#0CAA41', textColor: 'white' }
-  if (source === 'wttj') return { label: 'WTTJ', bgColor: '#FFCD00', textColor: '#1D1D1D' }
-  if (source === 'adzuna') return { label: 'Adzuna', bgColor: '#FF6B35', textColor: 'white' }
-  if (isATSSource(source)) {
-    // Capitalize source name for display (e.g., 'greenhouse' -> 'Greenhouse')
-    const label = source === 'lever_co' ? 'Lever' : source.charAt(0).toUpperCase() + source.slice(1)
-    return { label, bgColor: '#10B981', textColor: 'white' } // Green for ATS
-  }
-  return { label: source, bgColor: '#6B7280', textColor: 'white' }
-}
 
 // Processing step indicator component
 function StepItem({ label, done, active }: { label: string; done: boolean; active: boolean }) {
@@ -113,8 +94,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [searchName, setSearchName] = useState('')
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'top10' | 'others' | 'favorites' | 'linkedin' | 'adzuna' | 'indeed' | 'glassdoor' | 'wttj' | 'ats'>('all')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [filter, setFilter] = useState<string>('all')
   const [enrichedContacts, setEnrichedContacts] = useState<EnrichedContact[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
   const [contactsError, setContactsError] = useState<string | null>(null)
@@ -202,19 +183,16 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     if (filter === 'top10') return match.rank <= 10
     if (filter === 'others') return match.rank > 10
     if (filter === 'favorites') return match.is_favorite
-    if (filter === 'linkedin') return match.source === 'linkedin'
-    if (filter === 'adzuna') return match.source === 'adzuna'
-    if (filter === 'indeed') return match.source === 'indeed'
-    if (filter === 'glassdoor') return match.source === 'glassdoor'
-    if (filter === 'wttj') return match.source === 'wttj'
-    if (filter === 'ats') return isATSSource(match.source)
+    if (filter === 'adzuna') return match.source_engine === 'adzuna'
+    if (filter === 'indeed') return match.source_engine === 'indeed'
+    if (filter === 'ats') return match.source_engine === 'ats_direct'
     return true
   })
 
-  const openPanel = async (match: Match) => {
+  const openModal = async (match: Match) => {
     setSelectedMatch(match)
-    setIsPanelOpen(true)
-    setEnrichedContacts([])  // Reset contacts when opening new panel
+    setIsModalOpen(true)
+    setEnrichedContacts(match.matching_details?.enriched_contacts || [])
     setContactsError(null)
     setContactsSearched(false)
 
@@ -234,12 +212,12 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  const closePanel = () => {
-    setIsPanelOpen(false)
-    setTimeout(() => setSelectedMatch(null), 300)
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setTimeout(() => setSelectedMatch(null), 200)
   }
 
-  const updateStatus = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string) => {
     if (!selectedMatch) return
 
     const { error } = await supabase
@@ -255,53 +233,28 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  const toggleFavorite = async (e: React.MouseEvent, matchId: string, currentValue: boolean) => {
-    e.stopPropagation()
+  const handleFavoriteToggle = async () => {
+    if (!selectedMatch) return
 
     const { error } = await supabase
       .from('matches')
-      .update({ is_favorite: !currentValue })
-      .eq('id', matchId)
+      .update({ is_favorite: !selectedMatch.is_favorite })
+      .eq('id', selectedMatch.id)
 
     if (!error) {
-      setMatches(prev => prev.map(m =>
-        m.id === matchId ? { ...m, is_favorite: !currentValue } : m
+      setSelectedMatch({ ...selectedMatch, is_favorite: !selectedMatch.is_favorite })
+      setMatches(matches.map(m =>
+        m.id === selectedMatch.id ? { ...m, is_favorite: !selectedMatch.is_favorite } : m
       ))
-      if (selectedMatch?.id === matchId) {
-        setSelectedMatch({ ...selectedMatch, is_favorite: !currentValue })
-      }
     }
   }
 
-  const extractSkills = (description: string): string[] => {
-    const techKeywords = ['JavaScript', 'TypeScript', 'React', 'Vue', 'Angular', 'Node.js', 'Python', 'Java', 'PHP', 'Ruby', 'Go', 'Rust', 'C++', 'C#', 'SQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Docker', 'Kubernetes', 'AWS', 'GCP', 'Azure', 'Git', 'CI/CD', 'GraphQL', 'REST', 'API', 'Agile', 'Scrum']
-    const found: string[] = []
-    techKeywords.forEach(keyword => {
-      if (description.toLowerCase().includes(keyword.toLowerCase())) {
-        found.push(keyword)
-      }
-    })
-    return found.slice(0, 8)
+  const handleSearchContacts = async () => {
+    if (!selectedMatch) return
+    await enrichContacts(selectedMatch.company_name, selectedMatch.id)
   }
 
-  const extractSeniority = (title: string, description: string): string => {
-    const text = (title + ' ' + description).toLowerCase()
-    if (text.includes('senior') || text.includes('lead') || text.includes('principal')) return 'Senior'
-    if (text.includes('junior') || text.includes('débutant') || text.includes('entry')) return 'Junior'
-    if (text.includes('confirmé') || text.includes('middle') || text.includes('intermédiaire')) return 'Confirmé'
-    if (text.includes('expert') || text.includes('staff') || text.includes('architect')) return 'Expert'
-    return 'Non spécifié'
-  }
 
-  const getCompanyWebsite = (jobUrl: string): string | null => {
-    try {
-      const url = new URL(jobUrl)
-      if (url.hostname.includes('adzuna')) return null
-      return `${url.protocol}//${url.hostname}`
-    } catch {
-      return null
-    }
-  }
 
   const enrichContacts = async (companyName: string, matchId: string) => {
     setContactsLoading(true)
@@ -449,7 +402,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   return (
     <AppLayout>
       <div className="p-4 md:p-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <Button variant="outline" onClick={() => router.push('/searches')} className="mb-4">
               ← Retour aux recherches
@@ -498,18 +451,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 </svg>
                 Favoris ({matches.filter(m => m.is_favorite).length})
               </button>
-              {matches.some(m => m.source === 'linkedin') && (
-                <button
-                  onClick={() => setFilter('linkedin')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    filter === 'linkedin' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  style={filter === 'linkedin' ? { backgroundColor: '#0A66C2' } : {}}
-                >
-                  LinkedIn ({matches.filter(m => m.source === 'linkedin').length})
-                </button>
-              )}
-              {matches.some(m => isATSSource(m.source)) && (
+              {/* Filtres par source - basés sur source_engine */}
+              {matches.some(m => m.source_engine === 'ats_direct') && (
                 <button
                   onClick={() => setFilter('ats')}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
@@ -517,21 +460,10 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   }`}
                   style={filter === 'ats' ? { backgroundColor: '#10B981' } : {}}
                 >
-                  ATS ({matches.filter(m => isATSSource(m.source)).length})
+                  Offres directes ({matches.filter(m => m.source_engine === 'ats_direct').length})
                 </button>
               )}
-              {matches.some(m => m.source === 'adzuna') && (
-                <button
-                  onClick={() => setFilter('adzuna')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    filter === 'adzuna' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  style={filter === 'adzuna' ? { backgroundColor: '#FF6B35' } : {}}
-                >
-                  Adzuna ({matches.filter(m => m.source === 'adzuna').length})
-                </button>
-              )}
-              {matches.some(m => m.source === 'indeed') && (
+              {matches.some(m => m.source_engine === 'indeed') && (
                 <button
                   onClick={() => setFilter('indeed')}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
@@ -539,432 +471,55 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                   }`}
                   style={filter === 'indeed' ? { backgroundColor: '#6B5CE7' } : {}}
                 >
-                  Indeed ({matches.filter(m => m.source === 'indeed').length})
+                  Indeed ({matches.filter(m => m.source_engine === 'indeed').length})
                 </button>
               )}
-              {matches.some(m => m.source === 'glassdoor') && (
+              {matches.some(m => m.source_engine === 'adzuna') && (
                 <button
-                  onClick={() => setFilter('glassdoor')}
+                  onClick={() => setFilter('adzuna')}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    filter === 'glassdoor' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    filter === 'adzuna' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
-                  style={filter === 'glassdoor' ? { backgroundColor: '#0CAA41' } : {}}
+                  style={filter === 'adzuna' ? { backgroundColor: '#6B7280' } : {}}
                 >
-                  Glassdoor ({matches.filter(m => m.source === 'glassdoor').length})
-                </button>
-              )}
-              {matches.some(m => m.source === 'wttj') && (
-                <button
-                  onClick={() => setFilter('wttj')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    filter === 'wttj' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  style={filter === 'wttj' ? { backgroundColor: '#FFCD00', color: '#1D1D1D' } : {}}
-                >
-                  WTTJ ({matches.filter(m => m.source === 'wttj').length})
+                  Autres sources ({matches.filter(m => m.source_engine === 'adzuna').length})
                 </button>
               )}
             </div>
           </div>
 
-          <div className="grid gap-4">
+          {/* Grid de cards - 3 cols desktop, 2 tablet, 1 mobile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredMatches.map((match) => (
-              <Card
+              <JobCard
                 key={match.id}
-                className="p-6 hover:shadow-xl transition-shadow cursor-pointer"
-                onClick={() => openPanel(match)}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex items-start gap-3">
-                    {/* Bouton favori */}
-                    <button
-                      onClick={(e) => toggleFavorite(e, match.id, match.is_favorite)}
-                      className="mt-1 p-1 rounded hover:bg-gray-100 transition-colors"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill={match.is_favorite ? '#FBBF24' : 'none'}
-                        stroke={match.is_favorite ? '#FBBF24' : '#9CA3AF'}
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                        />
-                      </svg>
-                    </button>
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
-                        <h3 className="text-lg md:text-xl font-semibold" style={{ color: '#1D3557' }}>
-                          {match.job_title}
-                        </h3>
-                        {match.rank <= 10 && (
-                          <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
-                            TOP 10
-                          </span>
-                        )}
-                        {match.source && (
-                          <span
-                            className="px-2 py-1 rounded text-xs font-medium"
-                            style={{
-                              backgroundColor: getSourceDisplay(match.source).bgColor,
-                              color: getSourceDisplay(match.source).textColor
-                            }}
-                          >
-                            {getSourceDisplay(match.source).label}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2 md:gap-4 text-sm" style={{ color: '#457B9D' }}>
-                        <span>🏢 {match.company_name}</span>
-                        <span className="hidden md:inline">•</span>
-                        <span>📍 {match.location}</span>
-                        {match.posted_date && (
-                          <>
-                            <span className="hidden md:inline">•</span>
-                            <span>📅 {new Date(match.posted_date).toLocaleDateString('fr-FR')}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-2">
-                      {match.viewed_at && (
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#f3f4f6', color: '#6b7280' }}>
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                          </svg>
-                          Vu
-                        </div>
-                      )}
-                      <div className="px-3 py-1 rounded-full text-xs" style={{ backgroundColor: match.status === 'nouveau' ? '#dbeafe' : '#d1fae5', color: match.status === 'nouveau' ? '#1e40af' : '#065f46' }}>
-                        {match.status === 'nouveau' ? 'Nouveau' : match.status}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+                match={match}
+                onClick={() => openModal(match)}
+              />
             ))}
           </div>
-        </div>
 
-        {/* Sliding Panel */}
-        <div
-          className={`fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto border-l border-gray-200 ${
-            isPanelOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-        >
-          {selectedMatch && (
-            <div className="p-4 md:p-8">
-              {/* Header avec bouton fermer et favori */}
-              <div className="flex justify-between items-start mb-4">
-                <button
-                  onClick={closePanel}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => toggleFavorite(e, selectedMatch.id, selectedMatch.is_favorite)}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <svg
-                      className="w-6 h-6"
-                      fill={selectedMatch.is_favorite ? '#FBBF24' : 'none'}
-                      stroke={selectedMatch.is_favorite ? '#FBBF24' : '#9CA3AF'}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                      />
-                    </svg>
-                  </button>
-                  {selectedMatch.rank <= 10 && (
-                    <span className="px-3 py-1 rounded text-sm font-semibold" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
-                      TOP 10
-                    </span>
-                  )}
-                  {selectedMatch.source && (
-                    <span
-                      className="px-3 py-1 rounded text-sm font-medium"
-                      style={{
-                        backgroundColor: selectedMatch.source === 'linkedin' ? '#0A66C2' : selectedMatch.source === 'indeed' ? '#6B5CE7' : selectedMatch.source === 'glassdoor' ? '#0CAA41' : selectedMatch.source === 'wttj' ? '#FFCD00' : '#FF6B35',
-                        color: selectedMatch.source === 'wttj' ? '#1D1D1D' : 'white'
-                      }}
-                    >
-                      {selectedMatch.source === 'linkedin' ? 'LinkedIn' : selectedMatch.source === 'indeed' ? 'Indeed' : selectedMatch.source === 'glassdoor' ? 'Glassdoor' : selectedMatch.source === 'wttj' ? 'WTTJ' : 'Adzuna'}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Indicateur vu avec date/heure */}
-              {selectedMatch.viewed_at && (
-                <div className="flex items-center gap-2 mb-4 text-xs" style={{ color: '#6b7280' }}>
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                  </svg>
-                  <span>
-                    Consulté le {new Date(selectedMatch.viewed_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} à {new Date(selectedMatch.viewed_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              )}
-
-              {/* Titre du poste */}
-              <h2 className="text-2xl font-bold mb-4" style={{ color: '#1D3557' }}>
-                {selectedMatch.job_title}
-              </h2>
-
-              {/* Infos principales */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F8F9FA' }}>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#457B9D' }}>Entreprise</p>
-                  <p className="font-medium" style={{ color: '#1D3557' }}>{selectedMatch.company_name}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#457B9D' }}>Localisation</p>
-                  <p className="font-medium" style={{ color: '#1D3557' }}>{selectedMatch.location}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#457B9D' }}>Date de publication</p>
-                  <p className="font-medium" style={{ color: '#1D3557' }}>
-                    {selectedMatch.posted_date
-                      ? new Date(selectedMatch.posted_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-                      : 'Non spécifiée'
-                    }
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#457B9D' }}>Séniorité</p>
-                  <p className="font-medium" style={{ color: '#1D3557' }}>
-                    {extractSeniority(selectedMatch.job_title, selectedMatch.matching_details?.full_description || '')}
-                  </p>
-                </div>
-                {selectedMatch.matching_details?.contract_type && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#457B9D' }}>Type de contrat</p>
-                    <p className="font-medium" style={{ color: '#1D3557' }}>
-                      {selectedMatch.matching_details.contract_type === 'permanent' ? 'CDI' : selectedMatch.matching_details.contract_type}
-                    </p>
-                  </div>
-                )}
-                {selectedMatch.matching_details?.salary_min && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#457B9D' }}>Salaire</p>
-                    <p className="font-medium" style={{ color: '#1D3557' }}>
-                      {selectedMatch.matching_details.salary_min.toLocaleString()}€ - {selectedMatch.matching_details.salary_max?.toLocaleString()}€
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Stacks / Technologies */}
-              {selectedMatch.matching_details?.full_description && (
-                <div className="mb-6">
-                  <p className="text-sm font-semibold mb-2" style={{ color: '#1D3557' }}>Technologies demandées</p>
-                  <div className="flex flex-wrap gap-2">
-                    {extractSkills(selectedMatch.matching_details.full_description).map((skill, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 rounded-full text-sm"
-                        style={{ backgroundColor: '#E8F4F8', color: '#1D3557' }}
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                    {extractSkills(selectedMatch.matching_details.full_description).length === 0 && (
-                      <span className="text-sm" style={{ color: '#457B9D' }}>Aucune technologie spécifiée</span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Justification */}
-              {selectedMatch.justification && (
-                <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F1FAEE' }}>
-                  <h3 className="font-semibold mb-2" style={{ color: '#1D3557' }}>Analyse de correspondance</h3>
-                  <p className="text-sm" style={{ color: '#457B9D' }}>{selectedMatch.justification}</p>
-                </div>
-              )}
-
-              {/* Statut */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#1D3557' }}>Statut</label>
-                <Select value={selectedMatch.status} onValueChange={updateStatus}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nouveau">Nouveau</SelectItem>
-                    <SelectItem value="a_contacter">À contacter</SelectItem>
-                    <SelectItem value="rdv_pris">RDV pris</SelectItem>
-                    <SelectItem value="refuse">Refusé</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Contacts - Only for TOP 10 */}
-              {selectedMatch.rank <= 10 && (
-                <div className="mb-6 p-4 rounded-lg border-2 border-dashed" style={{ borderColor: '#6366F1', backgroundColor: '#F8F7FF' }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold flex items-center gap-2" style={{ color: '#1D3557' }}>
-                      <svg className="w-5 h-5" style={{ color: '#6366F1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      Décideurs chez {selectedMatch.company_name}
-                    </h3>
-                    {((selectedMatch.matching_details?.enriched_contacts?.length ?? 0) > 0 || enrichedContacts.length > 0) && (
-                      <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: '#86EFAC', color: '#166534' }}>
-                        {(selectedMatch.matching_details?.enriched_contacts || enrichedContacts).length} contact(s)
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Show enriched contacts if available */}
-                  {(selectedMatch.matching_details?.enriched_contacts || enrichedContacts).length > 0 ? (
-                    <div className="space-y-3">
-                      {(selectedMatch.matching_details?.enriched_contacts || enrichedContacts).slice(0, 5).map((contact, index) => (
-                        <div key={index} className="bg-white p-3 rounded-lg shadow-sm">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-medium" style={{ color: '#1D3557' }}>{contact.full_name || 'Nom inconnu'}</p>
-                              <p className="text-sm" style={{ color: '#457B9D' }}>{contact.job_title || 'Poste non spécifié'}</p>
-                            </div>
-                            {contact.linkedin_url && (
-                              <a
-                                href={contact.linkedin_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1 rounded hover:bg-gray-100"
-                              >
-                                <svg className="w-5 h-5" style={{ color: '#0A66C2' }} fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                                </svg>
-                              </a>
-                            )}
-                          </div>
-                          {(contact.email || contact.phone) && (
-                            <div className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap gap-3">
-                              {contact.email && (
-                                <a href={`mailto:${contact.email}`} className="flex items-center gap-1 text-sm hover:underline" style={{ color: '#6366F1' }}>
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                  </svg>
-                                  {contact.email}
-                                </a>
-                              )}
-                              {contact.phone && (
-                                <a href={`tel:${contact.phone}`} className="flex items-center gap-1 text-sm hover:underline" style={{ color: '#6366F1' }}>
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                  </svg>
-                                  {contact.phone}
-                                </a>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      {contactsError && (
-                        <p className="text-sm text-red-600 mb-3">{contactsError}</p>
-                      )}
-
-                      {/* Show "no contacts found" if we searched but found nothing */}
-                      {contactsSearched && !contactsLoading && enrichedContacts.length === 0 ? (
-                        <div className="text-center py-4">
-                          <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                          <p className="text-sm text-gray-500 mb-1">Aucun décideur trouvé</p>
-                          <p className="text-xs text-gray-400">
-                            Cette entreprise n'a pas de contacts publics dans notre base
-                          </p>
-                        </div>
-                      ) : (
-                        <Button
-                          onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id)}
-                          disabled={contactsLoading}
-                          className="w-full"
-                          style={{ backgroundColor: '#6366F1', color: 'white' }}
-                        >
-                          {contactsLoading ? (
-                            <>
-                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Recherche des contacts...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                              </svg>
-                              Débloquer les contacts
-                            </>
-                          )}
-                        </Button>
-                      )}
-                      <p className="text-xs text-center mt-2" style={{ color: '#457B9D' }}>
-                        Trouvez les emails et téléphones des décideurs
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Liens */}
-              <div className="space-y-3">
-                <Button
-                  onClick={() => window.open(selectedMatch.job_url, '_blank')}
-                  className="w-full"
-                  style={{ backgroundColor: '#6366F1', color: 'white' }}
-                >
-                  Voir l'offre complète →
-                </Button>
-
-                {/* Only show recruiter button if URL is a valid LinkedIn profile */}
-                {selectedMatch.matching_details?.recruiter_url &&
-                 selectedMatch.matching_details.recruiter_url.includes('linkedin.com/in/') && (
-                  <Button
-                    onClick={() => window.open(selectedMatch.matching_details.recruiter_url!, '_blank')}
-                    className="w-full"
-                    style={{ backgroundColor: '#0A66C2', color: 'white' }}
-                  >
-                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                    </svg>
-                    Contacter {selectedMatch.matching_details.recruiter_name || 'le recruteur'}
-                  </Button>
-                )}
-
-                {getCompanyWebsite(selectedMatch.job_url) && (
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(getCompanyWebsite(selectedMatch.job_url)!, '_blank')}
-                    className="w-full"
-                  >
-                    🏢 Voir le site de {selectedMatch.company_name}
-                  </Button>
-                )}
-              </div>
+          {/* Empty state */}
+          {filteredMatches.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Aucun résultat pour ce filtre</p>
             </div>
           )}
         </div>
+
+        {/* Modal de détail */}
+        {selectedMatch && (
+          <JobDetailModal
+            match={selectedMatch}
+            isOpen={isModalOpen}
+            onClose={closeModal}
+            onStatusChange={handleStatusChange}
+            onFavoriteToggle={handleFavoriteToggle}
+            onSearchContacts={handleSearchContacts}
+            contactsLoading={contactsLoading}
+            enrichedContacts={enrichedContacts}
+          />
+        )}
       </div>
     </AppLayout>
   )
