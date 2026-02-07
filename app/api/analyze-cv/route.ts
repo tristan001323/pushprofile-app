@@ -235,10 +235,15 @@ export async function POST(request: NextRequest) {
     const searchId = searchData.id
     console.log(`Search created: ${searchId}`)
 
-    // 3. Trigger background processing
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    // 3. Trigger background processing using request origin
+    const origin = request.headers.get('origin')
+      || request.headers.get('host')?.replace(/^([^:]+)/, 'https://$1')
+      || process.env.NEXT_PUBLIC_APP_URL
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
       || 'http://localhost:3000'
+
+    // Ensure we have a proper URL
+    const baseUrl = origin.startsWith('http') ? origin : `https://${origin}`
 
     console.log(`Triggering process-search at: ${baseUrl}/api/process-search/${searchId}`)
 
