@@ -152,28 +152,30 @@ async function fetchLinkedInJobs(parsedData: ParsedCV, contractTypes?: string[],
       timeoutSecs: 90
     })
 
-    return jobs.map(job => ({
-      search_id: '',
-      external_id: `linkedin_${job.jobId}`,
-      source: 'linkedin',
-      job_url: job.applyUrl || job.jobUrl,
-      job_title: job.jobTitle,
-      company_name: job.companyName || 'Unknown',
-      location: job.location || 'Remote',
-      description: (job.jobDescription || '').substring(0, 2000),
-      posted_date: job.publishedAt ? job.publishedAt.split('T')[0] : null,
-      matching_details: {
-        contract_type: job.contractType === 'C' ? 'contract' : job.contractType === 'I' ? 'internship' : 'permanent',
-        remote_type: (job.workType || '').toLowerCase().includes('remote') ? 'remote' : 'on_site',
-        salary_min: null,
-        salary_max: null,
-        full_description: job.jobDescription || '',
-        // Recruiter info from LinkedIn
-        recruiter_name: job.posterFullName || null,
-        recruiter_url: job.posterProfileUrl || null
-      },
-      prefilter_score: 50
-    }))
+    return jobs
+      .filter(job => job.jobTitle) // Filter out jobs without title
+      .map(job => ({
+        search_id: '',
+        external_id: `linkedin_${job.jobId}`,
+        source: 'linkedin',
+        job_url: job.applyUrl || job.jobUrl,
+        job_title: job.jobTitle,
+        company_name: job.companyName || 'Unknown',
+        location: job.location || 'Remote',
+        description: (job.jobDescription || '').substring(0, 2000),
+        posted_date: job.publishedAt ? job.publishedAt.split('T')[0] : null,
+        matching_details: {
+          contract_type: job.contractType === 'C' ? 'contract' : job.contractType === 'I' ? 'internship' : 'permanent',
+          remote_type: (job.workType || '').toLowerCase().includes('remote') ? 'remote' : 'on_site',
+          salary_min: null,
+          salary_max: null,
+          full_description: job.jobDescription || '',
+          // Recruiter info from LinkedIn
+          recruiter_name: job.posterFullName || null,
+          recruiter_url: job.posterProfileUrl || null
+        },
+        prefilter_score: 50
+      }))
   } catch (error) {
     console.error('LinkedIn error:', error)
     return []
@@ -183,7 +185,7 @@ async function fetchLinkedInJobs(parsedData: ParsedCV, contractTypes?: string[],
 // Fetch Indeed jobs
 async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const input: Record<string, unknown> = {
-    keywords: parsedData.target_roles[0] || 'developer',
+    keywords: [parsedData.target_roles[0] || 'developer'],
     location: parsedData.location || 'France',
     country: 'fr',
     maxItems: 35,
@@ -225,8 +227,9 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 // Fetch Glassdoor jobs
 async function fetchGlassdoorJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const input: Record<string, unknown> = {
-    keywords: parsedData.target_roles[0] || 'developer',
+    keywords: [parsedData.target_roles[0] || 'developer'],
     location: parsedData.location || 'France',
+    country: 'fr',
     maxItems: 35,
     parseCompanyDetails: true
   }
