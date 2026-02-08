@@ -373,50 +373,27 @@ export default function NewSearchPage() {
                     placeholder="React, TypeScript, AWS, expérience startup..." className="mt-1 h-9" />
                 </div>
 
-                {/* Row 5: Récurrence + Options */}
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">🔔</span>
-                        <Label className="text-sm font-semibold text-gray-800">Alertes automatiques</Label>
-                      </div>
-                      <p className="text-xs text-gray-600 mb-3">
-                        Recevez une notification dès que de nouvelles offres correspondent à vos critères
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { value: 'none', label: 'Désactivé', icon: '❌' },
-                          { value: '2days', label: 'Tous les 2 jours', icon: '📅' },
-                          { value: 'weekly', label: 'Chaque semaine', icon: '📆' },
-                          { value: 'monthly', label: 'Chaque mois', icon: '🗓️' }
-                        ].map((opt) => (
-                          <button key={opt.value} type="button"
-                            onClick={() => setRecurrence(opt.value as any)}
-                            className={`px-3 py-2 text-xs rounded-lg border-2 font-medium transition-all flex items-center gap-1.5 ${
-                              recurrence === opt.value
-                                ? (opt.value === 'none' ? 'border-gray-400 bg-gray-100 text-gray-700' : 'border-indigo-500 bg-indigo-100 text-indigo-700 shadow-sm')
-                                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                            }`}>
-                            <span>{opt.icon}</span> {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 md:border-l md:border-indigo-200 md:pl-4">
-                      <label className="flex items-center gap-2 cursor-pointer text-sm">
-                        <input type="checkbox" checked={excludeAgencies} onChange={(e) => setExcludeAgencies(e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-indigo-600" />
-                        <span className="text-gray-700">Exclure les cabinets</span>
-                      </label>
-                    </div>
+                {/* Row 5: Options */}
+                <div className="flex flex-wrap items-center gap-4 pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox" checked={excludeAgencies} onChange={(e) => setExcludeAgencies(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-indigo-600" />
+                    <span className="text-gray-700">Exclure les cabinets</span>
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">🔔 Alertes :</span>
+                    <select value={recurrence} onChange={(e) => setRecurrence(e.target.value as any)}
+                      className="h-8 text-sm border border-gray-200 rounded-lg px-2 bg-white">
+                      <option value="none">Désactivées</option>
+                      <option value="2days">Tous les 2 jours</option>
+                      <option value="weekly">Chaque semaine</option>
+                      <option value="monthly">Chaque mois</option>
+                    </select>
+                    {recurrence !== 'none' && (
+                      <span className="text-xs text-indigo-600">✨ Nouvelles offres par email</span>
+                    )}
                   </div>
-                  {recurrence !== 'none' && (
-                    <div className="mt-3 flex items-center gap-2 text-xs text-indigo-700 bg-indigo-100/50 rounded-lg px-3 py-2">
-                      <span>✨</span>
-                      <span>Vous recevrez un email <strong>{recurrence === '2days' ? 'tous les 2 jours' : recurrence === 'weekly' ? 'chaque semaine' : 'chaque mois'}</strong> avec les nouvelles offres</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Error */}
