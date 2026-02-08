@@ -663,25 +663,38 @@ export async function scrapeLinkedInProfile(profileUrl: string): Promise<LinkedI
 
   console.log(`Scraping LinkedIn profile: ${cleanUrl}`)
 
-  const results = await runApifyActor<LinkedInProfileOutput>({
-    actorId: APIFY_ACTORS.LINKEDIN_PROFILE,
-    input: {
-      profileUrls: [cleanUrl],
-      scrapeProfiles: true,      // Profile details only
-      scrapeEmails: false,       // NO email search ($4/1000 instead of $10/1000)
-    },
-    timeoutSecs: 60
-  })
+  let results: LinkedInProfileOutput[]
+  try {
+    results = await runApifyActor<LinkedInProfileOutput>({
+      actorId: APIFY_ACTORS.LINKEDIN_PROFILE,
+      input: {
+        profileUrls: [cleanUrl],
+        scrapeProfiles: true,      // Profile details only
+        scrapeEmails: false,       // NO email search ($4/1000 instead of $10/1000)
+      },
+      timeoutSecs: 60
+    })
+  } catch (error: any) {
+    console.error('Apify LinkedIn scraper error:', error)
+    throw new Error(`Erreur de connexion au service LinkedIn. Réessayez dans quelques minutes.`)
+  }
 
   if (!results || results.length === 0) {
-    throw new Error('Profil LinkedIn non trouvé ou privé')
+    console.log(`LinkedIn profile scrape returned empty for: ${cleanUrl}`)
+    throw new Error('Profil LinkedIn non trouvé. Vérifiez que le profil existe et n\'est pas privé.')
   }
 
   const profile = results[0]
 
   // Check for error status
   if (profile.status !== 200) {
-    throw new Error(`Erreur lors du scraping du profil LinkedIn (status: ${profile.status})`)
+    console.log(`LinkedIn profile status: ${profile.status} for ${cleanUrl}`)
+    if (profile.status === 404) {
+      throw new Error('Ce profil LinkedIn n\'existe pas ou a été supprimé.')
+    } else if (profile.status === 403) {
+      throw new Error('Ce profil LinkedIn est privé et ne peut pas être consulté.')
+    }
+    throw new Error(`Erreur LinkedIn (code ${profile.status}). Réessayez plus tard.`)
   }
 
   console.log(`LinkedIn profile scraped: ${profile.firstName} ${profile.lastName}`)
