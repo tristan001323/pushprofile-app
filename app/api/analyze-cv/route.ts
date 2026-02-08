@@ -125,6 +125,23 @@ function parseClaudeResponse(responseText: string): ParsedCV {
   }
 }
 
+// Convert seniority to experience years (use highest if array)
+function seniorityToExperienceYears(seniority: string | string[] | null): number {
+  const levels = Array.isArray(seniority) ? seniority : seniority ? [seniority] : []
+  const yearsMap: Record<string, number> = { 'junior': 1, 'confirmé': 3, 'senior': 7, 'expert': 12 }
+  if (levels.length === 0) return 3
+  return Math.max(...levels.map(s => yearsMap[s.toLowerCase()] || 3))
+}
+
+// Format seniority for display/storage
+function formatSeniority(seniority: string | string[] | null): string {
+  if (!seniority) return 'Confirmé'
+  const levels = Array.isArray(seniority) ? seniority : [seniority]
+  if (levels.length === 0) return 'Confirmé'
+  // Capitalize each level
+  return levels.map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()).join(', ')
+}
+
 // Build parsed data from standard criteria (no CV)
 function buildFromStandardCriteria(body: any): ParsedCV {
   const { job_title, location, seniority, brief } = body
@@ -142,9 +159,9 @@ function buildFromStandardCriteria(body: any): ParsedCV {
   return {
     target_roles: job_title ? [job_title] : ['developer'],
     skills,
-    experience_years: seniority === 'junior' ? 1 : seniority === 'confirmé' ? 3 : seniority === 'senior' ? 7 : seniority === 'expert' ? 12 : 3,
+    experience_years: seniorityToExperienceYears(seniority),
     location: location || 'France',
-    seniority: seniority || 'confirmé',
+    seniority: formatSeniority(seniority),
     education: '',
     languages: ['Français']
   }
@@ -231,7 +248,7 @@ export async function POST(request: NextRequest) {
 
       // Apply overrides if provided
       if (location) parsedData.location = location
-      if (seniority) parsedData.seniority = seniority
+      if (seniority) parsedData.seniority = formatSeniority(seniority)
       if (job_title) parsedData.target_roles = [job_title, ...parsedData.target_roles]
 
       actualInputType = 'linkedin'
@@ -252,7 +269,7 @@ export async function POST(request: NextRequest) {
       if ((search_type === 'both' || actualInputType === 'both') && hasStandardCriteria) {
         if (job_title) parsedData.target_roles = [job_title, ...parsedData.target_roles]
         if (location) parsedData.location = location
-        if (seniority) parsedData.seniority = seniority
+        if (seniority) parsedData.seniority = formatSeniority(seniority)
         if (brief) {
           const additionalSkills = brief.split(/[,;.\s]+/).filter((w: string) => w.length > 2)
           parsedData.skills = [...new Set([...parsedData.skills, ...additionalSkills])]
