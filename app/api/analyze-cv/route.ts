@@ -32,25 +32,33 @@ interface ExtendedParsedData extends ParsedCV {
 
 // Parse CV with Claude Haiku (fallback to Sonnet if fails)
 async function parseCV(cvText: string): Promise<ParsedCV> {
-  const prompt = `Analyse ce CV et extrais les informations clés. Retourne UNIQUEMENT le JSON (sans backticks, sans markdown).
+  // Tronquer si trop long (économie de tokens)
+  const maxLength = 8000
+  const truncatedCV = cvText.length > maxLength
+    ? cvText.substring(0, maxLength) + '\n[... CV tronqué ...]'
+    : cvText
 
-Instructions:
-- target_roles: les postes recherchés ou le dernier poste occupé (ex: "Product Manager", "Développeur React")
-- skills: compétences techniques ET méthodologiques (outils, langages, frameworks, méthodes)
-- experience_years: nombre total d'années d'expérience professionnelle
-- location: la VILLE mentionnée dans le CV (Paris, Lyon, etc.), ou "Remote" si télétravail mentionné
-- seniority: Junior (0-2 ans), Confirmé (3-5 ans), Senior (6-10 ans), Expert (10+ ans)
-- education: dernier diplôme
-- languages: langues parlées
+  const prompt = `Tu es un expert en recrutement. Analyse ce CV et extrais les informations de manière EXHAUSTIVE.
 
-CV:
-${cvText}
+RÈGLES IMPORTANTES:
+1. target_roles: Extrais LE POSTE ACTUEL ou le plus récent + les variations possibles. Ex: si "Chef de Projet Digital", ajoute aussi "Digital Project Manager", "Product Owner", etc.
+2. skills: Sois EXHAUSTIF. Extrais TOUTES les technologies, outils, méthodes, langages, frameworks mentionnés. Inclus les soft skills importants (management, agile, etc.)
+3. experience_years: Calcule le TOTAL des années d'expérience professionnelle (pas les études). Si dates présentes, calcule précisément.
+4. location: Cherche la ville dans les coordonnées, l'adresse, ou les expériences récentes. Si "Île-de-France" ou "IDF", mets "Paris".
+5. seniority: Base-toi sur les années d'expérience ET les responsabilités (management = senior minimum)
+6. education: Le diplôme le plus élevé avec l'école si prestigieuse (HEC, Polytechnique, etc.)
+7. languages: Toutes les langues mentionnées avec leur niveau si indiqué
 
-Format:
-{"target_roles":[],"skills":[],"experience_years":0,"location":"","seniority":"","education":"","languages":[]}`
+CV À ANALYSER:
+---
+${truncatedCV}
+---
+
+Réponds UNIQUEMENT avec le JSON, sans backticks, sans explication:
+{"target_roles":["poste principal","variation 1","variation 2"],"skills":["skill1","skill2","..."],"experience_years":0,"location":"Ville","seniority":"Junior|Confirmé|Senior|Expert","education":"Diplôme - École","languages":["Français","Anglais"]}`
 
   const response = await callClaudeWithFallback(
-    { model: 'haiku', prompt, maxTokens: 2000 },
+    { model: 'haiku', prompt, maxTokens: 2500 },
     'sonnet'
   )
 
@@ -58,7 +66,33 @@ Format:
     console.log('CV parsing fell back to Sonnet')
   }
 
-  return JSON.parse(cleanJsonResponse(response.text))
+  try {
+    const parsed = JSON.parse(cleanJsonResponse(response.text))
+
+    // Validation et nettoyage
+    const targetRoles: string[] = Array.isArray(parsed.target_roles)
+      ? parsed.target_roles.filter((r: unknown): r is string => typeof r === 'string' && r.length > 1)
+      : []
+    const skillsArray: string[] = Array.isArray(parsed.skills)
+      ? parsed.skills.filter((s: unknown): s is string => typeof s === 'string' && s.length > 1)
+      : []
+    const languages: string[] = Array.isArray(parsed.languages)
+      ? parsed.languages.filter((l: unknown): l is string => typeof l === 'string')
+      : ['Français']
+
+    return {
+      target_roles: targetRoles,
+      skills: Array.from(new Set(skillsArray)),
+      experience_years: typeof parsed.experience_years === 'number' ? parsed.experience_years : parseInt(parsed.experience_years) || 0,
+      location: parsed.location || 'France',
+      seniority: ['Junior', 'Confirmé', 'Senior', 'Expert'].includes(parsed.seniority) ? parsed.seniority : 'Confirmé',
+      education: parsed.education || '',
+      languages
+    }
+  } catch (parseError) {
+    console.error('Failed to parse CV response:', response.text)
+    throw new Error('Échec du parsing du CV. Veuillez réessayer.')
+  }
 }
 
 // Build parsed data from standard criteria (no CV)

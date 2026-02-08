@@ -97,21 +97,155 @@ export default function NewSearchPage() {
     return () => clearInterval(interval)
   }, [loading, currentLoadingMessages.length])
 
-  // Extraction texte PDF
+  // Extraction texte PDF - Algorithme intelligent avec détection de colonnes
   const extractPdfText = async (file: File): Promise<string> => {
     const pdfjsLib = await import('pdfjs-dist')
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
     const arrayBuffer = await file.arrayBuffer()
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+
     let fullText = ''
+
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i)
       const textContent = await page.getTextContent()
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ')
-      fullText += pageText + '\n'
+      const viewport = page.getViewport({ scale: 1 })
+      const pageWidth = viewport.width
+      const pageHeight = viewport.height
+
+      // Extraire les items avec leurs positions
+      const items: { text: string; x: number; y: number; width: number; height: number; fontSize: number }[] = []
+
+      for (const item of textContent.items as any[]) {
+        if (!item.str || item.str.trim() === '') continue
+
+        const tx = item.transform
+        const x = tx[4]
+        const y = pageHeight - tx[5] // Inverser Y (PDF a l'origine en bas)
+        const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1])
+
+        items.push({
+          text: item.str,
+          x,
+          y,
+          width: item.width || 0,
+          height: fontSize,
+          fontSize
+        })
+      }
+
+      if (items.length === 0) continue
+
+      // Détecter si le CV a 2 colonnes
+      const xPositions = items.map(it => it.x)
+      const midPoint = pageWidth / 2
+      const leftItems = items.filter(it => it.x < midPoint - 50)
+      const rightItems = items.filter(it => it.x >= midPoint - 50)
+      const hasColumns = leftItems.length > 10 && rightItems.length > 10
+
+      // Grouper les éléments en lignes (items avec Y similaire)
+      const lineThreshold = 8 // pixels de tolérance
+      const groupIntoLines = (elements: typeof items) => {
+        const lines: typeof items[] = []
+        const sorted = [...elements].sort((a, b) => a.y - b.y)
+
+        for (const item of sorted) {
+          const existingLine = lines.find(line =>
+            Math.abs(line[0].y - item.y) < lineThreshold
+          )
+          if (existingLine) {
+            existingLine.push(item)
+          } else {
+            lines.push([item])
+          }
+        }
+
+        // Trier chaque ligne par X (gauche à droite)
+        for (const line of lines) {
+          line.sort((a, b) => a.x - b.x)
+        }
+
+        // Trier les lignes par Y
+        lines.sort((a, b) => a[0].y - b[0].y)
+
+        return lines
+      }
+
+      // Convertir les lignes en texte
+      const linesToText = (lines: typeof items[]) => {
+        const result: string[] = []
+        let prevY = 0
+        let prevFontSize = 0
+
+        for (const line of lines) {
+          const lineText = line.map(it => it.text).join(' ').trim()
+          if (!lineText) continue
+
+          const currentY = line[0].y
+          const currentFontSize = Math.max(...line.map(it => it.fontSize))
+          const gap = currentY - prevY
+
+          // Détecter les sections (gros texte ou grand espace)
+          const isSection = currentFontSize > 12 && (
+            lineText.toUpperCase() === lineText ||
+            /^(EXPÉRIENCE|EXPERIENCE|FORMATION|EDUCATION|COMPÉTENCES|SKILLS|PROFIL|CONTACT|LANGUES|LANGUAGES|CERTIFICATIONS|PROJETS|PROJECTS)/i.test(lineText)
+          )
+
+          // Ajouter des sauts de ligne pour la lisibilité
+          if (prevY > 0 && gap > 20) {
+            result.push('') // Ligne vide pour les grands espaces
+          }
+
+          if (isSection) {
+            result.push('') // Ligne vide avant les sections
+            result.push(`### ${lineText}`)
+          } else {
+            result.push(lineText)
+          }
+
+          prevY = currentY
+          prevFontSize = currentFontSize
+        }
+
+        return result.join('\n')
+      }
+
+      if (hasColumns) {
+        // CV à 2 colonnes : traiter séparément puis combiner intelligemment
+        const leftLines = groupIntoLines(leftItems)
+        const rightLines = groupIntoLines(rightItems)
+
+        // Généralement : colonne gauche = infos perso/compétences, droite = expérience
+        // On met la colonne droite (expérience) en premier car c'est le plus important
+        const rightText = linesToText(rightLines)
+        const leftText = linesToText(leftLines)
+
+        // Déterminer l'ordre optimal basé sur le contenu
+        const rightHasExperience = /expérience|experience|emploi|poste/i.test(rightText)
+        const leftHasExperience = /expérience|experience|emploi|poste/i.test(leftText)
+
+        if (rightHasExperience && !leftHasExperience) {
+          fullText += leftText + '\n\n---\n\n' + rightText + '\n'
+        } else {
+          fullText += rightText + '\n\n---\n\n' + leftText + '\n'
+        }
+      } else {
+        // CV à 1 colonne : lecture normale
+        const lines = groupIntoLines(items)
+        fullText += linesToText(lines) + '\n'
+      }
+
+      if (i < pdf.numPages) {
+        fullText += '\n--- Page suivante ---\n\n'
+      }
     }
+
+    // Nettoyage final
+    fullText = fullText
+      .replace(/\n{4,}/g, '\n\n\n') // Max 3 sauts de ligne
+      .replace(/[ \t]+/g, ' ') // Espaces multiples
+      .replace(/^\s+|\s+$/g, '') // Trim
+
     return fullText
   }
 
