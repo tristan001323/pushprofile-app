@@ -30,30 +30,48 @@ interface EnrichedContact {
   company_domain: string | null
 }
 
-// Helper to extract domain from company name or URL
-function extractDomain(companyName: string, providedDomain?: string): string | null {
+// Helper to generate possible domains from company name
+function generatePossibleDomains(companyName: string, providedDomain?: string): string[] {
   if (providedDomain) {
     // Clean the domain
-    return providedDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+    const clean = providedDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+    return [clean]
   }
 
-  // Try to guess domain from company name
-  // Clean the name: lowercase, remove common suffixes
-  let cleanName = companyName.toLowerCase()
-    .replace(/\s*(sas|sarl|sa|inc|ltd|gmbh|group|france|tech|digital|consulting|solutions|services)\s*/gi, '')
+  const domains: string[] = []
+
+  // Clean the full name
+  const fullClean = companyName.toLowerCase()
+    .replace(/\s*(sas|sarl|sa|inc|ltd|gmbh|group|france|global|education|tech|digital|consulting|solutions|services)\s*/gi, ' ')
     .trim()
-    .replace(/\s+/g, '') // Remove spaces
-    .replace(/[^a-z0-9-]/g, '') // Keep only alphanumeric and hyphens
+    .replace(/\s+/g, '') // No spaces version
+    .replace(/[^a-z0-9]/g, '')
 
-  // If name is too long (>20 chars), try to shorten it
-  if (cleanName.length > 20) {
-    // Take first word or first significant part
-    const words = companyName.toLowerCase().split(/\s+/)
-    cleanName = words[0].replace(/[^a-z0-9]/g, '')
+  // First word only
+  const words = companyName.toLowerCase().split(/\s+/)
+  const firstWord = words[0].replace(/[^a-z0-9]/g, '')
+
+  // Hyphenated version (first 2-3 words)
+  const hyphenated = words.slice(0, 3)
+    .map(w => w.replace(/[^a-z0-9]/g, ''))
+    .filter(w => w.length > 0 && !['sas', 'sarl', 'sa', 'inc', 'ltd', 'gmbh', 'the', 'le', 'la', 'les'].includes(w))
+    .join('-')
+
+  // Generate variations with different TLDs
+  const bases = [firstWord, hyphenated, fullClean].filter(b => b && b.length > 2)
+  const tlds = ['.com', '.fr', '.io', '.co']
+
+  for (const base of bases) {
+    for (const tld of tlds) {
+      const domain = base + tld
+      if (!domains.includes(domain)) {
+        domains.push(domain)
+      }
+    }
   }
 
-  // Return .com as default (more likely to exist than .fr)
-  return `${cleanName}.com`
+  console.log(`[Domain] Generated ${domains.length} possible domains for "${companyName}":`, domains.slice(0, 6))
+  return domains.slice(0, 6) // Max 6 attempts
 }
 
 // Helper to split full name into first/last
@@ -78,46 +96,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'user_id is required' }, { status: 400 })
     }
 
-    // Extract or guess domain
-    const domain = extractDomain(company_name, company_domain)
+    // Generate possible domains to try
+    const possibleDomains = generatePossibleDomains(company_name, company_domain)
 
-    if (!domain) {
+    if (possibleDomains.length === 0) {
       return NextResponse.json({ error: 'Could not determine company domain' }, { status: 400 })
     }
 
-    console.log(`Enriching contacts for ${company_name} (domain: ${domain})`)
+    console.log(`Enriching contacts for ${company_name}`)
 
-    // 1. Check cache first
-    const { data: cachedContacts } = await supabase
-      .from('contacts_cache')
-      .select('*')
-      .eq('company_domain', domain.toLowerCase())
-      .gte('enriched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // 30 days cache
+    // 1. Check cache first (for any of the possible domains)
+    for (const domain of possibleDomains) {
+      const { data: cachedContacts } = await supabase
+        .from('contacts_cache')
+        .select('*')
+        .eq('company_domain', domain.toLowerCase())
+        .gte('enriched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
 
-    if (cachedContacts && cachedContacts.length > 0) {
-      console.log(`Found ${cachedContacts.length} cached contacts for ${domain}`)
-      return NextResponse.json({
-        success: true,
-        contacts: cachedContacts,
-        from_cache: true,
-        credits_used: 0
+      if (cachedContacts && cachedContacts.length > 0) {
+        console.log(`Found ${cachedContacts.length} cached contacts for ${domain}`)
+        return NextResponse.json({
+          success: true,
+          contacts: cachedContacts,
+          from_cache: true,
+          credits_used: 0
+        })
+      }
+    }
+
+    // 2. Try each domain until we find contacts
+    let results: DecisionMakerOutput[] = []
+    let successDomain: string | null = null
+
+    for (const domain of possibleDomains) {
+      console.log(`[Try] Searching domain: ${domain}`)
+
+      const input = {
+        domain: domain,
+        seniority: ["c_suite", "director", "vp", "head", "manager"],
+        maxLeadsPerDomain: 3
+      }
+
+      const domainResults = await runApifyActor<DecisionMakerOutput>({
+        actorId: APIFY_ACTORS.DECISION_MAKER_FINDER,
+        input,
+        timeoutSecs: 30  // Shorter timeout per attempt
       })
+
+      // Check if we got real results (not "no emails found" message)
+      const hasRealResults = domainResults.some(r =>
+        r.email || r.linkedin || (r.name && !r.name.includes('no emails found'))
+      )
+
+      if (hasRealResults) {
+        console.log(`[Success] Found contacts for domain: ${domain}`)
+        results = domainResults
+        successDomain = domain
+        break
+      } else {
+        console.log(`[No results] Domain ${domain} returned no contacts`)
+      }
     }
-
-    // 2. Call Decision Maker Email Finder API
-    const input = {
-      domain: domain,  // Singular, not plural!
-      seniority: ["c_suite", "director", "vp", "head", "manager"],
-      maxLeadsPerDomain: 3
-    }
-
-    console.log(`Calling Decision Maker Finder with input:`, JSON.stringify(input))
-
-    const results = await runApifyActor<DecisionMakerOutput>({
-      actorId: APIFY_ACTORS.DECISION_MAKER_FINDER,
-      input,
-      timeoutSecs: 120
-    })
 
     console.log(`Decision Maker Finder returned ${results.length} contacts`)
 
@@ -126,27 +165,45 @@ export async function POST(request: NextRequest) {
       console.log('Raw Decision Maker results:', JSON.stringify(results, null, 2))
     }
 
+    // Use the successful domain or fallback to first one
+    const domain = successDomain || possibleDomains[0]
+
     // 3. Normalize results to our format
+    // Note: API returns fields like "01_Name", "04_Email", etc.
     const enrichedContacts: EnrichedContact[] = results
-      .map(contact => {
-        const { firstName, lastName } = splitName(contact.name || '')
+      .map((contact: any) => {
+        // Handle both old format (name, email) and new format (01_Name, 04_Email)
+        const name = contact.name || contact['01_Name'] || ''
+        const email = contact.email || contact['04_Email'] || null
+        const phone = contact.phone || contact['05_Phone_number'] || null
+        const linkedin = contact.linkedin || contact['06_Linkedin_url'] || null
+        const title = contact.title || contact['07_Title'] || null
+        const companyName = contact.company || contact['16_Company_name'] || company_name
+
+        // Skip "no emails found" placeholder entries
+        if (name.includes('no emails found')) {
+          return null
+        }
+
+        const { firstName, lastName } = splitName(name)
         return {
-          full_name: contact.name || null,
-          first_name: firstName || null,
-          last_name: lastName || null,
-          job_title: contact.title || null,
-          email: contact.email || null,
-          phone: contact.phone || null,
-          linkedin_url: contact.linkedin || null,
-          company_name: contact.company || company_name,
-          company_domain: contact.domain || domain
+          full_name: name || null,
+          first_name: contact['02_First_name'] || firstName || null,
+          last_name: contact['03_Last_name'] || lastName || null,
+          job_title: title,
+          email: email,
+          phone: phone,
+          linkedin_url: linkedin,
+          company_name: companyName,
+          company_domain: contact['17_Query_domain'] || domain
         }
       })
-      // Filter out contacts without useful data
-      .filter(contact =>
-        (contact.full_name && contact.full_name.trim().length > 0) ||
+      // Filter out null entries and contacts without useful data
+      .filter((contact): contact is EnrichedContact =>
+        contact !== null &&
+        ((contact.full_name && contact.full_name.trim().length > 0) ||
         contact.email ||
-        contact.linkedin_url
+        contact.linkedin_url)
       )
 
     console.log(`After filtering: ${enrichedContacts.length} valid contacts`)

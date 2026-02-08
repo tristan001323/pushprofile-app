@@ -451,7 +451,23 @@ export interface WTTJCompanyOutput {
 }
 
 // Decision Maker Email Finder (snipercoder)
+// Note: API returns fields with numbered prefixes like "01_Name", "04_Email"
 export interface DecisionMakerOutput {
+  // New format (numbered fields)
+  '01_Name'?: string
+  '02_First_name'?: string
+  '03_Last_name'?: string
+  '04_Email'?: string
+  '05_Phone_number'?: string
+  '06_Linkedin_url'?: string
+  '07_Title'?: string
+  '08_Department'?: string
+  '09_Functions'?: string
+  '10_Seniority'?: string
+  '11_Headline'?: string
+  '16_Company_name'?: string
+  '17_Query_domain'?: string
+  // Legacy format (keep for backwards compatibility)
   name?: string
   email?: string
   title?: string
