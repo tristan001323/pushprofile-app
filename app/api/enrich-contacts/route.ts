@@ -85,6 +85,118 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
   return { firstName, lastName }
 }
 
+// Email pattern types
+type EmailPattern =
+  | 'first.last'      // john.doe@company.com
+  | 'firstlast'       // johndoe@company.com
+  | 'first_last'      // john_doe@company.com
+  | 'flast'           // jdoe@company.com
+  | 'firstl'          // johnd@company.com
+  | 'first'           // john@company.com
+  | 'lfirst'          // doejohn@company.com
+  | 'last.first'      // doe.john@company.com
+  | 'unknown'
+
+// Normalize French accents for email generation
+function normalizeForEmail(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z]/g, '') // Remove non-letters
+}
+
+// Detect email pattern from a known email + name
+function detectEmailPattern(email: string, firstName: string, lastName: string): EmailPattern {
+  if (!email || !firstName || !lastName) return 'unknown'
+
+  const localPart = email.split('@')[0].toLowerCase()
+  const first = normalizeForEmail(firstName)
+  const last = normalizeForEmail(lastName)
+
+  if (!first || !last) return 'unknown'
+
+  // Check patterns in order of commonality
+  if (localPart === `${first}.${last}`) return 'first.last'
+  if (localPart === `${first}${last}`) return 'firstlast'
+  if (localPart === `${first}_${last}`) return 'first_last'
+  if (localPart === `${first[0]}${last}`) return 'flast'
+  if (localPart === `${first}${last[0]}`) return 'firstl'
+  if (localPart === first) return 'first'
+  if (localPart === `${last}${first}`) return 'lfirst'
+  if (localPart === `${last}.${first}`) return 'last.first'
+
+  return 'unknown'
+}
+
+// Generate email from pattern
+function generateEmail(firstName: string, lastName: string, domain: string, pattern: EmailPattern): string | null {
+  if (!firstName || !lastName || !domain || pattern === 'unknown') return null
+
+  const first = normalizeForEmail(firstName)
+  const last = normalizeForEmail(lastName)
+
+  if (!first || !last) return null
+
+  const localParts: Record<EmailPattern, string> = {
+    'first.last': `${first}.${last}`,
+    'firstlast': `${first}${last}`,
+    'first_last': `${first}_${last}`,
+    'flast': `${first[0]}${last}`,
+    'firstl': `${first}${last[0]}`,
+    'first': first,
+    'lfirst': `${last}${first}`,
+    'last.first': `${last}.${first}`,
+    'unknown': ''
+  }
+
+  const localPart = localParts[pattern]
+  return localPart ? `${localPart}@${domain}` : null
+}
+
+// Detect the most common email pattern from a list of contacts
+function detectCompanyEmailPattern(contacts: EnrichedContact[]): { pattern: EmailPattern; confidence: number } {
+  const patterns: Record<EmailPattern, number> = {
+    'first.last': 0,
+    'firstlast': 0,
+    'first_last': 0,
+    'flast': 0,
+    'firstl': 0,
+    'first': 0,
+    'lfirst': 0,
+    'last.first': 0,
+    'unknown': 0
+  }
+
+  for (const contact of contacts) {
+    if (contact.email && contact.first_name && contact.last_name) {
+      const pattern = detectEmailPattern(contact.email, contact.first_name, contact.last_name)
+      patterns[pattern]++
+    }
+  }
+
+  // Find the most common pattern (excluding unknown)
+  let bestPattern: EmailPattern = 'unknown'
+  let maxCount = 0
+
+  for (const [pattern, count] of Object.entries(patterns)) {
+    if (pattern !== 'unknown' && count > maxCount) {
+      maxCount = count
+      bestPattern = pattern as EmailPattern
+    }
+  }
+
+  const totalKnown = Object.entries(patterns)
+    .filter(([p]) => p !== 'unknown')
+    .reduce((sum, [, count]) => sum + count, 0)
+
+  const confidence = totalKnown > 0 ? maxCount / totalKnown : 0
+
+  console.log(`[Email Pattern] Detected pattern: ${bestPattern} (confidence: ${(confidence * 100).toFixed(0)}%, from ${totalKnown} emails)`)
+
+  return { pattern: bestPattern, confidence }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase()
@@ -143,19 +255,22 @@ export async function POST(request: NextRequest) {
     // 3. Call Decision Maker Email Finder API
     console.log(`[Search] Searching contacts for domain: ${domain}`)
 
+    // Use standard seniority levels + department filter for HR/recruiting
     const input = {
       domain: domain,
+      // Standard seniority levels (API-recognized values)
       seniority: [
-        // Executives
-        "c_suite", "ceo", "cto", "cfo", "coo", "cmo", "chro",
-        "director", "vp", "head", "manager",
-        // HR & Recruitment (English)
-        "hr", "human_resources", "talent", "talent_acquisition",
-        "recruiter", "recruiting", "people", "people_ops",
-        // HR & Recruitment (French)
-        "rh", "drh", "ressources_humaines", "recrutement", "recruteur"
+        "c_suite", "owner", "founder", "partner",
+        "director", "vp", "head",
+        "manager", "senior"
       ],
-      maxLeadsPerDomain: 10
+      // Target HR and recruiting departments specifically
+      departments: [
+        "human_resources", "hr",
+        "recruiting", "talent_acquisition", "talent",
+        "people_operations", "people"
+      ],
+      maxLeadsPerDomain: 15  // Increased to get more variety
     }
 
     const results = await runApifyActor<DecisionMakerOutput>({
@@ -171,7 +286,7 @@ export async function POST(request: NextRequest) {
       console.log('Raw Decision Maker results:', JSON.stringify(results, null, 2))
     }
 
-    // 3. Normalize results to our format
+    // 4. Normalize results to our format
     // Note: API returns fields like "01_Name", "04_Email", etc.
     const enrichedContacts: EnrichedContact[] = results
       .map((contact: any) => {
@@ -211,7 +326,23 @@ export async function POST(request: NextRequest) {
 
     console.log(`After filtering: ${enrichedContacts.length} valid contacts`)
 
-    // 4. Cache the results AND save to user's contacts
+    // 5. Detect email pattern and generate emails for contacts without them
+    const { pattern: emailPattern, confidence } = detectCompanyEmailPattern(enrichedContacts)
+
+    if (emailPattern !== 'unknown' && confidence >= 0.5) {
+      // Generate emails for contacts that have names but no email
+      for (const contact of enrichedContacts) {
+        if (!contact.email && contact.first_name && contact.last_name) {
+          const generatedEmail = generateEmail(contact.first_name, contact.last_name, domain, emailPattern)
+          if (generatedEmail) {
+            contact.email = generatedEmail
+            console.log(`[Email Gen] Generated email for ${contact.full_name}: ${generatedEmail}`)
+          }
+        }
+      }
+    }
+
+    // 6. Cache the results AND save to user's contacts
     if (enrichedContacts.length > 0) {
       const cacheEntries = enrichedContacts.map(contact => ({
         user_id,  // Track which user unlocked this contact
@@ -238,7 +369,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. If match_id provided, update the match with contact info
+    // 7. If match_id provided, update the match with contact info
     if (match_id && enrichedContacts.length > 0) {
       const primaryContact = enrichedContacts[0]
       await supabase
@@ -249,7 +380,7 @@ export async function POST(request: NextRequest) {
         .eq('id', match_id)
     }
 
-    // 6. Log usage for billing
+    // 8. Log usage for billing
     await supabase
       .from('api_usage')
       .insert({
