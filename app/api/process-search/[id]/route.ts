@@ -199,6 +199,15 @@ async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
 
     seenIds.add(id)
 
+    // Detect remote type from job description
+    const jobText = ((job.title || '') + ' ' + (job.description || '')).toLowerCase()
+    let remoteType = 'on_site'
+    if (jobText.includes('remote') || jobText.includes('télétravail') || jobText.includes('teletravail') || jobText.includes('100% remote')) {
+      remoteType = 'remote'
+    } else if (jobText.includes('hybrid') || jobText.includes('hybride') || jobText.includes('partiel')) {
+      remoteType = 'hybrid'
+    }
+
     allJobs.push({
       search_id: '',
       external_id: id,
@@ -211,8 +220,8 @@ async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
       description: job.description || '',
       posted_date: job.created ? new Date(job.created).toISOString().split('T')[0] : null,
       matching_details: {
-        contract_type: job.contract_type || 'permanent',
-        remote_type: 'on_site',
+        contract_type: job.contract_type || undefined,  // Don't default to 'permanent', let filter be lenient
+        remote_type: remoteType,
         salary_min: job.salary_min || null,
         salary_max: job.salary_max || null,
         full_description: job.description
@@ -396,11 +405,21 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
   // Build job type filter for Indeed
   // Indeed API uses UPPERCASE values: FULL_TIME, PERMANENT, CONTRACT, INTERNSHIP, etc.
   let jobType: string | undefined = undefined
+  let requestedContractType: string | undefined = undefined  // Track what we asked for
   if (contractTypes.length > 0) {
     const ct = contractTypes[0].toLowerCase() // Indeed only supports one job type
-    if (ct === 'cdi') jobType = 'PERMANENT'
-    if (ct === 'cdd' || ct === 'freelance') jobType = 'CONTRACT'
-    if (ct === 'stage') jobType = 'INTERNSHIP'
+    if (ct === 'cdi') {
+      jobType = 'PERMANENT'
+      requestedContractType = 'permanent'
+    }
+    if (ct === 'cdd' || ct === 'freelance') {
+      jobType = 'CONTRACT'
+      requestedContractType = 'contract'
+    }
+    if (ct === 'stage') {
+      jobType = 'INTERNSHIP'
+      requestedContractType = 'internship'
+    }
   }
 
   const input: Record<string, unknown> = {
@@ -433,26 +452,38 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
         }
         return true
       })
-      .map(job => ({
-      search_id: '',
-      external_id: `indeed_${job.key}`,
-      source: 'Indeed',  // Capitalized for display
-      source_engine: 'indeed' as const,  // Internal tracking
-      job_url: job.applyUrl || job.jobUrl,
-      job_title: job.title,
-      company_name: job.company?.companyName || 'Unknown',
-      location: job.location?.city ? `${job.location.city}, ${job.location.country}` : 'Remote',
-      description: (job.description_text || '').substring(0, 2000),
-      posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
-      matching_details: {
-        contract_type: 'permanent',
-        remote_type: 'on_site',
-        salary_min: job.baseSalary_min || null,
-        salary_max: job.baseSalary_max || null,
-        full_description: job.description_text || ''
-      },
-      prefilter_score: 50
-    }))
+      .map(job => {
+        // Detect remote type from job data
+        const jobText = ((job.title || '') + ' ' + (job.description_text || '')).toLowerCase()
+        let remoteType = 'on_site'
+        if (jobText.includes('remote') || jobText.includes('télétravail') || jobText.includes('teletravail')) {
+          remoteType = 'remote'
+        } else if (jobText.includes('hybrid') || jobText.includes('hybride')) {
+          remoteType = 'hybrid'
+        }
+
+        return {
+          search_id: '',
+          external_id: `indeed_${job.key}`,
+          source: 'Indeed',  // Capitalized for display
+          source_engine: 'indeed' as const,  // Internal tracking
+          job_url: job.applyUrl || job.jobUrl,
+          job_title: job.title,
+          company_name: job.company?.companyName || 'Unknown',
+          location: job.location?.city ? `${job.location.city}, ${job.location.country}` : 'Remote',
+          description: (job.description_text || '').substring(0, 2000),
+          posted_date: job.datePublished ? job.datePublished.split('T')[0] : null,
+          matching_details: {
+            // Use the contract type we requested, or undefined if no filter
+            contract_type: requestedContractType || undefined,
+            remote_type: remoteType,
+            salary_min: job.baseSalary_min || null,
+            salary_max: job.baseSalary_max || null,
+            full_description: job.description_text || ''
+          },
+          prefilter_score: 50
+        }
+      })
   } catch (error) {
     console.error('Indeed error:', error)
     return []
@@ -469,22 +500,26 @@ const QUALITY_ATS_SOURCES = [
 ]
 
 // Normalize contract type for comparison
-function normalizeContractType(type: string | undefined): string {
-  if (!type) return 'cdi'
+// Returns null for unknown/undefined types so they can be handled separately
+function normalizeContractType(type: string | undefined): string | null {
+  if (!type) return null  // Return null for unknown, don't assume 'cdi'
   const t = type.toLowerCase()
   if (t === 'contract' || t === 'cdd' || t === 'c' || t === 'temporary') return 'cdd'
   if (t === 'internship' || t === 'i' || t === 'stage') return 'stage'
   if (t === 'freelance' || t === 'contractor' || t === 'self-employed') return 'freelance'
-  return 'cdi' // permanent, full-time, f, etc.
+  if (t === 'permanent' || t === 'cdi' || t === 'f' || t === 'full_time' || t === 'full-time') return 'cdi'
+  return null  // Unknown type, don't exclude
 }
 
 // Normalize remote type for comparison
-function normalizeRemoteType(type: string | undefined): string {
-  if (!type) return 'on-site'
+// Returns null for unknown/undefined types so they can be handled separately
+function normalizeRemoteType(type: string | undefined): string | null {
+  if (!type) return null  // Return null for unknown, don't assume 'on-site'
   const t = type.toLowerCase()
   if (t === 'remote' || t === 'full_remote' || t === 'fully_remote' || t === 'full remote') return 'full remote'
   if (t === 'hybrid') return 'hybrid'
-  return 'on-site'
+  if (t === 'on-site' || t === 'on_site' || t === 'onsite') return 'on-site'
+  return null  // Unknown type, don't exclude
 }
 
 // Filter agencies and score jobs
@@ -508,7 +543,7 @@ function filterAndScoreJobs(
   }
 
   // Filter by contract type (CDI, CDD, Stage, Freelance)
-  // Note: If job has no contract_type, we INCLUDE it (don't exclude unknown jobs)
+  // Note: If job has unknown contract_type, we INCLUDE it (don't exclude unknown jobs)
   if (contractTypes.length > 0) {
     const normalizedFilters = contractTypes.map(ct => ct.toLowerCase())
     filtered = filtered.filter(job => {
@@ -518,6 +553,10 @@ function filterAndScoreJobs(
       if (!rawContractType) return true
 
       const jobContractType = normalizeContractType(rawContractType)
+
+      // If normalization returned null (unknown type), include the job
+      if (jobContractType === null) return true
+
       // Map user filter values to normalized values
       const matchesFilter = normalizedFilters.some(filter => {
         if (filter === 'cdi' || filter === 'permanent') return jobContractType === 'cdi'
@@ -532,7 +571,7 @@ function filterAndScoreJobs(
   }
 
   // Filter by remote options (On-site, Hybrid, Full remote)
-  // Note: If job has no remote_type, we INCLUDE it (don't exclude unknown jobs)
+  // Note: If job has unknown remote_type, we INCLUDE it (don't exclude unknown jobs)
   if (remoteOptions.length > 0) {
     const normalizedFilters = remoteOptions.map(ro => ro.toLowerCase())
     filtered = filtered.filter(job => {
@@ -542,6 +581,10 @@ function filterAndScoreJobs(
       if (!rawRemoteType) return true
 
       const jobRemoteType = normalizeRemoteType(rawRemoteType)
+
+      // If normalization returned null (unknown type), include the job
+      if (jobRemoteType === null) return true
+
       const matchesFilter = normalizedFilters.some(filter => {
         if (filter === 'on-site' || filter === 'on_site' || filter === 'onsite') return jobRemoteType === 'on-site'
         if (filter === 'hybrid') return jobRemoteType === 'hybrid'
