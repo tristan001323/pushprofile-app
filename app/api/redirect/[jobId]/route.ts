@@ -42,16 +42,27 @@ async function getFinalUrl(url: string, maxRedirects: number = 5): Promise<strin
   return currentUrl
 }
 
-// Extract the actual apply URL from an Adzuna details page
-// Adzuna shows popups asking for email, but has a "Non merci, je veux voir l'offre" link
-// that goes to the actual job site
+// Known job board domains to look for
+const JOB_BOARD_DOMAINS = [
+  'welcometothejungle', 'wttj', 'talent.com', 'indeed', 'linkedin', 'apec.fr',
+  'cadremploi', 'meteojob', 'hellowork', 'regionsjob', 'monster', 'francetravail',
+  'pole-emploi', 'jobteaser', 'glassdoor', 'simplyhired', 'neuvoo', 'jooble',
+  'optioncarriere', 'emploi-store', 'keljob', 'qapa', 'staffme', 'leboncoin',
+  'HelloWork', 'lesjeudis', 'choosemycompany', 'jobijoba', 'wizbii', 'studentjob',
+  'greenhouse.io', 'lever.co', 'workday', 'smartrecruiters', 'ashbyhq', 'jobs.lever',
+  'boards.greenhouse', 'apply.workable', 'jobs.ashbyhq', 'recruitee', 'breezy',
+  'taleo', 'icims', 'successfactors', 'myworkdayjobs', 'ultipro'
+]
+
+// Extract the actual job URL from an Adzuna details page
 async function extractApplyUrlFromAdzuna(adzunaUrl: string): Promise<string | null> {
   try {
     const response = await fetch(adzunaUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
+        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+        'Cookie': 'consent=1'  // Try to bypass consent popup
       }
     })
 
@@ -61,56 +72,82 @@ async function extractApplyUrlFromAdzuna(adzunaUrl: string): Promise<string | nu
     }
 
     const html = await response.text()
+    console.log(`[Adzuna Extract] Page length: ${html.length} chars`)
 
-    // Pattern 1: "Non merci, je veux voir l'offre d'emploi" link - this is the key one!
-    const nonMerciMatch = html.match(/href=["']([^"']+)["'][^>]*>[^<]*(?:Non merci|voir l'offre|see the job)/i)
-    if (nonMerciMatch && nonMerciMatch[1]) {
-      const url = nonMerciMatch[1]
-      if (!url.includes('adzuna') && url.startsWith('http')) {
-        console.log(`[Adzuna Extract] Found "Non merci" link: ${url}`)
-        return url
+    // Helper to validate URL
+    const isValidExternalUrl = (url: string): boolean => {
+      if (!url || !url.startsWith('http')) return false
+      if (url.includes('adzuna')) return false
+      if (url.includes('javascript:')) return false
+      if (url.includes('#')) return false
+      return true
+    }
+
+    // Pattern 1: Look for "redirect_url" or "url" in JSON data embedded in page
+    const jsonUrlMatch = html.match(/["'](?:redirect_url|external_url|job_url|apply_url|source_url)["']\s*:\s*["']([^"']+)["']/i)
+    if (jsonUrlMatch && isValidExternalUrl(jsonUrlMatch[1])) {
+      console.log(`[Adzuna Extract] Found JSON URL: ${jsonUrlMatch[1]}`)
+      return jsonUrlMatch[1]
+    }
+
+    // Pattern 2: Look for data-redirect or data-url attributes
+    const dataAttrMatch = html.match(/data-(?:redirect|url|href|link|external)=["']([^"']+)["']/i)
+    if (dataAttrMatch && isValidExternalUrl(dataAttrMatch[1])) {
+      console.log(`[Adzuna Extract] Found data attribute URL: ${dataAttrMatch[1]}`)
+      return dataAttrMatch[1]
+    }
+
+    // Pattern 3: Look for known job board URLs anywhere in the page
+    const domainPattern = JOB_BOARD_DOMAINS.join('|')
+    const jobBoardRegex = new RegExp(`https?://[^"'\\s<>]*(?:${domainPattern})[^"'\\s<>]*`, 'gi')
+    const jobBoardMatches = html.match(jobBoardRegex)
+    if (jobBoardMatches && jobBoardMatches.length > 0) {
+      // Find the longest/most complete URL (likely the actual job URL)
+      const bestMatch = jobBoardMatches
+        .filter(url => !url.includes('adzuna'))
+        .sort((a, b) => b.length - a.length)[0]
+      if (bestMatch) {
+        console.log(`[Adzuna Extract] Found job board URL: ${bestMatch}`)
+        return bestMatch
       }
     }
 
-    // Pattern 2: Look for the link with "Non merci" text anywhere
-    const nonMerciMatch2 = html.match(/<a[^>]+href=["']([^"']+)["'][^>]*>[\s\S]*?Non merci[\s\S]*?<\/a>/i)
-    if (nonMerciMatch2 && nonMerciMatch2[1]) {
-      const url = nonMerciMatch2[1]
-      if (!url.includes('adzuna') && url.startsWith('http')) {
-        console.log(`[Adzuna Extract] Found "Non merci" link (pattern 2): ${url}`)
-        return url
+    // Pattern 4: Look for "Postuler" or "Apply" button with href
+    const applyButtonMatch = html.match(/<a[^>]+href=["']([^"']+)["'][^>]*>[\s\S]*?(?:Postuler|Apply|Candidater)[\s\S]*?<\/a>/i)
+    if (applyButtonMatch && isValidExternalUrl(applyButtonMatch[1])) {
+      console.log(`[Adzuna Extract] Found Apply button URL: ${applyButtonMatch[1]}`)
+      return applyButtonMatch[1]
+    }
+
+    // Pattern 5: Look for "Non merci" link
+    const nonMerciMatch = html.match(/<a[^>]+href=["']([^"']+)["'][^>]*>[\s\S]*?(?:Non merci|voir l'offre|see the job)[\s\S]*?<\/a>/gi)
+    if (nonMerciMatch) {
+      for (const match of nonMerciMatch) {
+        const urlMatch = match.match(/href=["']([^"']+)["']/)
+        if (urlMatch && isValidExternalUrl(urlMatch[1])) {
+          console.log(`[Adzuna Extract] Found "Non merci" URL: ${urlMatch[1]}`)
+          return urlMatch[1]
+        }
       }
     }
 
-    // Pattern 3: Look for external job URLs in the page (inzejob, welcometothejungle, etc.)
-    const externalJobMatch = html.match(/href=["'](https?:\/\/(?:www\.)?(?:inzejob|welcometothejungle|wttj|talent\.com|indeed|linkedin|apec|cadremploi|meteojob|hellowork|regionsjob|monster|francetravail|pole-emploi)[^"']+)["']/i)
-    if (externalJobMatch && externalJobMatch[1]) {
-      console.log(`[Adzuna Extract] Found external job URL: ${externalJobMatch[1]}`)
-      return externalJobMatch[1]
+    // Pattern 6: Look for any external https URL in href (but not adzuna/static/css/js)
+    const externalHrefMatch = html.match(/href=["'](https:\/\/(?!.*(?:adzuna|static|\.css|\.js|\.png|\.jpg|fonts|analytics|tracking|google|facebook|twitter))[^"']+)["']/gi)
+    if (externalHrefMatch) {
+      for (const match of externalHrefMatch) {
+        const urlMatch = match.match(/href=["']([^"']+)["']/)
+        if (urlMatch && isValidExternalUrl(urlMatch[1]) && urlMatch[1].includes('/')) {
+          // Prefer URLs with paths (not just domains)
+          if (urlMatch[1].split('/').length > 3) {
+            console.log(`[Adzuna Extract] Found external href: ${urlMatch[1]}`)
+            return urlMatch[1]
+          }
+        }
+      }
     }
 
-    // Pattern 4: Look for any external URL in data-href or data-url attributes
-    const dataUrlMatch = html.match(/data-(?:href|url|redirect|link)=["'](https?:\/\/(?!.*adzuna)[^"']+)["']/i)
-    if (dataUrlMatch && dataUrlMatch[1]) {
-      console.log(`[Adzuna Extract] Found data-url: ${dataUrlMatch[1]}`)
-      return dataUrlMatch[1]
-    }
-
-    // Pattern 5: Look for onclick with window.open or window.location containing external URL
-    const onclickMatch = html.match(/onclick=["'][^"']*(?:window\.open|window\.location)[^"']*["'](https?:\/\/(?!.*adzuna)[^"']+)["']/i)
-    if (onclickMatch && onclickMatch[1]) {
-      console.log(`[Adzuna Extract] Found onclick URL: ${onclickMatch[1]}`)
-      return onclickMatch[1]
-    }
-
-    // Pattern 6: Generic external http URL that's not adzuna (last resort)
-    const anyExternalMatch = html.match(/href=["'](https?:\/\/(?!(?:www\.)?adzuna)[a-z0-9.-]+\.[a-z]{2,}\/[^"']*(?:job|emploi|offre|career|apply)[^"']*)["']/i)
-    if (anyExternalMatch && anyExternalMatch[1]) {
-      console.log(`[Adzuna Extract] Found generic external URL: ${anyExternalMatch[1]}`)
-      return anyExternalMatch[1]
-    }
-
-    console.log(`[Adzuna Extract] No external URL found in page`)
+    // Log a sample of the HTML for debugging
+    console.log(`[Adzuna Extract] No URL found. HTML sample: ${html.substring(0, 1000)}...`)
     return null
   } catch (error) {
     console.error('[Adzuna Extract] Error:', error)
@@ -140,19 +177,22 @@ export async function GET(
   // For Adzuna jobs, try to get the real destination
   if (match.source_engine === 'adzuna' || match.job_url.includes('adzuna')) {
     try {
-      // Step 1: Follow redirect chain
+      // Step 1: Follow initial redirect chain
       const redirectedUrl = await getFinalUrl(match.job_url)
-      console.log(`[Redirect] Adzuna redirect: ${match.job_url} -> ${redirectedUrl}`)
+      console.log(`[Redirect] Adzuna initial redirect: ${match.job_url} -> ${redirectedUrl}`)
 
       // Step 2: If we're still on Adzuna, try to extract the apply URL from the page
       if (redirectedUrl.includes('adzuna.fr') || redirectedUrl.includes('adzuna.com')) {
-        const applyUrl = await extractApplyUrlFromAdzuna(redirectedUrl)
-        if (applyUrl) {
-          console.log(`[Redirect] Extracted apply URL: ${applyUrl}`)
-          finalUrl = applyUrl
+        const extractedUrl = await extractApplyUrlFromAdzuna(redirectedUrl)
+        if (extractedUrl) {
+          console.log(`[Redirect] Extracted URL from page: ${extractedUrl}`)
+          // Step 3: Follow the extracted URL's redirects too
+          const finalExtractedUrl = await getFinalUrl(extractedUrl)
+          console.log(`[Redirect] Final URL after following redirects: ${finalExtractedUrl}`)
+          finalUrl = finalExtractedUrl
         } else {
           // Couldn't extract, use the Adzuna page as fallback
-          console.log(`[Redirect] No apply URL found, using Adzuna page`)
+          console.log(`[Redirect] No URL found, using Adzuna page as fallback`)
           finalUrl = redirectedUrl
         }
       } else {
