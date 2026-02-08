@@ -8,14 +8,19 @@ import { Label } from '@/components/ui/label'
 import AppLayout from '@/components/AppLayout'
 import { supabase } from '@/lib/supabase'
 
-// Messages de chargement
+// Messages de chargement (plus de messages pour les longues recherches)
 const LOADING_MESSAGES = [
   { text: "Analyse du profil...", icon: "🧠" },
   { text: "Connexion aux jobboards...", icon: "🔌" },
-  { text: "Recherche en cours...", icon: "🔍" },
-  { text: "Filtrage des résultats...", icon: "🚫" },
-  { text: "Scoring avec l'IA...", icon: "🤖" },
-  { text: "Préparation...", icon: "✨" },
+  { text: "Recherche sur Indeed...", icon: "🔍" },
+  { text: "Recherche sur les ATS...", icon: "🏢" },
+  { text: "Collecte des offres...", icon: "📥" },
+  { text: "Filtrage des doublons...", icon: "🔄" },
+  { text: "Exclusion des cabinets...", icon: "🚫" },
+  { text: "Scoring IA en cours...", icon: "🤖" },
+  { text: "Analyse des correspondances...", icon: "📊" },
+  { text: "Classement des résultats...", icon: "🏆" },
+  { text: "Finalisation...", icon: "✨" },
 ]
 
 export default function NewSearchPage() {
@@ -62,14 +67,33 @@ export default function NewSearchPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+  const [elapsedTime, setElapsedTime] = useState(0)
 
   useEffect(() => {
-    if (!loading) { setLoadingMessageIndex(0); return }
-    const interval = setInterval(() => {
+    if (!loading) {
+      setLoadingMessageIndex(0)
+      setElapsedTime(0)
+      return
+    }
+    // Message rotation every 4 seconds
+    const messageInterval = setInterval(() => {
       setLoadingMessageIndex(prev => prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev)
-    }, 3000)
-    return () => clearInterval(interval)
+    }, 4000)
+    // Timer every second
+    const timerInterval = setInterval(() => {
+      setElapsedTime(prev => prev + 1)
+    }, 1000)
+    return () => {
+      clearInterval(messageInterval)
+      clearInterval(timerInterval)
+    }
   }, [loading])
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+  }
 
   // File handlers
   const fileToBase64 = (file: File): Promise<string> => {
@@ -416,15 +440,20 @@ export default function NewSearchPage() {
                     </label>
                   </div>
                 ) : (
-                  <div className="pt-4">
+                  <div className="pt-4 space-y-2">
                     <div className="relative h-12 rounded-xl bg-gradient-to-r from-indigo-100 to-purple-100 overflow-hidden">
-                      <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl transition-all duration-1000"
-                        style={{ width: `${Math.min(((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100, 90)}%` }} />
+                      <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl transition-all duration-1000 animate-pulse"
+                        style={{ width: `${Math.min(((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100, 95)}%` }} />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-sm font-semibold text-white drop-shadow-md">
                           {LOADING_MESSAGES[loadingMessageIndex]?.icon} {LOADING_MESSAGES[loadingMessageIndex]?.text}
                         </span>
                       </div>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                      <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
+                      <span>Recherche en cours... {formatTime(elapsedTime)}</span>
+                      {elapsedTime > 30 && <span className="text-gray-400">(les recherches complètes prennent 1-2 min)</span>}
                     </div>
                   </div>
                 )}
@@ -497,15 +526,20 @@ export default function NewSearchPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="pt-4">
+                  <div className="pt-4 space-y-2">
                     <div className="relative h-12 rounded-xl overflow-hidden" style={{ backgroundColor: '#E7F0F9' }}>
-                      <div className="absolute inset-y-0 left-0 rounded-xl transition-all duration-1000"
-                        style={{ backgroundColor: '#0A66C2', width: `${Math.min(((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100, 90)}%` }} />
+                      <div className="absolute inset-y-0 left-0 rounded-xl transition-all duration-1000 animate-pulse"
+                        style={{ backgroundColor: '#0A66C2', width: `${Math.min(((loadingMessageIndex + 1) / LOADING_MESSAGES.length) * 100, 95)}%` }} />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-sm font-semibold text-white drop-shadow-md">
                           {LOADING_MESSAGES[loadingMessageIndex]?.icon} {LOADING_MESSAGES[loadingMessageIndex]?.text}
                         </span>
                       </div>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                      <div className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: '#0A66C2' }} />
+                      <span>Recherche en cours... {formatTime(elapsedTime)}</span>
+                      {elapsedTime > 30 && <span className="text-gray-400">(les recherches complètes prennent 1-2 min)</span>}
                     </div>
                   </div>
                 )}
