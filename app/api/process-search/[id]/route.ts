@@ -395,6 +395,8 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
   const keywords = parsedData.target_roles.slice(0, 5)
   if (keywords.length === 0) keywords.push('developer')
 
+  console.log(`[Indeed] Starting search with keywords: ${keywords.join(', ')}, location: ${normalizeLocation(parsedData.location)}`)
+
   // Handle "older than X" filters (31 = +1 month, 90 = +3 months)
   const isOlderThan1Month = maxDaysOld === 31
   const isOlderThan3Months = maxDaysOld === 90
@@ -431,12 +433,16 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
     ...(jobType && { jobType })  // Add job type filter if specified
   }
 
+  console.log(`[Indeed] Input:`, JSON.stringify(input, null, 2))
+
   try {
     const jobs = await runApifyActor<IndeedJobOutput>({
       actorId: APIFY_ACTORS.INDEED_JOBS,
       input,
       timeoutSecs: 90
     })
+
+    console.log(`[Indeed] Raw results: ${jobs.length} jobs returned`)
 
     // Date threshold for "older than X" filters
     const now = new Date()
@@ -485,7 +491,8 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
         }
       })
   } catch (error) {
-    console.error('Indeed error:', error)
+    console.error('[Indeed] Error fetching jobs:', error)
+    console.error('[Indeed] Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
     return []
   }
 }
