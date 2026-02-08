@@ -394,13 +394,13 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
   const minDaysOld = isOlderThan3Months ? 90 : isOlderThan1Month ? 30 : 0
 
   // Build job type filter for Indeed
-  // Indeed uses: fulltime, parttime, contract, internship, temporary
+  // Indeed API uses UPPERCASE values: FULL_TIME, PERMANENT, CONTRACT, INTERNSHIP, etc.
   let jobType: string | undefined = undefined
   if (contractTypes.length > 0) {
     const ct = contractTypes[0].toLowerCase() // Indeed only supports one job type
-    if (ct === 'cdi') jobType = 'fulltime'
-    if (ct === 'cdd' || ct === 'freelance') jobType = 'contract'
-    if (ct === 'stage') jobType = 'internship'
+    if (ct === 'cdi') jobType = 'PERMANENT'
+    if (ct === 'cdd' || ct === 'freelance') jobType = 'CONTRACT'
+    if (ct === 'stage') jobType = 'INTERNSHIP'
   }
 
   const input: Record<string, unknown> = {
@@ -508,16 +508,22 @@ function filterAndScoreJobs(
   }
 
   // Filter by contract type (CDI, CDD, Stage, Freelance)
+  // Note: If job has no contract_type, we INCLUDE it (don't exclude unknown jobs)
   if (contractTypes.length > 0) {
     const normalizedFilters = contractTypes.map(ct => ct.toLowerCase())
     filtered = filtered.filter(job => {
-      const jobContractType = normalizeContractType(job.matching_details?.contract_type as string | undefined)
+      const rawContractType = job.matching_details?.contract_type as string | undefined
+
+      // If job has no contract type info, include it (don't be too strict)
+      if (!rawContractType) return true
+
+      const jobContractType = normalizeContractType(rawContractType)
       // Map user filter values to normalized values
       const matchesFilter = normalizedFilters.some(filter => {
         if (filter === 'cdi' || filter === 'permanent') return jobContractType === 'cdi'
         if (filter === 'cdd' || filter === 'contract') return jobContractType === 'cdd'
         if (filter === 'stage' || filter === 'internship') return jobContractType === 'stage'
-        if (filter === 'freelance') return jobContractType === 'freelance'
+        if (filter === 'freelance') return jobContractType === 'freelance' || jobContractType === 'cdd'
         return false
       })
       return matchesFilter
@@ -526,10 +532,16 @@ function filterAndScoreJobs(
   }
 
   // Filter by remote options (On-site, Hybrid, Full remote)
+  // Note: If job has no remote_type, we INCLUDE it (don't exclude unknown jobs)
   if (remoteOptions.length > 0) {
     const normalizedFilters = remoteOptions.map(ro => ro.toLowerCase())
     filtered = filtered.filter(job => {
-      const jobRemoteType = normalizeRemoteType(job.matching_details?.remote_type as string | undefined)
+      const rawRemoteType = job.matching_details?.remote_type as string | undefined
+
+      // If job has no remote type info, include it (don't be too strict)
+      if (!rawRemoteType) return true
+
+      const jobRemoteType = normalizeRemoteType(rawRemoteType)
       const matchesFilter = normalizedFilters.some(filter => {
         if (filter === 'on-site' || filter === 'on_site' || filter === 'onsite') return jobRemoteType === 'on-site'
         if (filter === 'hybrid') return jobRemoteType === 'hybrid'
