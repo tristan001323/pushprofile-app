@@ -400,8 +400,11 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contr
           description: (job.description || '').substring(0, 2000),
           posted_date: job.date_posted ? job.date_posted.split('T')[0] : null,
           matching_details: {
+            // Don't default to 'permanent' for undefined - let the filter include them
             contract_type: job.employment_type === 'contract' || job.employment_type === 'temporary' ? 'contract'
-              : job.employment_type === 'internship' ? 'internship' : 'permanent',
+              : job.employment_type === 'internship' ? 'internship'
+              : job.employment_type === 'full_time' ? 'permanent'
+              : undefined,  // Keep undefined so filter doesn't exclude them
             remote_type: isRemote ? 'remote' : 'on_site',
             workplace_type: job.workplace_type || null,
             salary_min: job.compensation?.min || null,
