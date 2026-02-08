@@ -144,12 +144,21 @@ async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30): P
   const rolesToSearch = parsedData.target_roles.slice(0, 3)
   if (rolesToSearch.length === 0) rolesToSearch.push('developer')
 
+  // Special cases for "older than X" filters:
+  // 31 = older than 1 month (fetch 120 days, keep only 30-90 days old)
+  // 90 = older than 3 months (fetch 180 days, keep only 90+ days old)
+  const isOlderThan1Month = maxDaysOld === 31
+  const isOlderThan3Months = maxDaysOld === 90
+  const isOlderFilter = isOlderThan1Month || isOlderThan3Months
+  const fetchDays = isOlderThan3Months ? 180 : isOlderThan1Month ? 120 : maxDaysOld
+  const minDaysOld = isOlderThan3Months ? 90 : isOlderThan1Month ? 30 : 0
+
   const allJobs: NormalizedJob[] = []
   const seenIds = new Set<string>()
 
   // Make parallel requests for each role
   const requests = rolesToSearch.map(async (jobTitle) => {
-    const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=30&where=${encodeURIComponent(location)}&distance=50&max_days_old=${maxDaysOld}&what=${encodeURIComponent(jobTitle)}`
+    const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=30&where=${encodeURIComponent(location)}&distance=50&max_days_old=${fetchDays}&what=${encodeURIComponent(jobTitle)}`
 
     try {
       const response = await fetch(baseUrl + params)
@@ -164,9 +173,20 @@ async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30): P
   const results = await Promise.all(requests)
   const flatResults = results.flat()
 
+  // Date threshold for "older than X" filters
+  const minDateThreshold = new Date()
+  minDateThreshold.setDate(minDateThreshold.getDate() - minDaysOld)
+
   for (const job of flatResults) {
     const id = `adzuna_${job.id}`
     if (seenIds.has(id)) continue
+
+    // For "older than X" modes, skip jobs that are too recent
+    if (isOlderFilter && job.created) {
+      const jobDate = new Date(job.created)
+      if (jobDate > minDateThreshold) continue // Skip recent jobs
+    }
+
     seenIds.add(id)
 
     allJobs.push({
@@ -237,9 +257,17 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Prom
       timeoutSecs: 120
     })
 
-    // Filter by date first, then map
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - maxDaysOld)
+    // Handle "older than X" filters (31 = +1 month, 90 = +3 months)
+    const isOlderThan1Month = maxDaysOld === 31
+    const isOlderThan3Months = maxDaysOld === 90
+    const isOlderFilter = isOlderThan1Month || isOlderThan3Months
+    const minDaysOld = isOlderThan3Months ? 90 : isOlderThan1Month ? 30 : 0
+
+    const now = new Date()
+    const minDateThreshold = new Date(now)
+    minDateThreshold.setDate(now.getDate() - minDaysOld)
+    const maxDateThreshold = new Date(now)
+    maxDateThreshold.setDate(now.getDate() - (isOlderFilter ? 180 : maxDaysOld))
 
     return jobs
       .filter(job => {
@@ -247,7 +275,13 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Prom
         // Filter by date if date_posted is available
         if (job.date_posted) {
           const jobDate = new Date(job.date_posted)
-          if (jobDate < cutoffDate) return false
+          if (isOlderFilter) {
+            // For "older than X", keep only jobs older than minDaysOld
+            if (jobDate > minDateThreshold) return false
+          } else {
+            // For "less than X", keep only jobs newer than maxDaysOld
+            if (jobDate < maxDateThreshold) return false
+          }
         }
         return true
       })
@@ -306,11 +340,18 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30): P
   const keywords = parsedData.target_roles.slice(0, 5)
   if (keywords.length === 0) keywords.push('developer')
 
+  // Handle "older than X" filters (31 = +1 month, 90 = +3 months)
+  const isOlderThan1Month = maxDaysOld === 31
+  const isOlderThan3Months = maxDaysOld === 90
+  const isOlderFilter = isOlderThan1Month || isOlderThan3Months
+  const fetchDays = isOlderThan3Months ? 180 : isOlderThan1Month ? 120 : maxDaysOld
+  const minDaysOld = isOlderThan3Months ? 90 : isOlderThan1Month ? 30 : 0
+
   const input: Record<string, unknown> = {
     keywords,  // Now searches ALL roles!
     location: normalizeLocation(parsedData.location),
     country: 'France',
-    datePosted: String(maxDaysOld), // Use maxDaysOld from user selection
+    datePosted: String(fetchDays), // Fetch more for "older than" filters
     maxItems: 50  // Increased from 20
   }
 
@@ -321,8 +362,21 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30): P
       timeoutSecs: 90
     })
 
-    // Map all results (maxItems controls limit in input)
-    return jobs.map(job => ({
+    // Date threshold for "older than X" filters
+    const now = new Date()
+    const minDateThreshold = new Date(now)
+    minDateThreshold.setDate(now.getDate() - minDaysOld)
+
+    // Filter and map results
+    return jobs
+      .filter(job => {
+        if (isOlderFilter && job.datePublished) {
+          const jobDate = new Date(job.datePublished)
+          if (jobDate > minDateThreshold) return false // Skip recent jobs
+        }
+        return true
+      })
+      .map(job => ({
       search_id: '',
       external_id: `indeed_${job.key}`,
       source: 'Indeed',  // Capitalized for display

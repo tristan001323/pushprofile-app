@@ -788,11 +788,14 @@ export default function NewSearchPage() {
                 {/* Date de publication */}
                 <div>
                   <Label>Date de publication</Label>
+                  <p className="text-xs text-gray-500 mb-1">💡 +1/3 mois = entreprises qui ont du mal à recruter</p>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {[
                       { value: 7, label: '- 1 semaine' },
                       { value: 14, label: '- 2 semaines' },
                       { value: 30, label: '- 1 mois' },
+                      { value: 31, label: '+ 1 mois' },
+                      { value: 90, label: '+ 3 mois' },
                     ].map((option) => (
                       <button
                         key={option.value}
@@ -800,7 +803,9 @@ export default function NewSearchPage() {
                         onClick={() => setMaxDaysOld(option.value)}
                         className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
                           maxDaysOld === option.value
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                            ? option.value >= 31
+                              ? 'border-amber-500 bg-amber-50 text-amber-700'
+                              : 'border-indigo-500 bg-indigo-50 text-indigo-700'
                             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                         }`}
                       >
