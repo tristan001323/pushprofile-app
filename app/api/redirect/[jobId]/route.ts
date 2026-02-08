@@ -80,6 +80,13 @@ async function extractApplyUrlFromAdzuna(adzunaUrl: string): Promise<string | nu
       if (url.includes('adzuna')) return false
       if (url.includes('javascript:')) return false
       if (url.includes('#')) return false
+      // Exclude known ad/spam/unrelated domains that appear on Adzuna pages
+      const blockedDomains = [
+        'seiza.co', 'seiza.fr', 'doubleclick', 'googlesyndication', 'googleadservices',
+        'facebook.com/tr', 'analytics', 'tracking', 'pixel', 'ad.', 'ads.',
+        'criteo', 'taboola', 'outbrain', 'pubmatic', 'rubiconproject'
+      ]
+      if (blockedDomains.some(domain => url.toLowerCase().includes(domain))) return false
       return true
     }
 
@@ -132,17 +139,34 @@ async function extractApplyUrlFromAdzuna(adzunaUrl: string): Promise<string | nu
     }
 
     // Pattern 6: Look for any external https URL in href (but not adzuna/static/css/js)
+    // First pass: find ALL valid external URLs
     const externalHrefMatch = html.match(/href=["'](https:\/\/(?!.*(?:adzuna|static|\.css|\.js|\.png|\.jpg|fonts|analytics|tracking|google|facebook|twitter))[^"']+)["']/gi)
     if (externalHrefMatch) {
+      const validUrls: string[] = []
       for (const match of externalHrefMatch) {
         const urlMatch = match.match(/href=["']([^"']+)["']/)
         if (urlMatch && isValidExternalUrl(urlMatch[1]) && urlMatch[1].includes('/')) {
-          // Prefer URLs with paths (not just domains)
+          // Must have a path (not just domain)
           if (urlMatch[1].split('/').length > 3) {
-            console.log(`[Adzuna Extract] Found external href: ${urlMatch[1]}`)
-            return urlMatch[1]
+            validUrls.push(urlMatch[1])
           }
         }
+      }
+
+      // Prefer URLs from known job boards
+      const jobBoardUrl = validUrls.find(url =>
+        JOB_BOARD_DOMAINS.some(domain => url.toLowerCase().includes(domain))
+      )
+      if (jobBoardUrl) {
+        console.log(`[Adzuna Extract] Found job board URL in hrefs: ${jobBoardUrl}`)
+        return jobBoardUrl
+      }
+
+      // Otherwise take the first valid URL with a long path (likely a job page, not homepage)
+      const bestUrl = validUrls.find(url => url.split('/').length > 4)
+      if (bestUrl) {
+        console.log(`[Adzuna Extract] Found external href with path: ${bestUrl}`)
+        return bestUrl
       }
     }
 
