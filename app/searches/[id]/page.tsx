@@ -5,9 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import AppLayout from '@/components/AppLayout'
-import JobCard from '@/components/JobCard'
-import JobDetailModal from '@/components/JobDetailModal'
 
 type Match = {
   id: string
@@ -25,7 +24,7 @@ type Match = {
   viewed_at: string | null
   is_favorite: boolean
   source: string
-  source_engine?: 'adzuna' | 'indeed' | 'ats_direct' | null  // Internal tracking for compliance
+  source_engine?: 'adzuna' | 'indeed' | 'ats_direct' | null
   matching_details: {
     contract_type?: string
     remote_type?: string
@@ -45,6 +44,7 @@ type Match = {
     salary_text?: string
     company_slug?: string
     enriched_contacts?: EnrichedContact[]
+    tech_stack?: string[]
   }
 }
 
@@ -60,31 +60,92 @@ type EnrichedContact = {
   company_name: string | null
 }
 
+type SortField = 'score' | 'rank' | 'company_name' | 'posted_date' | 'job_title'
+type SortOrder = 'asc' | 'desc'
 
 // Processing step indicator component
 function StepItem({ label, done, active }: { label: string; done: boolean; active: boolean }) {
   return (
     <div className="flex items-center gap-3">
       <div
-        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+        className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-medium transition-all ${
           done
-            ? 'bg-green-500 text-white'
+            ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
             : active
-            ? 'bg-indigo-500 text-white animate-pulse'
-            : 'bg-gray-200 text-gray-400'
+            ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white animate-pulse shadow-lg shadow-indigo-500/30'
+            : 'bg-gray-100 text-gray-400'
         }`}
       >
         {done ? '✓' : active ? '...' : '○'}
       </div>
       <span
         className={`text-sm ${
-          done ? 'text-green-600' : active ? 'text-indigo-600 font-medium' : 'text-gray-400'
+          done ? 'text-emerald-600 font-medium' : active ? 'text-indigo-600 font-semibold' : 'text-gray-400'
         }`}
       >
         {label}
       </span>
     </div>
   )
+}
+
+// Format relative date
+function formatRelativeDate(dateStr: string | null): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return "Aujourd'hui"
+  if (diffDays === 1) return 'Hier'
+  if (diffDays < 7) return `${diffDays}j`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem.`
+  return `${Math.floor(diffDays / 30)} mois`
+}
+
+// Format salary
+function formatSalary(min?: number | null, max?: number | null): string | null {
+  if (!min && !max) return null
+  if (min && max) return `${Math.round(min/1000)}-${Math.round(max/1000)}K`
+  if (min) return `${Math.round(min/1000)}K+`
+  if (max) return `< ${Math.round(max/1000)}K`
+  return null
+}
+
+// Format contract type
+function formatContractType(type?: string): string {
+  if (!type) return 'CDI'
+  const t = type.toLowerCase()
+  if (t === 'contract' || t === 'cdd' || t === 'c') return 'CDD'
+  if (t === 'internship' || t === 'i') return 'Stage'
+  if (t === 'freelance') return 'Freelance'
+  if (t === 'f' || t === 'full-time' || t === 'permanent') return 'CDI'
+  return 'CDI'
+}
+
+// Format remote type
+function formatRemoteType(type?: string): string {
+  if (!type) return 'Sur site'
+  const t = type.toLowerCase()
+  if (t === 'remote' || t === 'full_remote' || t === 'fully_remote') return 'Remote'
+  if (t === 'hybrid') return 'Hybride'
+  return 'Sur site'
+}
+
+// Get score color
+function getScoreColor(score: number): string {
+  if (score >= 80) return 'from-emerald-500 to-teal-500'
+  if (score >= 60) return 'from-indigo-500 to-purple-500'
+  if (score >= 40) return 'from-amber-500 to-orange-500'
+  return 'from-gray-400 to-gray-500'
+}
+
+// Get score badge style
+function getScoreBadgeStyle(score: number): { bg: string; text: string; label: string } {
+  if (score >= 90) return { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Excellent match' }
+  if (score >= 75) return { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Bon match' }
+  if (score >= 60) return { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Match partiel' }
+  return { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Faible correspondance' }
 }
 
 export default function SearchDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -94,12 +155,14 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [searchName, setSearchName] = useState('')
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [filter, setFilter] = useState<string>('all')
+  const [sortField, setSortField] = useState<SortField>('rank')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const [enrichedContacts, setEnrichedContacts] = useState<EnrichedContact[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
   const [contactsError, setContactsError] = useState<string | null>(null)
-  const [contactsSearched, setContactsSearched] = useState(false) // Track if we already searched
+  const [contactsSearched, setContactsSearched] = useState(false)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 
   // Processing state
   const [searchStatus, setSearchStatus] = useState<'processing' | 'completed' | 'error'>('processing')
@@ -125,7 +188,6 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
           setProgress(data.progress || 0)
           setErrorMessage(data.error_message)
 
-          // If completed, stop polling and load matches
           if (data.status === 'completed') {
             if (pollInterval) clearInterval(pollInterval)
             loadMatches()
@@ -139,10 +201,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
       }
     }
 
-    // Initial check
     pollStatus()
-
-    // Start polling
     pollInterval = setInterval(pollStatus, 2000)
 
     return () => {
@@ -172,13 +231,13 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
       .order('rank', { ascending: true })
 
     if (data) {
-      // Sort by rank (TOP 10 first, then others)
       const sorted = data.sort((a: Match, b: Match) => a.rank - b.rank)
       setMatches(sorted)
     }
     setLoading(false)
   }
 
+  // Filter matches
   const filteredMatches = matches.filter(match => {
     if (filter === 'top10') return match.rank <= 10
     if (filter === 'others') return match.rank > 10
@@ -189,12 +248,44 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     return true
   })
 
-  const openModal = async (match: Match) => {
+  // Sort matches
+  const sortedMatches = [...filteredMatches].sort((a, b) => {
+    let comparison = 0
+    switch (sortField) {
+      case 'score':
+        comparison = a.score - b.score
+        break
+      case 'rank':
+        comparison = a.rank - b.rank
+        break
+      case 'company_name':
+        comparison = a.company_name.localeCompare(b.company_name)
+        break
+      case 'posted_date':
+        comparison = new Date(a.posted_date || 0).getTime() - new Date(b.posted_date || 0).getTime()
+        break
+      case 'job_title':
+        comparison = a.job_title.localeCompare(b.job_title)
+        break
+    }
+    return sortOrder === 'asc' ? comparison : -comparison
+  })
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortOrder(field === 'score' ? 'desc' : 'asc')
+    }
+  }
+
+  const openPanel = async (match: Match) => {
     setSelectedMatch(match)
-    setIsModalOpen(true)
     setEnrichedContacts(match.matching_details?.enriched_contacts || [])
     setContactsError(null)
     setContactsSearched(false)
+    setDescriptionExpanded(false)
 
     if (!match.viewed_at) {
       const now = new Date().toISOString()
@@ -212,9 +303,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  const closeModal = () => {
-    setIsModalOpen(false)
-    setTimeout(() => setSelectedMatch(null), 200)
+  const closePanel = () => {
+    setSelectedMatch(null)
   }
 
   const handleStatusChange = async (newStatus: string) => {
@@ -233,28 +323,24 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  const handleFavoriteToggle = async () => {
-    if (!selectedMatch) return
+  const handleFavoriteToggle = async (match?: Match) => {
+    const targetMatch = match || selectedMatch
+    if (!targetMatch) return
 
     const { error } = await supabase
       .from('matches')
-      .update({ is_favorite: !selectedMatch.is_favorite })
-      .eq('id', selectedMatch.id)
+      .update({ is_favorite: !targetMatch.is_favorite })
+      .eq('id', targetMatch.id)
 
     if (!error) {
-      setSelectedMatch({ ...selectedMatch, is_favorite: !selectedMatch.is_favorite })
+      if (selectedMatch && selectedMatch.id === targetMatch.id) {
+        setSelectedMatch({ ...selectedMatch, is_favorite: !targetMatch.is_favorite })
+      }
       setMatches(matches.map(m =>
-        m.id === selectedMatch.id ? { ...m, is_favorite: !selectedMatch.is_favorite } : m
+        m.id === targetMatch.id ? { ...m, is_favorite: !targetMatch.is_favorite } : m
       ))
     }
   }
-
-  const handleSearchContacts = async () => {
-    if (!selectedMatch) return
-    await enrichContacts(selectedMatch.company_name, selectedMatch.id)
-  }
-
-
 
   const enrichContacts = async (companyName: string, matchId: string) => {
     setContactsLoading(true)
@@ -286,9 +372,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
       }
 
       setEnrichedContacts(data.contacts || [])
-      setContactsSearched(true) // Mark that we searched
+      setContactsSearched(true)
 
-      // Update local match state with enriched contacts
       if (selectedMatch && data.contacts?.length > 0) {
         const updatedMatch = {
           ...selectedMatch,
@@ -312,53 +397,39 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   if (loading && searchStatus === 'processing') {
     return (
       <AppLayout>
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <Card className="max-w-md w-full p-8">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+          <div className="fixed inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-blue-200/20 to-cyan-200/20 rounded-full blur-3xl" />
+          </div>
+
+          <Card className="max-w-md w-full p-8 bg-white/80 backdrop-blur-xl border border-white/50 shadow-xl relative">
             <div className="text-center">
-              <h2 className="text-xl font-bold mb-2" style={{ color: '#1D3557' }}>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-500/30 animate-pulse">
+                <span className="text-white font-bold text-2xl">P</span>
+              </div>
+              <h2 className="text-xl font-bold mb-2 text-gray-900">
                 {searchName || 'Recherche en cours...'}
               </h2>
-              <p className="text-sm mb-6" style={{ color: '#457B9D' }}>
+              <p className="text-sm mb-6 text-gray-500">
                 {stepLabel || 'Initialisation...'}
               </p>
 
-              {/* Progress bar */}
-              <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+              <div className="w-full bg-gray-100 rounded-full h-3 mb-4 overflow-hidden">
                 <div
-                  className="h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%`, backgroundColor: '#6366F1' }}
+                  className="h-3 rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-purple-600"
+                  style={{ width: `${progress}%` }}
                 />
               </div>
 
-              <p className="text-xs" style={{ color: '#9CA3AF' }}>{progress}%</p>
+              <p className="text-xs text-gray-400 mb-8">{progress}%</p>
 
-              {/* Processing steps indicator */}
-              <div className="mt-8 space-y-3 text-left">
-                <StepItem
-                  label="Analyse des critères"
-                  done={progress > 10}
-                  active={processingStep === 'parsing'}
-                />
-                <StepItem
-                  label="Recherche LinkedIn, Indeed, Glassdoor, WTTJ"
-                  done={progress > 50}
-                  active={processingStep === 'scraping'}
-                />
-                <StepItem
-                  label="Filtrage et déduplication"
-                  done={progress > 70}
-                  active={processingStep === 'filtering'}
-                />
-                <StepItem
-                  label="Scoring IA des meilleurs matchs"
-                  done={progress > 85}
-                  active={processingStep === 'scoring'}
-                />
-                <StepItem
-                  label="Sauvegarde des résultats"
-                  done={progress >= 100}
-                  active={processingStep === 'saving'}
-                />
+              <div className="space-y-4 text-left">
+                <StepItem label="Analyse des critères" done={progress > 10} active={processingStep === 'parsing'} />
+                <StepItem label="Recherche LinkedIn, Indeed, Glassdoor, WTTJ" done={progress > 50} active={processingStep === 'scraping'} />
+                <StepItem label="Filtrage et déduplication" done={progress > 70} active={processingStep === 'filtering'} />
+                <StepItem label="Scoring IA des meilleurs matchs" done={progress > 85} active={processingStep === 'scoring'} />
+                <StepItem label="Sauvegarde des résultats" done={progress >= 100} active={processingStep === 'saving'} />
               </div>
             </div>
           </Card>
@@ -371,16 +442,23 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   if (searchStatus === 'error') {
     return (
       <AppLayout>
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <Card className="max-w-md w-full p-8 text-center">
-            <div className="text-red-500 text-5xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold mb-2" style={{ color: '#1D3557' }}>
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+          <Card className="max-w-md w-full p-8 text-center bg-white/80 backdrop-blur-xl border border-white/50 shadow-xl">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-xl shadow-red-500/30">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold mb-2 text-gray-900">
               Erreur lors de la recherche
             </h2>
-            <p className="text-sm mb-6" style={{ color: '#EF4444' }}>
+            <p className="text-sm mb-6 text-red-500">
               {errorMessage || 'Une erreur est survenue'}
             </p>
-            <Button onClick={() => router.push('/new-search')}>
+            <Button
+              onClick={() => router.push('/new-search')}
+              className="h-12 px-6 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30"
+            >
               Nouvelle recherche
             </Button>
           </Card>
@@ -392,133 +470,652 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   if (loading) {
     return (
       <AppLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#6366F1' }}></div>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-500/30 animate-pulse">
+                <span className="text-white font-bold text-2xl">P</span>
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-ping" />
+            </div>
+          </div>
         </div>
       </AppLayout>
     )
   }
 
+  const scoreStyle = selectedMatch ? getScoreBadgeStyle(selectedMatch.score) : null
+  const isAdzuna = selectedMatch?.source_engine === 'adzuna'
+
   return (
     <AppLayout>
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <Button variant="outline" onClick={() => router.push('/searches')} className="mb-4">
-              ← Retour aux recherches
-            </Button>
-            <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#1D3557' }}>{searchName}</h1>
-            <p className="mt-2" style={{ color: '#457B9D' }}>{matches.length} opportunités trouvées</p>
-
-            {/* Filtres */}
-            <div className="flex gap-2 mt-4 flex-wrap">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  filter === 'all' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                style={filter === 'all' ? { backgroundColor: '#6366F1' } : {}}
-              >
-                Tous ({matches.length})
-              </button>
-              <button
-                onClick={() => setFilter('top10')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  filter === 'top10' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                style={filter === 'top10' ? { backgroundColor: '#6366F1' } : {}}
-              >
-                TOP 10 ({matches.filter(m => m.rank <= 10).length})
-              </button>
-              <button
-                onClick={() => setFilter('others')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  filter === 'others' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                style={filter === 'others' ? { backgroundColor: '#6366F1' } : {}}
-              >
-                Autres ({matches.filter(m => m.rank > 10).length})
-              </button>
-              <button
-                onClick={() => setFilter('favorites')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
-                  filter === 'favorites' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                style={filter === 'favorites' ? { backgroundColor: '#FBBF24' } : {}}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                Favoris ({matches.filter(m => m.is_favorite).length})
-              </button>
-              {/* Filtres par source - basés sur source_engine */}
-              {matches.some(m => m.source_engine === 'ats_direct') && (
-                <button
-                  onClick={() => setFilter('ats')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    filter === 'ats' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  style={filter === 'ats' ? { backgroundColor: '#10B981' } : {}}
-                >
-                  Offres directes ({matches.filter(m => m.source_engine === 'ats_direct').length})
-                </button>
-              )}
-              {matches.some(m => m.source_engine === 'indeed') && (
-                <button
-                  onClick={() => setFilter('indeed')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    filter === 'indeed' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  style={filter === 'indeed' ? { backgroundColor: '#6B5CE7' } : {}}
-                >
-                  Indeed ({matches.filter(m => m.source_engine === 'indeed').length})
-                </button>
-              )}
-              {matches.some(m => m.source_engine === 'adzuna') && (
-                <button
-                  onClick={() => setFilter('adzuna')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    filter === 'adzuna' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  style={filter === 'adzuna' ? { backgroundColor: '#6B7280' } : {}}
-                >
-                  Autres sources ({matches.filter(m => m.source_engine === 'adzuna').length})
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Grid de cards - 3 cols desktop, 2 tablet, 1 mobile */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredMatches.map((match) => (
-              <JobCard
-                key={match.id}
-                match={match}
-                onClick={() => openModal(match)}
-              />
-            ))}
-          </div>
-
-          {/* Empty state */}
-          {filteredMatches.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Aucun résultat pour ce filtre</p>
-            </div>
-          )}
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+        {/* Background decorations */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-blue-200/20 to-cyan-200/20 rounded-full blur-3xl" />
         </div>
 
-        {/* Modal de détail */}
+        <div className={`transition-all duration-300 ${selectedMatch ? 'mr-[480px]' : ''}`}>
+          <div className="p-4 md:p-8">
+            <div className="max-w-full mx-auto relative">
+              {/* Header */}
+              <div className="mb-6">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/searches')}
+                  className="mb-4 rounded-xl hover:bg-white/80"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Retour aux recherches
+                </Button>
+
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{searchName}</h1>
+                    <p className="text-gray-500">{matches.length} opportunités trouvées</p>
+                  </div>
+                </div>
+
+                {/* Filters */}
+                <div className="flex gap-2 mt-4 flex-wrap">
+                  {[
+                    { key: 'all', label: 'Tous', count: matches.length, color: 'from-indigo-500 to-purple-600' },
+                    { key: 'top10', label: 'TOP 10', count: matches.filter(m => m.rank <= 10).length, color: 'from-indigo-500 to-purple-600' },
+                    { key: 'others', label: 'Autres', count: matches.filter(m => m.rank > 10).length, color: 'from-indigo-500 to-purple-600' },
+                    { key: 'favorites', label: '⭐ Favoris', count: matches.filter(m => m.is_favorite).length, color: 'from-amber-500 to-orange-500' },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setFilter(f.key)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                        filter === f.key
+                          ? `bg-gradient-to-r ${f.color} text-white shadow-lg`
+                          : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md'
+                      }`}
+                    >
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+
+                  {/* Source filters */}
+                  {matches.some(m => m.source_engine === 'ats_direct') && (
+                    <button
+                      onClick={() => setFilter('ats')}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                        filter === 'ats'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg'
+                          : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md'
+                      }`}
+                    >
+                      Offres directes ({matches.filter(m => m.source_engine === 'ats_direct').length})
+                    </button>
+                  )}
+                  {matches.some(m => m.source_engine === 'indeed') && (
+                    <button
+                      onClick={() => setFilter('indeed')}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                        filter === 'indeed'
+                          ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg'
+                          : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md'
+                      }`}
+                    >
+                      Indeed ({matches.filter(m => m.source_engine === 'indeed').length})
+                    </button>
+                  )}
+                  {matches.some(m => m.source_engine === 'adzuna') && (
+                    <button
+                      onClick={() => setFilter('adzuna')}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                        filter === 'adzuna'
+                          ? 'bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-lg'
+                          : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-md'
+                      }`}
+                    >
+                      Autres ({matches.filter(m => m.source_engine === 'adzuna').length})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left p-4 w-12"></th>
+                        <th
+                          className="text-left p-4 font-semibold text-gray-600 cursor-pointer hover:text-indigo-600 transition-colors"
+                          onClick={() => handleSort('score')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Score
+                            {sortField === 'score' && (
+                              <svg className={`w-4 h-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </th>
+                        <th
+                          className="text-left p-4 font-semibold text-gray-600 cursor-pointer hover:text-indigo-600 transition-colors"
+                          onClick={() => handleSort('job_title')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Poste
+                            {sortField === 'job_title' && (
+                              <svg className={`w-4 h-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </th>
+                        <th
+                          className="text-left p-4 font-semibold text-gray-600 cursor-pointer hover:text-indigo-600 transition-colors"
+                          onClick={() => handleSort('company_name')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Entreprise
+                            {sortField === 'company_name' && (
+                              <svg className={`w-4 h-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </th>
+                        <th className="text-left p-4 font-semibold text-gray-600">Lieu</th>
+                        <th className="text-left p-4 font-semibold text-gray-600">Contrat</th>
+                        <th className="text-left p-4 font-semibold text-gray-600">Remote</th>
+                        <th className="text-left p-4 font-semibold text-gray-600">Salaire</th>
+                        <th
+                          className="text-left p-4 font-semibold text-gray-600 cursor-pointer hover:text-indigo-600 transition-colors"
+                          onClick={() => handleSort('posted_date')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Date
+                            {sortField === 'posted_date' && (
+                              <svg className={`w-4 h-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </th>
+                        <th className="text-left p-4 font-semibold text-gray-600">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedMatches.map((match, index) => {
+                        const isSelected = selectedMatch?.id === match.id
+                        const isTop10 = match.rank <= 10
+                        const salary = formatSalary(match.matching_details?.salary_min, match.matching_details?.salary_max)
+
+                        return (
+                          <tr
+                            key={match.id}
+                            onClick={() => openPanel(match)}
+                            className={`border-b border-gray-50 cursor-pointer transition-all duration-200 ${
+                              isSelected
+                                ? 'bg-indigo-50/80'
+                                : index % 2 === 0
+                                  ? 'bg-white/50 hover:bg-indigo-50/50'
+                                  : 'bg-gray-50/30 hover:bg-indigo-50/50'
+                            }`}
+                          >
+                            {/* Rank / Top badge */}
+                            <td className="p-4">
+                              {isTop10 ? (
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-indigo-500/30">
+                                  {match.rank}
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
+                                  {match.rank}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Score */}
+                            <td className="p-4">
+                              <div className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-semibold bg-gradient-to-r ${getScoreColor(match.score)} text-white shadow-sm`}>
+                                {match.score}%
+                              </div>
+                            </td>
+
+                            {/* Job title */}
+                            <td className="p-4">
+                              <div className="font-medium text-gray-900 max-w-[250px] truncate" title={match.job_title}>
+                                {match.job_title}
+                              </div>
+                            </td>
+
+                            {/* Company */}
+                            <td className="p-4">
+                              <div className="text-gray-700 max-w-[150px] truncate" title={match.company_name}>
+                                {match.company_name}
+                              </div>
+                            </td>
+
+                            {/* Location */}
+                            <td className="p-4">
+                              <div className="text-gray-500 text-sm max-w-[120px] truncate" title={match.location}>
+                                {match.location || '-'}
+                              </div>
+                            </td>
+
+                            {/* Contract */}
+                            <td className="p-4">
+                              <span className="px-2 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600">
+                                {formatContractType(match.matching_details?.contract_type)}
+                              </span>
+                            </td>
+
+                            {/* Remote */}
+                            <td className="p-4">
+                              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                                match.matching_details?.remote_type === 'remote'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : match.matching_details?.remote_type === 'hybrid'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {formatRemoteType(match.matching_details?.remote_type)}
+                              </span>
+                            </td>
+
+                            {/* Salary */}
+                            <td className="p-4">
+                              <span className="text-sm text-gray-600">
+                                {salary || '-'}
+                              </span>
+                            </td>
+
+                            {/* Date */}
+                            <td className="p-4">
+                              <span className="text-sm text-gray-500">
+                                {formatRelativeDate(match.posted_date)}
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleFavoriteToggle(match)
+                                  }}
+                                  className={`p-2 rounded-lg transition-all duration-200 ${
+                                    match.is_favorite
+                                      ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-amber-500'
+                                  }`}
+                                  title={match.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                                >
+                                  <svg className="w-4 h-4" fill={match.is_favorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                  </svg>
+                                </button>
+                                <a
+                                  href={`/api/redirect/${match.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:bg-indigo-100 hover:text-indigo-600 transition-all duration-200"
+                                  title="Voir l'offre"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Empty state */}
+                {sortedMatches.length === 0 && (
+                  <div className="text-center py-16">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-500">Aucun résultat pour ce filtre</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Side Panel */}
         {selectedMatch && (
-          <JobDetailModal
-            match={selectedMatch}
-            isOpen={isModalOpen}
-            onClose={closeModal}
-            onStatusChange={handleStatusChange}
-            onFavoriteToggle={handleFavoriteToggle}
-            onSearchContacts={handleSearchContacts}
-            contactsLoading={contactsLoading}
-            enrichedContacts={enrichedContacts}
-          />
+          <>
+            {/* Backdrop for mobile */}
+            <div
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden"
+              onClick={closePanel}
+            />
+
+            {/* Panel */}
+            <div className="fixed top-0 right-0 w-full lg:w-[480px] h-full bg-white/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in slide-in-from-right duration-300">
+              {/* Panel Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-indigo-500/5 to-purple-500/5">
+                <div className="flex items-center gap-2">
+                  {selectedMatch.rank <= 10 && (
+                    <div className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/30">
+                      TOP {selectedMatch.rank}
+                    </div>
+                  )}
+                  {selectedMatch.score > 0 && scoreStyle && (
+                    <div className={`${scoreStyle.bg} ${scoreStyle.text} px-3 py-1.5 rounded-lg text-sm font-semibold`}>
+                      {selectedMatch.score}% · {scoreStyle.label}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={closePanel}
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Panel Content - Scrollable */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Title + Company */}
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                    {selectedMatch.job_title}
+                  </h2>
+                  <p className="text-lg text-gray-600">
+                    @ {selectedMatch.company_name}
+                  </p>
+                </div>
+
+                {/* Key Info */}
+                <div className="flex flex-wrap gap-3">
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    {selectedMatch.location || 'Non spécifié'}
+                  </span>
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    {formatContractType(selectedMatch.matching_details?.contract_type)}
+                  </span>
+                  {selectedMatch.matching_details?.remote_type && (
+                    <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
+                      selectedMatch.matching_details.remote_type === 'remote'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : selectedMatch.matching_details.remote_type === 'hybrid'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                      {formatRemoteType(selectedMatch.matching_details.remote_type)}
+                    </span>
+                  )}
+                  {formatSalary(selectedMatch.matching_details?.salary_min, selectedMatch.matching_details?.salary_max) && (
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 text-sm font-medium">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formatSalary(selectedMatch.matching_details?.salary_min, selectedMatch.matching_details?.salary_max)}
+                    </span>
+                  )}
+                  {selectedMatch.posted_date && (
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formatRelativeDate(selectedMatch.posted_date)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Tech Stack - if available */}
+                {selectedMatch.matching_details?.tech_stack && selectedMatch.matching_details.tech_stack.length > 0 && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50">
+                    <h3 className="font-semibold text-violet-900 mb-3 flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                      </span>
+                      Stack technique
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedMatch.matching_details.tech_stack.map((tech, idx) => (
+                        <span key={idx} className="px-3 py-1 rounded-lg bg-white text-violet-700 text-sm font-medium shadow-sm">
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Analysis */}
+                {selectedMatch.justification && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/50">
+                    <h3 className="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                      </span>
+                      Analyse IA
+                    </h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      {selectedMatch.justification}
+                    </p>
+                  </div>
+                )}
+
+                {/* Full Description - Collapsible */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="font-semibold text-gray-700 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Fiche de poste complète
+                    </span>
+                    <svg className={`w-5 h-5 text-gray-400 transition-transform ${descriptionExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {descriptionExpanded && (
+                    <div className="px-4 pb-4 border-t border-gray-100">
+                      <div
+                        className="text-sm text-gray-600 leading-relaxed max-h-[400px] overflow-y-auto mt-4 whitespace-pre-wrap prose prose-sm"
+                        dangerouslySetInnerHTML={{
+                          __html: selectedMatch.matching_details?.full_description || 'Pas de description disponible'
+                        }}
+                      />
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <a
+                          href={`/api/redirect/${selectedMatch.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          Voir l'offre sur le site
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Contacts Section */}
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Contacts
+                  </h3>
+
+                  {enrichedContacts.length === 0 ? (
+                    <Button
+                      onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id)}
+                      disabled={contactsLoading}
+                      variant="outline"
+                      className="w-full rounded-xl"
+                    >
+                      {contactsLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mr-2" />
+                          Recherche en cours...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          Rechercher les contacts de {selectedMatch.company_name}
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <div className="space-y-3">
+                      {enrichedContacts.map((contact, idx) => (
+                        <div key={idx} className="p-3 bg-gray-50 rounded-xl">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {contact.full_name || `${contact.first_name} ${contact.last_name}`}
+                              </p>
+                              <p className="text-sm text-gray-500">{contact.job_title}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {contact.email && (
+                                <a
+                                  href={`mailto:${contact.email}`}
+                                  className="p-2 rounded-lg bg-white hover:bg-indigo-50 text-indigo-600 transition-colors"
+                                  title={contact.email}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                </a>
+                              )}
+                              {contact.linkedin_url && (
+                                <a
+                                  href={contact.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2 rounded-lg bg-white hover:bg-blue-50 text-blue-600 transition-colors"
+                                  title="LinkedIn"
+                                >
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          {contact.email && (
+                            <p className="text-xs text-gray-400 mt-2">{contact.email}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {contactsError && (
+                    <p className="text-sm text-red-500 mt-2">{contactsError}</p>
+                  )}
+                </div>
+
+                {/* Status + Favorite */}
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Statut
+                    </label>
+                    <Select value={selectedMatch.status} onValueChange={handleStatusChange}>
+                      <SelectTrigger className="w-full rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nouveau">Nouveau</SelectItem>
+                        <SelectItem value="a_contacter">À contacter</SelectItem>
+                        <SelectItem value="postule">Postulé</SelectItem>
+                        <SelectItem value="entretien">Entretien</SelectItem>
+                        <SelectItem value="refuse">Refusé</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    variant={selectedMatch.is_favorite ? 'default' : 'outline'}
+                    onClick={() => handleFavoriteToggle()}
+                    className={`rounded-xl ${selectedMatch.is_favorite ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/30' : ''}`}
+                  >
+                    <svg className="w-4 h-4 mr-2" fill={selectedMatch.is_favorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    {selectedMatch.is_favorite ? 'Favori' : 'Ajouter'}
+                  </Button>
+                </div>
+
+                {/* Source */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100 text-sm text-gray-400">
+                  <span>via {selectedMatch.source}</span>
+                  {isAdzuna && (
+                    <a
+                      href="https://www.adzuna.fr"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-gray-300 hover:text-gray-400"
+                    >
+                      Jobs by Adzuna
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Panel Footer */}
+              <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                <Button
+                  onClick={() => window.open(`/api/redirect/${selectedMatch.id}`, '_blank')}
+                  className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300"
+                >
+                  Voir l'offre complète
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </AppLayout>
