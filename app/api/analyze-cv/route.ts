@@ -299,7 +299,9 @@ export async function POST(request: NextRequest) {
         is_recurrence_active: recurrence ? true : false,
         next_run_at: calculateNextRunAt(recurrence),
         exclude_agencies: exclude_agencies !== false,
-        max_days_old: max_days_old || 30  // Default to 30 days
+        max_days_old: max_days_old || 30,  // Default to 30 days
+        contract_types: contract_types || null,  // CDI, CDD, Stage, Freelance
+        remote_options: remote_options || null   // On-site, Hybrid, Full remote
       })
       .select()
       .single()

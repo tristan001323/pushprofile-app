@@ -411,17 +411,77 @@ const QUALITY_ATS_SOURCES = [
   'workday', 'smartrecruiters', 'bamboohr', 'breezy', 'jazzhr', 'recruitee', 'personio'
 ]
 
+// Normalize contract type for comparison
+function normalizeContractType(type: string | undefined): string {
+  if (!type) return 'cdi'
+  const t = type.toLowerCase()
+  if (t === 'contract' || t === 'cdd' || t === 'c' || t === 'temporary') return 'cdd'
+  if (t === 'internship' || t === 'i' || t === 'stage') return 'stage'
+  if (t === 'freelance' || t === 'contractor' || t === 'self-employed') return 'freelance'
+  return 'cdi' // permanent, full-time, f, etc.
+}
+
+// Normalize remote type for comparison
+function normalizeRemoteType(type: string | undefined): string {
+  if (!type) return 'on-site'
+  const t = type.toLowerCase()
+  if (t === 'remote' || t === 'full_remote' || t === 'fully_remote' || t === 'full remote') return 'full remote'
+  if (t === 'hybrid') return 'hybrid'
+  return 'on-site'
+}
+
 // Filter agencies and score jobs
-function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchId: string, excludeAgencies: boolean): NormalizedJob[] {
+function filterAndScoreJobs(
+  jobs: NormalizedJob[],
+  parsedData: ParsedCV,
+  searchId: string,
+  excludeAgencies: boolean,
+  contractTypes: string[] = [],
+  remoteOptions: string[] = []
+): NormalizedJob[] {
   let filtered = jobs
 
   // Filter agencies
   if (excludeAgencies) {
-    filtered = jobs.filter(job => {
+    filtered = filtered.filter(job => {
       const companyName = (job.company_name || '').toLowerCase()
       const description = (job.description || '').toLowerCase()
       return !RECRUITMENT_AGENCIES.some(agency => companyName.includes(agency) || description.includes(agency))
     })
+  }
+
+  // Filter by contract type (CDI, CDD, Stage, Freelance)
+  if (contractTypes.length > 0) {
+    const normalizedFilters = contractTypes.map(ct => ct.toLowerCase())
+    filtered = filtered.filter(job => {
+      const jobContractType = normalizeContractType(job.matching_details?.contract_type as string | undefined)
+      // Map user filter values to normalized values
+      const matchesFilter = normalizedFilters.some(filter => {
+        if (filter === 'cdi' || filter === 'permanent') return jobContractType === 'cdi'
+        if (filter === 'cdd' || filter === 'contract') return jobContractType === 'cdd'
+        if (filter === 'stage' || filter === 'internship') return jobContractType === 'stage'
+        if (filter === 'freelance') return jobContractType === 'freelance'
+        return false
+      })
+      return matchesFilter
+    })
+    console.log(`After contract filter (${contractTypes.join(', ')}): ${filtered.length} jobs`)
+  }
+
+  // Filter by remote options (On-site, Hybrid, Full remote)
+  if (remoteOptions.length > 0) {
+    const normalizedFilters = remoteOptions.map(ro => ro.toLowerCase())
+    filtered = filtered.filter(job => {
+      const jobRemoteType = normalizeRemoteType(job.matching_details?.remote_type as string | undefined)
+      const matchesFilter = normalizedFilters.some(filter => {
+        if (filter === 'on-site' || filter === 'on_site' || filter === 'onsite') return jobRemoteType === 'on-site'
+        if (filter === 'hybrid') return jobRemoteType === 'hybrid'
+        if (filter === 'full remote' || filter === 'remote' || filter === 'full_remote') return jobRemoteType === 'full remote'
+        return false
+      })
+      return matchesFilter
+    })
+    console.log(`After remote filter (${remoteOptions.join(', ')}): ${filtered.length} jobs`)
   }
 
   // Count by source before scoring
@@ -560,6 +620,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const parsedData: ParsedCV = search.parsed_data
     const excludeAgencies = search.exclude_agencies !== false
     const maxDaysOld = search.max_days_old || 30  // Default to 30 days
+    const contractTypes: string[] = search.contract_types || []  // CDI, CDD, Stage, Freelance
+    const remoteOptions: string[] = search.remote_options || []  // On-site, Hybrid, Full remote
 
     // 2. Fetch jobs from all sources in parallel
     await updateStep(supabase, searchId, 'scraping')
@@ -593,7 +655,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // 3. Filter and score
     await updateStep(supabase, searchId, 'filtering')
-    const top50Jobs = filterAndScoreJobs(allJobs, parsedData, searchId, excludeAgencies)
+    const top50Jobs = filterAndScoreJobs(allJobs, parsedData, searchId, excludeAgencies, contractTypes, remoteOptions)
     console.log(`[${searchId}] After filtering: ${top50Jobs.length} jobs`)
 
     if (top50Jobs.length === 0) {
