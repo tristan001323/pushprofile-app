@@ -289,14 +289,19 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contr
     maxDateThreshold.setDate(now.getDate() - (isOlderFilter ? 180 : maxDaysOld))
 
     // Map contract types to ATS employment_type values
+    // Note: For "Freelance", we DON'T filter by employment_type because:
+    // - ATS systems don't have a "freelance" type
+    // - Freelance jobs can be marked as "contract", "full_time", or undefined
+    // - We'll show them as "Freelance" in the UI based on user's search filter
     const atsEmploymentTypes: string[] = []
-    if (contractTypes.length > 0) {
+    const isFreelanceSearch = contractTypes.some(ct => ct.toLowerCase() === 'freelance')
+    if (contractTypes.length > 0 && !isFreelanceSearch) {
       contractTypes.forEach(ct => {
         const t = ct.toLowerCase()
         if (t === 'cdi') atsEmploymentTypes.push('full_time')
         if (t === 'cdd') atsEmploymentTypes.push('contract', 'temporary')
         if (t === 'stage') atsEmploymentTypes.push('internship')
-        if (t === 'freelance') atsEmploymentTypes.push('contract')
+        // Freelance is handled separately - no filter applied
       })
     }
 
@@ -406,15 +411,19 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
 
   // Build job type filter for Indeed
   // Indeed API uses UPPERCASE values: FULL_TIME, PERMANENT, CONTRACT, INTERNSHIP, etc.
+  // Note: For "Freelance", we DON'T apply a strict job type filter because:
+  // - Freelance jobs can appear under different categories
+  // - Better to show more results and let user filter
   let jobType: string | undefined = undefined
   let requestedContractType: string | undefined = undefined  // Track what we asked for
-  if (contractTypes.length > 0) {
+  const isFreelanceSearch = contractTypes.some(ct => ct.toLowerCase() === 'freelance')
+  if (contractTypes.length > 0 && !isFreelanceSearch) {
     const ct = contractTypes[0].toLowerCase() // Indeed only supports one job type
     if (ct === 'cdi') {
       jobType = 'PERMANENT'
       requestedContractType = 'permanent'
     }
-    if (ct === 'cdd' || ct === 'freelance') {
+    if (ct === 'cdd') {
       jobType = 'CONTRACT'
       requestedContractType = 'contract'
     }
@@ -422,6 +431,10 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
       jobType = 'INTERNSHIP'
       requestedContractType = 'internship'
     }
+  }
+  // For Freelance searches, we fetch ALL job types and mark them as Freelance in display
+  if (isFreelanceSearch) {
+    requestedContractType = 'freelance'
   }
 
   const input: Record<string, unknown> = {
@@ -572,7 +585,10 @@ function filterAndScoreJobs(
 
   // Filter by contract type (CDI, CDD, Stage, Freelance)
   // Note: If job has unknown contract_type, we INCLUDE it (don't exclude unknown jobs)
-  if (contractTypes.length > 0) {
+  // SPECIAL CASE: For "Freelance" searches, we DON'T filter - all jobs pass through
+  // because freelance opportunities can be listed under any category
+  const isFreelanceSearch = contractTypes.some(ct => ct.toLowerCase() === 'freelance')
+  if (contractTypes.length > 0 && !isFreelanceSearch) {
     const normalizedFilters = contractTypes.map(ct => ct.toLowerCase())
     filtered = filtered.filter(job => {
       const rawContractType = job.matching_details?.contract_type as string | undefined
@@ -590,12 +606,13 @@ function filterAndScoreJobs(
         if (filter === 'cdi' || filter === 'permanent') return jobContractType === 'cdi'
         if (filter === 'cdd' || filter === 'contract') return jobContractType === 'cdd'
         if (filter === 'stage' || filter === 'internship') return jobContractType === 'stage'
-        if (filter === 'freelance') return jobContractType === 'freelance' || jobContractType === 'cdd'
         return false
       })
       return matchesFilter
     })
     console.log(`After contract filter (${contractTypes.join(', ')}): ${filtered.length} jobs`)
+  } else if (isFreelanceSearch) {
+    console.log(`Freelance search - no contract filter applied, keeping all ${filtered.length} jobs`)
   }
 
   // Filter by remote options (On-site, Hybrid, Full remote)
