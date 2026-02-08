@@ -37,19 +37,23 @@ function extractDomain(companyName: string, providedDomain?: string): string | n
     return providedDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
   }
 
-  // Try to guess domain from company name (basic heuristic)
-  // This is a fallback - ideally the domain should be provided
-  const cleanName = companyName.toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
+  // Try to guess domain from company name
+  // Clean the name: lowercase, remove common suffixes
+  let cleanName = companyName.toLowerCase()
+    .replace(/\s*(sas|sarl|sa|inc|ltd|gmbh|group|france|tech|digital|consulting|solutions|services)\s*/gi, '')
+    .trim()
+    .replace(/\s+/g, '') // Remove spaces
+    .replace(/[^a-z0-9-]/g, '') // Keep only alphanumeric and hyphens
 
-  // Common French TLDs
-  const possibleDomains = [
-    `${cleanName}.fr`,
-    `${cleanName}.com`,
-    `${cleanName}.eu`
-  ]
+  // If name is too long (>20 chars), try to shorten it
+  if (cleanName.length > 20) {
+    // Take first word or first significant part
+    const words = companyName.toLowerCase().split(/\s+/)
+    cleanName = words[0].replace(/[^a-z0-9]/g, '')
+  }
 
-  return possibleDomains[0] // Return .fr as default guess
+  // Return .com as default (more likely to exist than .fr)
+  return `${cleanName}.com`
 }
 
 // Helper to split full name into first/last
