@@ -62,6 +62,7 @@ type EnrichedContact = {
 
 type SortField = 'score' | 'rank' | 'company_name' | 'posted_date' | 'job_title'
 type SortOrder = 'asc' | 'desc'
+type DateFilter = 'all' | 'week' | '2weeks' | 'month' | 'older'
 
 // Processing step indicator component
 function StepItem({ label, done, active }: { label: string; done: boolean; active: boolean }) {
@@ -156,6 +157,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [filter, setFilter] = useState<string>('all')
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [sortField, setSortField] = useState<SortField>('rank')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const [enrichedContacts, setEnrichedContacts] = useState<EnrichedContact[]>([])
@@ -237,8 +239,30 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     setLoading(false)
   }
 
+  // Helper to check date filter
+  const matchesDateFilter = (postedDate: string | null): boolean => {
+    if (dateFilter === 'all') return true
+    if (!postedDate) return dateFilter === 'older' // No date = treat as old
+
+    const date = new Date(postedDate)
+    const now = new Date()
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+
+    switch (dateFilter) {
+      case 'week': return diffDays <= 7
+      case '2weeks': return diffDays <= 14
+      case 'month': return diffDays <= 30
+      case 'older': return diffDays > 30
+      default: return true
+    }
+  }
+
   // Filter matches
   const filteredMatches = matches.filter(match => {
+    // Date filter
+    if (!matchesDateFilter(match.posted_date)) return false
+
+    // Category filter
     if (filter === 'top10') return match.rank <= 10
     if (filter === 'others') return match.rank > 10
     if (filter === 'favorites') return match.is_favorite
@@ -525,7 +549,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 </div>
 
                 {/* Filters */}
-                <div className="flex gap-2 mt-4 flex-wrap">
+                <div className="flex gap-2 mt-4 flex-wrap items-center">
                   {[
                     { key: 'all', label: 'Tous', count: matches.length, color: 'from-indigo-500 to-purple-600' },
                     { key: 'top10', label: 'TOP 10', count: matches.filter(m => m.rank <= 10).length, color: 'from-indigo-500 to-purple-600' },
@@ -544,6 +568,27 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       {f.label} ({f.count})
                     </button>
                   ))}
+
+                  {/* Date Filter Dropdown */}
+                  <div className="ml-2 border-l border-gray-200 pl-4">
+                    <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+                      <SelectTrigger className="w-[160px] rounded-xl bg-white/80 border-0 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <SelectValue placeholder="Date" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Toutes dates</SelectItem>
+                        <SelectItem value="week">- 1 semaine</SelectItem>
+                        <SelectItem value="2weeks">- 2 semaines</SelectItem>
+                        <SelectItem value="month">- 1 mois</SelectItem>
+                        <SelectItem value="older">+ 1 mois</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Source filters */}
                   {matches.some(m => m.source_engine === 'ats_direct') && (
