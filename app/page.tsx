@@ -324,13 +324,13 @@ export default function LandingPage() {
               {[
                 { name: 'Greenhouse', sub: 'ATS Enterprise', color: '#4CB398', logo: '/logos/greenhouse.svg' },
                 { name: 'Lever', sub: 'ATS Startups', color: '#6C5CE7', logo: '/logos/lever.png', isPng: true },
-                { name: 'Workday', sub: 'ATS Corporate', color: '#0057AE', logo: '/logos/workday.png', isPng: true },
-                { name: 'Ashby', sub: 'ATS Modern', color: '#5046E5', logo: '/logos/ashby.png', isPng: true }
+                { name: 'Workday', sub: 'ATS Corporate', color: '#0057AE', logo: '/logos/workday.png', isPng: true, size: 40 },
+                { name: 'Ashby', sub: 'ATS Modern', color: '#5046E5', logo: '/logos/ashby.png', isPng: true, size: 40 }
               ].map((source, idx) => (
                 <div key={idx} className="group flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-lg shadow-gray-100/50 border border-gray-100 hover:shadow-xl transition-all duration-300 cursor-pointer">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${source.isPng ? 'bg-white border border-gray-200' : ''}`}
                     style={source.isPng ? {} : { backgroundColor: source.color, boxShadow: `0 8px 16px -4px ${source.color}40` }}>
-                    <Image src={source.logo} alt={source.name} width={28} height={28} className={source.isPng ? 'object-contain' : 'brightness-0 invert'} />
+                    <Image src={source.logo} alt={source.name} width={source.size || 28} height={source.size || 28} className={source.isPng ? 'object-contain' : 'brightness-0 invert'} />
                   </div>
                   <div>
                     <span className="font-semibold text-gray-900">{source.name}</span>
@@ -396,13 +396,13 @@ export default function LandingPage() {
                 {[
                   { name: 'Greenhouse', color: '#4CB398', logo: '/logos/greenhouse.svg' },
                   { name: 'Lever', color: '#6C5CE7', logo: '/logos/lever.png', isPng: true },
-                  { name: 'Workday', color: '#0057AE', logo: '/logos/workday.png', isPng: true },
-                  { name: 'Ashby', color: '#5046E5', logo: '/logos/ashby.png', isPng: true }
+                  { name: 'Workday', color: '#0057AE', logo: '/logos/workday.png', isPng: true, size: 28 },
+                  { name: 'Ashby', color: '#5046E5', logo: '/logos/ashby.png', isPng: true, size: 28 }
                 ].map((source, idx) => (
                   <div key={idx} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-md border border-emerald-100">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${source.isPng ? 'bg-white border border-gray-200' : ''}`}
                       style={source.isPng ? {} : { backgroundColor: source.color }}>
-                      <Image src={source.logo} alt={source.name} width={18} height={18} className={source.isPng ? 'object-contain' : 'brightness-0 invert'} />
+                      <Image src={source.logo} alt={source.name} width={source.size || 18} height={source.size || 18} className={source.isPng ? 'object-contain' : 'brightness-0 invert'} />
                     </div>
                     <span className="text-sm font-medium text-gray-900">{source.name}</span>
                   </div>
