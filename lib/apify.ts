@@ -685,8 +685,11 @@ export async function scrapeLinkedInProfile(profileUrl: string): Promise<LinkedI
 
   const profile = results[0]
 
-  // Check for error status
-  if (profile.status !== 200) {
+  // Log the response structure for debugging
+  console.log(`LinkedIn profile response keys: ${Object.keys(profile).join(', ')}`)
+
+  // Check for error status (if present in response)
+  if (profile.status && profile.status !== 200) {
     console.log(`LinkedIn profile status: ${profile.status} for ${cleanUrl}`)
     if (profile.status === 404) {
       throw new Error('Ce profil LinkedIn n\'existe pas ou a été supprimé.')
@@ -696,6 +699,15 @@ export async function scrapeLinkedInProfile(profileUrl: string): Promise<LinkedI
     throw new Error(`Erreur LinkedIn (code ${profile.status}). Réessayez plus tard.`)
   }
 
-  console.log(`LinkedIn profile scraped: ${profile.firstName} ${profile.lastName}`)
+  // Check if we got valid profile data
+  const profileAny = profile as any
+  if (!profile.firstName && !profileAny.fullName && !profileAny.name) {
+    console.log(`LinkedIn profile missing name fields:`, JSON.stringify(profile).substring(0, 500))
+    throw new Error('Impossible d\'extraire les informations du profil LinkedIn.')
+  }
+
+  // Use firstName if available, otherwise fallback to other name fields
+  const displayName = profile.firstName || profileAny.fullName || profileAny.name || 'Unknown'
+  console.log(`LinkedIn profile scraped: ${displayName} ${profile.lastName || ''}`)
   return profile
 }
