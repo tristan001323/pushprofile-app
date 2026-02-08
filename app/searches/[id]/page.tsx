@@ -368,6 +368,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   }
 
   const enrichContacts = async (companyName: string, matchId: string) => {
+    console.log('[enrichContacts] Starting for:', companyName, matchId)
     setContactsLoading(true)
     setContactsError(null)
     setEnrichedContacts([])
@@ -375,11 +376,14 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('[enrichContacts] Session:', session ? 'found' : 'NOT FOUND')
       if (!session) {
         setContactsError('Vous devez être connecté')
+        setContactsLoading(false)
         return
       }
 
+      console.log('[enrichContacts] Calling API...')
       const response = await fetch('/api/enrich-contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -390,7 +394,9 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
         })
       })
 
+      console.log('[enrichContacts] API response status:', response.status)
       const data = await response.json()
+      console.log('[enrichContacts] API response data:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Erreur lors de la récupération des contacts')
