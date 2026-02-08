@@ -348,16 +348,10 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contr
         }
 
         // Filter by employment type (CDI, CDD, Stage, Freelance)
-        const isFreelanceSearch = contractTypes.some(ct => ct.toLowerCase() === 'freelance')
-        if (atsEmploymentTypes.length > 0) {
-          if (job.employment_type) {
-            if (!atsEmploymentTypes.includes(job.employment_type)) {
-              return false
-            }
-          } else {
-            // For Freelance searches: STRICT - exclude undefined employment_type
-            // For other searches: include undefined (be lenient)
-            if (isFreelanceSearch) return false
+        // Include jobs with undefined employment_type (be lenient to get more results)
+        if (atsEmploymentTypes.length > 0 && job.employment_type) {
+          if (!atsEmploymentTypes.includes(job.employment_type)) {
+            return false
           }
         }
 
@@ -587,13 +581,16 @@ function normalizeRemoteType(type: string | undefined): string | null {
 }
 
 // Adjust contract_type display based on user's filter selection
-// If user searched for "Freelance", show "Freelance" instead of "CDD"
+// If user searched for "Freelance", show "Freelance" for matching jobs
 function getDisplayContractType(rawType: string | undefined, requestedTypes: string[]): string {
   const normalized = normalizeContractType(rawType)
+  const isFreelanceSearch = requestedTypes.some(t => t.toLowerCase() === 'freelance')
 
-  // If user explicitly searched for Freelance and job is contract/cdd type, display "Freelance"
-  if (requestedTypes.some(t => t.toLowerCase() === 'freelance')) {
-    if (normalized === 'cdd' || normalized === 'freelance' || rawType === 'contract') {
+  // If user searched for Freelance, show "Freelance" for:
+  // - contract/cdd type jobs
+  // - undefined type jobs (we included them, assume they could be freelance)
+  if (isFreelanceSearch) {
+    if (normalized === 'cdd' || normalized === 'freelance' || rawType === 'contract' || !rawType || normalized === null) {
       return 'Freelance'
     }
   }
@@ -628,9 +625,9 @@ function filterAndScoreJobs(
   }
 
   // Filter by contract type (CDI, CDD, Stage, Freelance)
+  // Include jobs with undefined contract_type (be lenient to get more results)
   if (contractTypes.length > 0) {
     const normalizedFilters = contractTypes.map(ct => ct.toLowerCase())
-    const isFreelanceSearch = normalizedFilters.includes('freelance')
 
     // DEBUG: Log contract_type distribution BEFORE filtering
     const beforeContractTypeCounts: Record<string, number> = {}
@@ -646,25 +643,20 @@ function filterAndScoreJobs(
     filtered = filtered.filter(job => {
       const rawContractType = job.matching_details?.contract_type as string | undefined
 
-      // For Freelance searches: be STRICT - require explicit contract/freelance type
-      // For other searches: be lenient with undefined types
-      if (!rawContractType) {
-        return !isFreelanceSearch  // Exclude undefined for Freelance, include for others
-      }
+      // If job has no contract type info, include it (be lenient)
+      if (!rawContractType) return true
 
       const jobContractType = normalizeContractType(rawContractType)
 
-      // If normalization returned null (unknown type), same logic
-      if (jobContractType === null) {
-        return !isFreelanceSearch
-      }
+      // If normalization returned null (unknown type), include it
+      if (jobContractType === null) return true
 
       // Map user filter values to normalized values
       const matchesFilter = normalizedFilters.some(filter => {
         if (filter === 'cdi' || filter === 'permanent') return jobContractType === 'cdi'
         if (filter === 'cdd' || filter === 'contract') return jobContractType === 'cdd'
         if (filter === 'stage' || filter === 'internship') return jobContractType === 'stage'
-        // Freelance matches: freelance or cdd (contract) - NOT undefined
+        // Freelance matches: freelance, cdd (contract), or undefined (included above)
         if (filter === 'freelance') return jobContractType === 'freelance' || jobContractType === 'cdd'
         return false
       })
