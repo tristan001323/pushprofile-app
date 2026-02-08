@@ -122,27 +122,48 @@ async function scoreTopJobsWithClaude(jobs: NormalizedJob[], cvData: ParsedCV): 
   return JSON.parse(cleanJsonResponse(response.text))
 }
 
-// Fetch Adzuna jobs (limited to 20 - secondary source)
+// Fetch Adzuna jobs - search with ALL target roles for better coverage
 async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const { appId, appKey } = getAdzunaCredentials()
   if (!appId || !appKey) return []
 
   const location = parsedData.location || 'france'
-  const jobTitle = parsedData.target_roles[0] || 'developer'
   const baseUrl = 'https://api.adzuna.com/v1/api/jobs/fr/search/1'
-  // Limited to 20 results - Adzuna is secondary source
-  const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=20&where=${encodeURIComponent(location)}&distance=50&max_days_old=30&what=${encodeURIComponent(jobTitle)}`
 
-  try {
-    const response = await fetch(baseUrl + params)
-    const data = await response.json()
-    if (!response.ok || !data.results) return []
+  // Search with TOP 3 target roles for better coverage
+  const rolesToSearch = parsedData.target_roles.slice(0, 3)
+  if (rolesToSearch.length === 0) rolesToSearch.push('developer')
 
-    return data.results.map((job: any) => ({
+  const allJobs: NormalizedJob[] = []
+  const seenIds = new Set<string>()
+
+  // Make parallel requests for each role
+  const requests = rolesToSearch.map(async (jobTitle) => {
+    const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=30&where=${encodeURIComponent(location)}&distance=50&max_days_old=30&what=${encodeURIComponent(jobTitle)}`
+
+    try {
+      const response = await fetch(baseUrl + params)
+      const data = await response.json()
+      if (!response.ok || !data.results) return []
+      return data.results
+    } catch {
+      return []
+    }
+  })
+
+  const results = await Promise.all(requests)
+  const flatResults = results.flat()
+
+  for (const job of flatResults) {
+    const id = `adzuna_${job.id}`
+    if (seenIds.has(id)) continue
+    seenIds.add(id)
+
+    allJobs.push({
       search_id: '',
-      external_id: `adzuna_${job.id}`,
-      source: detectOriginalSource(job.redirect_url, job.company?.display_name),  // Show real source to client
-      source_engine: 'adzuna' as const,  // Internal tracking - for compliance badge
+      external_id: id,
+      source: detectOriginalSource(job.redirect_url, job.company?.display_name),
+      source_engine: 'adzuna' as const,
       job_url: job.redirect_url,
       job_title: job.title,
       company_name: job.company?.display_name || 'Unknown',
@@ -157,11 +178,11 @@ async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
         full_description: job.description
       },
       prefilter_score: 50
-    }))
-  } catch (error) {
-    console.error('Adzuna error:', error)
-    return []
+    })
   }
+
+  console.log(`Adzuna: searched ${rolesToSearch.length} roles, found ${allJobs.length} unique jobs`)
+  return allJobs
 }
 
 // Fetch ATS Jobs (Greenhouse, Lever, Workday, Ashby, etc. - 13 platforms)
@@ -183,13 +204,17 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
     'personio'
   ]
 
+  // Use ALL target roles (up to 5) for comprehensive search
+  const queries = parsedData.target_roles.slice(0, 5)
+  if (queries.length === 0) queries.push('developer')
+
   const input: Record<string, unknown> = {
-    queries: [parsedData.target_roles[0] || 'developer'],
+    queries,  // Now searches ALL roles, not just the first one!
     locations: [parsedData.location || 'Paris'],
     sources: ALL_ATS_SOURCES,
     is_remote: false,
     page: 1,
-    page_size: 100  // Priority source - get more results
+    page_size: 150  // Increased for better coverage
   }
 
   console.log('ATS Jobs input:', JSON.stringify(input, null, 2))
@@ -253,13 +278,18 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   }
 }
 
-// Fetch Indeed jobs (limited to 20 - secondary source)
+// Fetch Indeed jobs - search with ALL target roles
 async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+  // Use ALL target roles for comprehensive search
+  const keywords = parsedData.target_roles.slice(0, 5)
+  if (keywords.length === 0) keywords.push('developer')
+
   const input: Record<string, unknown> = {
-    keywords: [parsedData.target_roles[0] || 'developer'],
+    keywords,  // Now searches ALL roles!
     location: parsedData.location || 'France',
     country: 'France',
-    datePosted: '30' // last 30 days
+    datePosted: '30', // last 30 days
+    maxItems: 50  // Increased from 20
   }
 
   try {
@@ -269,8 +299,8 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
       timeoutSecs: 90
     })
 
-    // Limit to 20 results - Indeed is secondary source
-    return jobs.slice(0, 20).map(job => ({
+    // Map all results (maxItems controls limit in input)
+    return jobs.map(job => ({
       search_id: '',
       external_id: `indeed_${job.key}`,
       source: 'Indeed',  // Capitalized for display
@@ -334,18 +364,25 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
     const cvSkills = (parsedData.skills || []).map(s => s.toLowerCase())
     const targetRoles = (parsedData.target_roles || []).map(r => r.toLowerCase())
 
-    // Role matching (40 points max) - AMÉLIORE : match exact ou partiel
+    // Role matching (40 points max) - search in title AND description
     let roleScore = 0
     targetRoles.forEach(role => {
-      // Match exact du rôle entier (ex: "graphiste" dans "graphiste enseignes")
+      // Match exact du rôle dans le TITRE (meilleur score)
       if (jobTitle.includes(role)) {
-        roleScore = Math.max(roleScore, 40) // Match exact = score max
-      } else {
-        // Match partiel sur les mots significatifs (> 3 chars)
+        roleScore = Math.max(roleScore, 40)
+      }
+      // Match exact du rôle dans la DESCRIPTION (bon score)
+      else if (jobText.includes(role)) {
+        roleScore = Math.max(roleScore, 30)
+      }
+      // Match partiel sur les mots significatifs (> 3 chars)
+      else {
         const roleWords = role.split(/\s+/).filter(w => w.length > 3)
         roleWords.forEach(word => {
           if (jobTitle.includes(word)) {
-            roleScore = Math.max(roleScore, 25) // Match partiel
+            roleScore = Math.max(roleScore, 25)
+          } else if (jobText.includes(word)) {
+            roleScore = Math.max(roleScore, 15)
           }
         })
       }
@@ -360,14 +397,21 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
       if (skill.length > 2 && jobText.includes(skill)) skillMatches++
     })
 
+    // Skill scoring
     if (cvSkills.length > 0) {
-      const isQualitySource = QUALITY_ATS_SOURCES.includes(job.source)
-      // Filtrer uniquement si AUCUN match et pas source de qualité
-      if (skillMatches === 0 && !hasRoleMatch && !isQualitySource) {
-        job.prefilter_score = 0
-        return
-      }
       score += Math.min((skillMatches / Math.min(cvSkills.length, 10)) * 35, 35)
+    }
+
+    // Minimum score for quality sources (don't filter them out)
+    const isQualitySource = QUALITY_ATS_SOURCES.includes(job.source)
+    if (isQualitySource && score < 10) {
+      score = 10  // Minimum score for direct ATS sources
+    }
+
+    // Only filter jobs with ZERO relevance (no role, no skill, not quality source)
+    if (score === 0 && !hasRoleMatch && skillMatches === 0 && !isQualitySource) {
+      job.prefilter_score = 0
+      return
     }
 
     // Location matching (15 points)
@@ -410,7 +454,7 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
     if (!seen.has(key)) {
       seen.set(key, true)
       result.push(job)
-      if (result.length >= 50) break
+      if (result.length >= 75) break  // Increased from 50
     }
   }
 
@@ -523,7 +567,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Trier les autres jobs par prefilter_score DESC aussi
     const remainingJobs = top50Jobs
-      .slice(sortedClaudeScores.length > 0 ? 10 : 0, 50)
+      .slice(sortedClaudeScores.length > 0 ? 10 : 0, 75)
       .sort((a, b) => (b.prefilter_score || 0) - (a.prefilter_score || 0))
 
     const other40Matches = remainingJobs.map((job, index) => ({
