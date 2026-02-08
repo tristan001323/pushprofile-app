@@ -703,66 +703,67 @@ export default function NewSearchPage() {
                 </div>
               )}
 
-              {/* Boutons submit */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/searches')}
-                  disabled={loading}
-                  className="h-12 rounded-xl border-gray-200 hover:bg-gray-50"
-                >
-                  Annuler
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading || extracting}
-                  className="flex-1 h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300"
-                >
-                  {loading ? 'Analyse en cours...' : 'Lancer l\'analyse'}
-                </Button>
-              </div>
-
-              {/* Barre de progression */}
-              {loading && (
-                <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="text-3xl animate-bounce">
-                      {currentLoadingMessages[loadingMessageIndex]?.icon || "⏳"}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800">
-                        {currentLoadingMessages[loadingMessageIndex]?.text || "Chargement..."}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Un instant, on trouve les meilleures offres...
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+              {/* Boutons submit OU Barre de progression */}
+              {!loading ? (
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push('/searches')}
+                    disabled={extracting}
+                    className="h-12 rounded-xl border-gray-200 hover:bg-gray-50"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={extracting}
+                    className="flex-1 h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300"
+                  >
+                    Lancer l'analyse
+                  </Button>
+                </div>
+              ) : (
+                <div className="pt-4 space-y-4">
+                  {/* Progress bar qui remplace le bouton */}
+                  <div className="relative h-14 rounded-xl bg-gradient-to-r from-indigo-100 to-purple-100 overflow-hidden shadow-inner">
                     <div
-                      className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl transition-all duration-1000 ease-out"
                       style={{
-                        width: `${((loadingMessageIndex + 1) / currentLoadingMessages.length) * 100}%`
+                        width: `${Math.min(((loadingMessageIndex + 1) / currentLoadingMessages.length) * 100, 85)}%`
                       }}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl animate-bounce">
+                          {currentLoadingMessages[loadingMessageIndex]?.icon || "⏳"}
+                        </div>
+                        <span className="font-semibold text-white drop-shadow-md">
+                          {currentLoadingMessages[loadingMessageIndex]?.text || "Chargement..."}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-center gap-2 mt-4">
+                  {/* Etapes en dessous */}
+                  <div className="flex justify-center gap-2">
                     {currentLoadingMessages.map((_, index) => (
                       <div
                         key={index}
-                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${
                           index <= loadingMessageIndex
-                            ? 'bg-indigo-500 scale-110'
-                            : 'bg-gray-300'
+                            ? 'bg-gradient-to-r from-indigo-500 to-purple-500 scale-125 shadow-lg shadow-indigo-500/50'
+                            : 'bg-gray-200'
                         }`}
                       />
                     ))}
                   </div>
+
+                  <p className="text-center text-sm text-gray-500">
+                    Un instant, on trouve les meilleures offres pour vous...
+                  </p>
                 </div>
               )}
               </form>
@@ -895,67 +896,68 @@ export default function NewSearchPage() {
                   </div>
                 )}
 
-                {/* Boutons submit */}
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push('/searches')}
-                    disabled={loading}
-                    className="h-12 rounded-xl border-gray-200 hover:bg-gray-50"
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 h-12 rounded-xl text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:opacity-90"
-                    style={{ backgroundColor: '#0A66C2' }}
-                  >
-                    {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
-                  </Button>
-                </div>
-
-                {/* Barre de progression */}
-                {loading && (
-                  <div className="mt-6 p-6 rounded-xl border" style={{ backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }}>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="text-3xl animate-bounce">
-                        {currentLoadingMessages[loadingMessageIndex]?.icon || "⏳"}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-800">
-                          {currentLoadingMessages[loadingMessageIndex]?.text || "Chargement..."}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Un instant, on recherche sur LinkedIn...
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                {/* Boutons submit OU Barre de progression */}
+                {!loading ? (
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.push('/searches')}
+                      className="h-12 rounded-xl border-gray-200 hover:bg-gray-50"
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1 h-12 rounded-xl text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:opacity-90"
+                      style={{ backgroundColor: '#0A66C2' }}
+                    >
+                      Lancer la recherche
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="pt-4 space-y-4">
+                    {/* Progress bar qui remplace le bouton - style LinkedIn */}
+                    <div className="relative h-14 rounded-xl overflow-hidden shadow-inner" style={{ backgroundColor: '#E7F0F9' }}>
                       <div
-                        className="h-full rounded-full transition-all duration-700 ease-out"
+                        className="absolute inset-y-0 left-0 rounded-xl transition-all duration-1000 ease-out"
                         style={{
                           backgroundColor: '#0A66C2',
-                          width: `${((loadingMessageIndex + 1) / currentLoadingMessages.length) * 100}%`
+                          width: `${Math.min(((loadingMessageIndex + 1) / currentLoadingMessages.length) * 100, 85)}%`
                         }}
-                      />
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl animate-bounce">
+                            {currentLoadingMessages[loadingMessageIndex]?.icon || "⏳"}
+                          </div>
+                          <span className="font-semibold text-white drop-shadow-md">
+                            {currentLoadingMessages[loadingMessageIndex]?.text || "Chargement..."}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex justify-center gap-2 mt-4">
+                    {/* Etapes en dessous */}
+                    <div className="flex justify-center gap-2">
                       {currentLoadingMessages.map((_, index) => (
                         <div
                           key={index}
-                          className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                          className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${
                             index <= loadingMessageIndex
-                              ? 'scale-110'
-                              : 'bg-gray-300'
+                              ? 'scale-125 shadow-lg'
+                              : 'bg-gray-200'
                           }`}
-                          style={index <= loadingMessageIndex ? { backgroundColor: '#0A66C2' } : {}}
+                          style={index <= loadingMessageIndex ? { backgroundColor: '#0A66C2', boxShadow: '0 4px 6px -1px rgba(10, 102, 194, 0.5)' } : {}}
                         />
                       ))}
                     </div>
+
+                    <p className="text-center text-sm text-gray-500">
+                      Un instant, on recherche sur LinkedIn...
+                    </p>
                   </div>
                 )}
               </form>
