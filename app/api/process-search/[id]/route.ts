@@ -334,38 +334,60 @@ function filterAndScoreJobs(jobs: NormalizedJob[], parsedData: ParsedCV, searchI
     const cvSkills = (parsedData.skills || []).map(s => s.toLowerCase())
     const targetRoles = (parsedData.target_roles || []).map(r => r.toLowerCase())
 
-    // Role matching (25 points)
-    let roleMatch = false
+    // Role matching (40 points max) - AMÉLIORE : match exact ou partiel
+    let roleScore = 0
     targetRoles.forEach(role => {
-      const roleWords = role.split(/\s+/)
-      if (roleWords.some(word => word.length > 2 && jobTitle.includes(word))) roleMatch = true
+      // Match exact du rôle entier (ex: "graphiste" dans "graphiste enseignes")
+      if (jobTitle.includes(role)) {
+        roleScore = Math.max(roleScore, 40) // Match exact = score max
+      } else {
+        // Match partiel sur les mots significatifs (> 3 chars)
+        const roleWords = role.split(/\s+/).filter(w => w.length > 3)
+        roleWords.forEach(word => {
+          if (jobTitle.includes(word)) {
+            roleScore = Math.max(roleScore, 25) // Match partiel
+          }
+        })
+      }
     })
-    score += roleMatch ? 25 : 0
+    score += roleScore
+    const hasRoleMatch = roleScore > 0
 
-    // Skill matching (up to 50 points)
+    // Skill matching (up to 35 points)
     let skillMatches = 0
-    cvSkills.forEach(skill => { if (jobText.includes(skill)) skillMatches++ })
+    cvSkills.forEach(skill => {
+      // Match skills dans titre OU description
+      if (skill.length > 2 && jobText.includes(skill)) skillMatches++
+    })
 
     if (cvSkills.length > 0) {
-      // Less aggressive filtering: only exclude if no role match AND no skill match AND not from quality source
       const isQualitySource = QUALITY_ATS_SOURCES.includes(job.source)
-      if (skillMatches === 0 && !roleMatch && !isQualitySource) {
+      // Filtrer uniquement si AUCUN match et pas source de qualité
+      if (skillMatches === 0 && !hasRoleMatch && !isQualitySource) {
         job.prefilter_score = 0
         return
       }
-      score += (skillMatches / cvSkills.length) * 50
+      score += Math.min((skillMatches / Math.min(cvSkills.length, 10)) * 35, 35)
     }
 
-    // Location matching (10 points)
+    // Location matching (15 points)
     const cvLocation = (parsedData.location || '').toLowerCase()
-    if (cvLocation && (job.location || '').toLowerCase().includes(cvLocation)) score += 10
+    const jobLocation = (job.location || '').toLowerCase()
+    if (cvLocation) {
+      // Match ville exacte ou région
+      if (jobLocation.includes(cvLocation)) {
+        score += 15
+      } else if (cvLocation.includes('paris') && (jobLocation.includes('île-de-france') || jobLocation.includes('idf'))) {
+        score += 10
+      }
+    }
 
     // Contract type bonus (5 points)
     if (job.matching_details?.contract_type === 'permanent') score += 5
 
-    // Quality source bonus (25 points for direct company ATS - highest priority)
+    // Quality source bonus (10 points for direct company ATS)
     if (QUALITY_ATS_SOURCES.includes(job.source)) {
-      score += 25
+      score += 10
     }
 
     job.prefilter_score = Math.round(score)
@@ -474,7 +496,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // 5. Build matches
     await updateStep(supabase, searchId, 'saving')
 
-    const top10Matches = claudeScores.map((scoreData, index) => {
+    // IMPORTANT: Trier les scores Claude par score DESC pour que le meilleur match soit rank=1
+    const sortedClaudeScores = [...claudeScores].sort((a, b) => b.score - a.score)
+
+    const top10Matches = sortedClaudeScores.map((scoreData, index) => {
       const job = top50Jobs[scoreData.job_index - 1]
       if (!job) return null
       return {
@@ -492,11 +517,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         source: job.source,
         source_engine: job.source_engine,  // Internal tracking for compliance
         matching_details: job.matching_details,
-        rank: index + 1
+        rank: index + 1  // Maintenant le rank suit l'ordre des scores (meilleur = 1)
       }
     }).filter(Boolean)
 
-    const other40Matches = top50Jobs.slice(claudeScores.length > 0 ? 10 : 0, 50).map((job, index) => ({
+    // Trier les autres jobs par prefilter_score DESC aussi
+    const remainingJobs = top50Jobs
+      .slice(sortedClaudeScores.length > 0 ? 10 : 0, 50)
+      .sort((a, b) => (b.prefilter_score || 0) - (a.prefilter_score || 0))
+
+    const other40Matches = remainingJobs.map((job, index) => ({
       search_id: searchId,
       job_title: job.job_title,
       company_name: job.company_name,
@@ -511,7 +541,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       source: job.source,
       source_engine: job.source_engine,  // Internal tracking for compliance
       matching_details: job.matching_details,
-      rank: (claudeScores.length > 0 ? 10 : 0) + index + 1
+      rank: (sortedClaudeScores.length > 0 ? 10 : 0) + index + 1
     }))
 
     const allMatches = [...top10Matches, ...other40Matches]
