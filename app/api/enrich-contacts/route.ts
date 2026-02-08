@@ -17,6 +17,7 @@ interface EnrichContactRequest {
   company_domain?: string  // Domain is preferred for better results
   match_id?: string
   user_id: string
+  job_description?: string  // Job description to extract recruiter names from
 }
 
 interface EnrichedContact {
@@ -83,6 +84,50 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
   const firstName = nameParts[0] || ''
   const lastName = nameParts.slice(1).join(' ') || ''
   return { firstName, lastName }
+}
+
+// Extract recruiter/HR names from job description using Claude
+async function extractRecruiterNames(description: string, companyName: string): Promise<Array<{ firstName: string; lastName: string; jobTitle: string }>> {
+  if (!description || description.length < 50) return []
+
+  try {
+    const prompt = `Analyse cette offre d'emploi et extrait les noms des recruteurs, RH, ou personnes de contact mentionnées.
+
+Offre d'emploi:
+"""
+${description.substring(0, 3000)}
+"""
+
+Cherche:
+- Noms après "Contact:", "Recruteur:", "Votre contact:", "Responsable RH:", etc.
+- Noms dans les signatures (ex: "Marie Dupont, Talent Acquisition Manager")
+- Noms après "Pour postuler, contactez" ou similaire
+- Noms LinkedIn mentionnés
+
+Réponds en JSON uniquement, format:
+[{"firstName": "Marie", "lastName": "Dupont", "jobTitle": "Talent Acquisition Manager"}]
+
+Si aucun nom trouvé, réponds: []
+Pas d'explication, juste le JSON.`
+
+    const response = await callClaude({
+      model: 'haiku',  // Haiku is enough for extraction
+      prompt,
+      maxTokens: 200
+    })
+
+    const text = response.text.trim()
+    // Extract JSON from response (handle potential markdown code blocks)
+    const jsonMatch = text.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) return []
+
+    const names = JSON.parse(jsonMatch[0])
+    console.log(`[Recruiter Extract] Found ${names.length} names in job description`)
+    return names.filter((n: any) => n.firstName && n.lastName)
+  } catch (error) {
+    console.error('[Recruiter Extract] Error:', error)
+    return []
+  }
 }
 
 // Email pattern types
@@ -201,7 +246,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase()
     const body: EnrichContactRequest = await request.json()
-    const { company_name, company_domain, match_id, user_id } = body
+    const { company_name, company_domain, match_id, user_id, job_description } = body
 
     if (!company_name) {
       return NextResponse.json({ error: 'company_name is required' }, { status: 400 })
@@ -342,7 +387,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. Cache the results AND save to user's contacts
+    // 6. Extract recruiter names from job description and generate their emails
+    if (job_description && emailPattern !== 'unknown') {
+      const recruiterNames = await extractRecruiterNames(job_description, company_name)
+
+      for (const recruiter of recruiterNames) {
+        // Check if we already have this person
+        const alreadyExists = enrichedContacts.some(c =>
+          c.first_name?.toLowerCase() === recruiter.firstName.toLowerCase() &&
+          c.last_name?.toLowerCase() === recruiter.lastName.toLowerCase()
+        )
+        if (alreadyExists) continue
+
+        // Generate email using detected pattern
+        const generatedEmail = generateEmail(recruiter.firstName, recruiter.lastName, domain, emailPattern)
+
+        enrichedContacts.push({
+          full_name: `${recruiter.firstName} ${recruiter.lastName}`,
+          first_name: recruiter.firstName,
+          last_name: recruiter.lastName,
+          job_title: recruiter.jobTitle || 'Recruteur',
+          email: generatedEmail,
+          phone: null,
+          linkedin_url: null,
+          company_name: company_name,
+          company_domain: domain
+        })
+
+        console.log(`[Recruiter] Added ${recruiter.firstName} ${recruiter.lastName} (${recruiter.jobTitle}) with email: ${generatedEmail}`)
+      }
+    }
+
+    // 7. Cache the results AND save to user's contacts
     if (enrichedContacts.length > 0) {
       const cacheEntries = enrichedContacts.map(contact => ({
         user_id,  // Track which user unlocked this contact
@@ -369,7 +445,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. If match_id provided, update the match with contact info
+    // 8. If match_id provided, update the match with contact info
     if (match_id && enrichedContacts.length > 0) {
       const primaryContact = enrichedContacts[0]
       await supabase
@@ -380,7 +456,7 @@ export async function POST(request: NextRequest) {
         .eq('id', match_id)
     }
 
-    // 8. Log usage for billing
+    // 9. Log usage for billing
     await supabase
       .from('api_usage')
       .insert({

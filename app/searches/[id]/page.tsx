@@ -367,7 +367,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  const enrichContacts = async (companyName: string, matchId: string) => {
+  const enrichContacts = async (companyName: string, matchId: string, jobDescription?: string) => {
     console.log('[enrichContacts] Starting for:', companyName, matchId)
     setContactsLoading(true)
     setContactsError(null)
@@ -390,7 +390,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
         body: JSON.stringify({
           company_name: companyName,
           match_id: matchId,
-          user_id: session.user.id
+          user_id: session.user.id,
+          job_description: jobDescription  // Pass job description to extract recruiter names
         })
       })
 
@@ -1036,7 +1037,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
 
                   {enrichedContacts.length === 0 ? (
                     <Button
-                      onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id)}
+                      onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id, selectedMatch.matching_details?.full_description)}
                       disabled={contactsLoading}
                       variant="outline"
                       className="w-full rounded-xl"
@@ -1296,7 +1297,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
 
                   {enrichedContacts.length === 0 ? (
                     <Button
-                      onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id)}
+                      onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id, selectedMatch.matching_details?.full_description)}
                       disabled={contactsLoading}
                       variant="outline"
                       className="w-full rounded-xl"
