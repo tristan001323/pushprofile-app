@@ -522,6 +522,27 @@ function normalizeRemoteType(type: string | undefined): string | null {
   return null  // Unknown type, don't exclude
 }
 
+// Adjust contract_type display based on user's filter selection
+// If user searched for "Freelance", show "Freelance" instead of "CDD"
+function getDisplayContractType(rawType: string | undefined, requestedTypes: string[]): string {
+  const normalized = normalizeContractType(rawType)
+
+  // If user explicitly searched for Freelance and job is contract/cdd type, display "Freelance"
+  if (requestedTypes.some(t => t.toLowerCase() === 'freelance')) {
+    if (normalized === 'cdd' || normalized === 'freelance' || rawType === 'contract') {
+      return 'Freelance'
+    }
+  }
+
+  // Otherwise return the normalized display value
+  if (normalized === 'cdi') return 'CDI'
+  if (normalized === 'cdd') return 'CDD'
+  if (normalized === 'stage') return 'Stage'
+  if (normalized === 'freelance') return 'Freelance'
+
+  return rawType || 'CDI'  // Default display
+}
+
 // Filter agencies and score jobs
 function filterAndScoreJobs(
   jobs: NormalizedJob[],
@@ -701,6 +722,13 @@ function filterAndScoreJobs(
     const key = `${(job.job_title || '').toLowerCase().replace(/[^a-z0-9]/g, '')}_${(job.company_name || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`
     if (!seen.has(key)) {
       seen.set(key, true)
+
+      // Update contract_type display based on user's filter (e.g., show "Freelance" instead of "CDD")
+      if (job.matching_details) {
+        const rawContractType = job.matching_details.contract_type as string | undefined
+        job.matching_details.contract_type = getDisplayContractType(rawContractType, contractTypes)
+      }
+
       result.push(job)
       if (result.length >= 75) break  // Increased from 50
     }
