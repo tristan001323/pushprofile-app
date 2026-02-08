@@ -103,6 +103,7 @@ Cherche:
 - Noms dans les signatures (ex: "Marie Dupont, Talent Acquisition Manager")
 - Noms après "Pour postuler, contactez" ou similaire
 - Noms LinkedIn mentionnés
+- Noms dans "Publié par", "Posted by", etc.
 
 Réponds en JSON uniquement, format:
 [{"firstName": "Marie", "lastName": "Dupont", "jobTitle": "Talent Acquisition Manager"}]
@@ -128,6 +129,22 @@ Pas d'explication, juste le JSON.`
     console.error('[Recruiter Extract] Error:', error)
     return []
   }
+}
+
+// Generate common HR/recruiting email aliases
+function generateHREmailAliases(domain: string): EnrichedContact[] {
+  const aliases = ['recrutement', 'rh', 'careers', 'jobs', 'hiring', 'talent', 'hr']
+  return aliases.map(alias => ({
+    full_name: null,
+    first_name: null,
+    last_name: null,
+    job_title: 'Contact RH',
+    email: `${alias}@${domain}`,
+    phone: null,
+    linkedin_url: null,
+    company_name: null,
+    company_domain: domain
+  }))
 }
 
 // Email pattern types
@@ -300,22 +317,11 @@ export async function POST(request: NextRequest) {
     // 3. Call Decision Maker Email Finder API
     console.log(`[Search] Searching contacts for domain: ${domain}`)
 
-    // Use standard seniority levels + department filter for HR/recruiting
+    // Decision Maker Finder - just use domain, let it return what it finds
+    // The recruiter extraction from job descriptions will add HR contacts
     const input = {
       domain: domain,
-      // Standard seniority levels (API-recognized values)
-      seniority: [
-        "c_suite", "owner", "founder", "partner",
-        "director", "vp", "head",
-        "manager", "senior"
-      ],
-      // Target HR and recruiting departments specifically
-      departments: [
-        "human_resources", "hr",
-        "recruiting", "talent_acquisition", "talent",
-        "people_operations", "people"
-      ],
-      maxLeadsPerDomain: 15  // Increased to get more variety
+      maxLeadsPerDomain: 20  // Increased to get more contacts
     }
 
     const results = await runApifyActor<DecisionMakerOutput>({
@@ -418,7 +424,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Cache the results AND save to user's contacts
+    // 7. Add generic HR email aliases if we have few contacts with emails
+    const contactsWithEmail = enrichedContacts.filter(c => c.email).length
+    if (contactsWithEmail < 3) {
+      console.log(`[HR Aliases] Only ${contactsWithEmail} contacts with email, adding generic HR aliases`)
+      const hrAliases = generateHREmailAliases(domain)
+      // Add only a few aliases to not overwhelm
+      const aliasesToAdd = hrAliases.slice(0, 3)
+      for (const alias of aliasesToAdd) {
+        alias.company_name = company_name
+        enrichedContacts.push(alias)
+      }
+      console.log(`[HR Aliases] Added ${aliasesToAdd.length} generic HR emails`)
+    }
+
+    // 8. Cache the results AND save to user's contacts
     if (enrichedContacts.length > 0) {
       const cacheEntries = enrichedContacts.map(contact => ({
         user_id,  // Track which user unlocked this contact
@@ -445,7 +465,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 8. If match_id provided, update the match with contact info
+    // 9. If match_id provided, update the match with contact info
     if (match_id && enrichedContacts.length > 0) {
       const primaryContact = enrichedContacts[0]
       await supabase
@@ -456,7 +476,7 @@ export async function POST(request: NextRequest) {
         .eq('id', match_id)
     }
 
-    // 9. Log usage for billing
+    // 10. Log usage for billing
     await supabase
       .from('api_usage')
       .insert({
