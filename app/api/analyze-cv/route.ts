@@ -193,7 +193,8 @@ export async function POST(request: NextRequest) {
       brief,
       contract_types,
       remote_options,
-      exclude_agencies
+      exclude_agencies,
+      max_days_old         // Date filter: 7, 14, or 30 days
     } = body
 
     // Validation
@@ -297,7 +298,8 @@ export async function POST(request: NextRequest) {
         recurrence: recurrence || null,
         is_recurrence_active: recurrence ? true : false,
         next_run_at: calculateNextRunAt(recurrence),
-        exclude_agencies: exclude_agencies !== false
+        exclude_agencies: exclude_agencies !== false,
+        max_days_old: max_days_old || 30  // Default to 30 days
       })
       .select()
       .single()

@@ -133,7 +133,7 @@ function normalizeLocation(location: string | undefined): string {
 }
 
 // Fetch Adzuna jobs - search with ALL target roles for better coverage
-async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Promise<NormalizedJob[]> {
   const { appId, appKey } = getAdzunaCredentials()
   if (!appId || !appKey) return []
 
@@ -149,7 +149,7 @@ async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 
   // Make parallel requests for each role
   const requests = rolesToSearch.map(async (jobTitle) => {
-    const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=30&where=${encodeURIComponent(location)}&distance=50&max_days_old=30&what=${encodeURIComponent(jobTitle)}`
+    const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=30&where=${encodeURIComponent(location)}&distance=50&max_days_old=${maxDaysOld}&what=${encodeURIComponent(jobTitle)}`
 
     try {
       const response = await fetch(baseUrl + params)
@@ -196,7 +196,7 @@ async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 }
 
 // Fetch ATS Jobs (Greenhouse, Lever, Workday, Ashby, etc. - 13 platforms)
-async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Promise<NormalizedJob[]> {
   // All 13 ATS platforms supported by this actor
   const ALL_ATS_SOURCES = [
     'greenhouse',
@@ -237,8 +237,20 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
       timeoutSecs: 120
     })
 
+    // Filter by date first, then map
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - maxDaysOld)
+
     return jobs
-      .filter(job => job.title)
+      .filter(job => {
+        if (!job.title) return false
+        // Filter by date if date_posted is available
+        if (job.date_posted) {
+          const jobDate = new Date(job.date_posted)
+          if (jobDate < cutoffDate) return false
+        }
+        return true
+      })
       .map(job => {
         // Build location string from first location
         const loc = job.locations?.[0]
@@ -289,7 +301,7 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 }
 
 // Fetch Indeed jobs - search with ALL target roles
-async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
+async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Promise<NormalizedJob[]> {
   // Use ALL target roles for comprehensive search
   const keywords = parsedData.target_roles.slice(0, 5)
   if (keywords.length === 0) keywords.push('developer')
@@ -298,7 +310,7 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
     keywords,  // Now searches ALL roles!
     location: normalizeLocation(parsedData.location),
     country: 'France',
-    datePosted: '30', // last 30 days
+    datePosted: String(maxDaysOld), // Use maxDaysOld from user selection
     maxItems: 50  // Increased from 20
   }
 
@@ -493,21 +505,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const parsedData: ParsedCV = search.parsed_data
     const excludeAgencies = search.exclude_agencies !== false
+    const maxDaysOld = search.max_days_old || 30  // Default to 30 days
 
     // 2. Fetch jobs from all sources in parallel
     await updateStep(supabase, searchId, 'scraping')
 
     // Launch all scrapers in parallel (Adzuna + Indeed + ATS Jobs)
     const [adzunaJobs, indeedJobs, atsJobs] = await Promise.all([
-      fetchAdzunaJobs(parsedData).then(jobs => {
+      fetchAdzunaJobs(parsedData, maxDaysOld).then(jobs => {
         console.log(`[${searchId}] Adzuna: ${jobs.length} jobs`)
         return jobs
       }),
-      fetchIndeedJobs(parsedData).then(jobs => {
+      fetchIndeedJobs(parsedData, maxDaysOld).then(jobs => {
         console.log(`[${searchId}] Indeed: ${jobs.length} jobs`)
         return jobs
       }),
-      fetchATSJobs(parsedData).then(jobs => {
+      fetchATSJobs(parsedData, maxDaysOld).then(jobs => {
         console.log(`[${searchId}] ATS (13 platforms): ${jobs.length} jobs`)
         return jobs
       })

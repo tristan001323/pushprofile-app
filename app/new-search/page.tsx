@@ -50,6 +50,7 @@ export default function NewSearchPage() {
   const [remoteOptions, setRemoteOptions] = useState<string[]>([])
   const [seniority, setSeniority] = useState('')
   const [brief, setBrief] = useState('')
+  const [maxDaysOld, setMaxDaysOld] = useState<number>(30) // Date de publication : 7, 14, 30 jours
 
   // Champs CV
   const [cvText, setCvText] = useState('')
@@ -403,6 +404,7 @@ export default function NewSearchPage() {
           remote_options: remoteOptions.length > 0 ? remoteOptions : null,
           seniority: seniority || null,
           brief: brief || null,
+          max_days_old: maxDaysOld,
 
           cv_text: cvText || null,
           cv_base64: cvBase64 || null,        // PDF en base64 pour lecture directe
@@ -778,6 +780,31 @@ export default function NewSearchPage() {
                         }`}
                       >
                         {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Date de publication */}
+                <div>
+                  <Label>Date de publication</Label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {[
+                      { value: 7, label: '- 1 semaine' },
+                      { value: 14, label: '- 2 semaines' },
+                      { value: 30, label: '- 1 mois' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setMaxDaysOld(option.value)}
+                        className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-all ${
+                          maxDaysOld === option.value
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        {option.label}
                       </button>
                     ))}
                   </div>
