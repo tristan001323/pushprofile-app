@@ -1,16 +1,18 @@
 // Claude API utility with model selection and logging
 
-export type ClaudeModel = 'haiku' | 'sonnet'
+export type ClaudeModel = 'haiku' | 'sonnet' | 'opus'
 
 const MODEL_IDS: Record<ClaudeModel, string> = {
   haiku: 'claude-haiku-4-5-20251001',
   sonnet: 'claude-sonnet-4-5-20250929',
+  opus: 'claude-opus-4-5-20251101',
 }
 
 // Pricing per 1M tokens (USD) - for cost estimation
 const PRICING: Record<ClaudeModel, { input: number; output: number }> = {
   haiku: { input: 0.80, output: 4.00 },
   sonnet: { input: 3.00, output: 15.00 },
+  opus: { input: 15.00, output: 75.00 },
 }
 
 interface ClaudeOptions {

@@ -54,7 +54,7 @@ async function parseCVFromPdf(pdfBase64: string, mediaType: string): Promise<Par
   console.log('Parsing CV with Claude document reading (PDF direct)...')
 
   const response = await callClaudeWithDocument({
-    model: 'haiku',
+    model: 'sonnet',  // Upgraded from haiku for better CV parsing quality
     prompt: CV_PARSING_PROMPT,
     documentBase64: pdfBase64,
     documentMediaType: mediaType,
@@ -81,8 +81,8 @@ ${truncatedCV}
 ---`
 
   const response = await callClaudeWithFallback(
-    { model: 'haiku', prompt, maxTokens: 2500 },
-    'sonnet'
+    { model: 'sonnet', prompt, maxTokens: 2500 },  // Upgraded for better quality
+    'sonnet'  // Same model for fallback (retry on error)
   )
 
   if (response.usedFallback) {
