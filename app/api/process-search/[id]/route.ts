@@ -122,12 +122,22 @@ async function scoreTopJobsWithClaude(jobs: NormalizedJob[], cvData: ParsedCV): 
   return JSON.parse(cleanJsonResponse(response.text))
 }
 
+// Normalize location - handle "Non spécifiée" and other invalid values
+function normalizeLocation(location: string | undefined): string {
+  const loc = (location || '').toLowerCase().trim()
+  const invalidLocations = ['non spécifiée', 'non spécifié', 'non specifie', 'non specifié', 'unknown', 'n/a', '']
+  if (invalidLocations.includes(loc) || loc.length < 3) {
+    return 'france'  // Default to all of France for broad search
+  }
+  return location || 'france'
+}
+
 // Fetch Adzuna jobs - search with ALL target roles for better coverage
 async function fetchAdzunaJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
   const { appId, appKey } = getAdzunaCredentials()
   if (!appId || !appKey) return []
 
-  const location = parsedData.location || 'france'
+  const location = normalizeLocation(parsedData.location)
   const baseUrl = 'https://api.adzuna.com/v1/api/jobs/fr/search/1'
 
   // Search with TOP 3 target roles for better coverage
@@ -210,11 +220,11 @@ async function fetchATSJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 
   const input: Record<string, unknown> = {
     queries,  // Now searches ALL roles, not just the first one!
-    locations: [parsedData.location || 'Paris'],
+    locations: [normalizeLocation(parsedData.location) === 'france' ? 'Paris' : normalizeLocation(parsedData.location)],
     sources: ALL_ATS_SOURCES,
     is_remote: false,
     page: 1,
-    page_size: 150  // Increased for better coverage
+    page_size: 100  // Max allowed by API
   }
 
   console.log('ATS Jobs input:', JSON.stringify(input, null, 2))
@@ -286,7 +296,7 @@ async function fetchIndeedJobs(parsedData: ParsedCV): Promise<NormalizedJob[]> {
 
   const input: Record<string, unknown> = {
     keywords,  // Now searches ALL roles!
-    location: parsedData.location || 'France',
+    location: normalizeLocation(parsedData.location),
     country: 'France',
     datePosted: '30', // last 30 days
     maxItems: 50  // Increased from 20
