@@ -133,21 +133,38 @@ function formatRemoteType(type?: string): string {
   return 'Sur site'
 }
 
-// Get score color
-function getScoreColor(score: number): string {
-  if (score >= 80) return 'from-emerald-500 to-teal-500'
-  if (score >= 60) return 'from-indigo-500 to-purple-500'
-  if (score >= 40) return 'from-amber-500 to-orange-500'
-  return 'from-gray-400 to-gray-500'
+// Get match strength (1-5 dots)
+function getMatchStrength(score: number): { dots: number; label: string; color: string } {
+  if (score >= 90) return { dots: 5, label: 'Pour vous', color: 'text-indigo-500' }
+  if (score >= 75) return { dots: 4, label: 'Très pertinent', color: 'text-indigo-500' }
+  if (score >= 60) return { dots: 3, label: 'Pertinent', color: 'text-indigo-400' }
+  if (score >= 40) return { dots: 2, label: 'À explorer', color: 'text-gray-400' }
+  return { dots: 1, label: '', color: 'text-gray-300' }
 }
 
-// Get score badge style
-function getScoreBadgeStyle(score: number): { bg: string; text: string; label: string } {
-  if (score >= 90) return { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Excellent match' }
-  if (score >= 75) return { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Bon match' }
-  if (score >= 60) return { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Match partiel' }
-  return { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Faible correspondance' }
+// Render match strength dots
+function MatchDots({ score, showLabel = false }: { score: number; showLabel?: boolean }) {
+  const { dots, label, color } = getMatchStrength(score)
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div
+            key={i}
+            className={`w-2 h-2 rounded-full transition-colors ${
+              i <= dots ? color.replace('text-', 'bg-') : 'bg-gray-200'
+            }`}
+          />
+        ))}
+      </div>
+      {showLabel && label && (
+        <span className={`text-sm font-medium ${color}`}>{label}</span>
+      )}
+    </div>
+  )
 }
+
 
 export default function SearchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -516,7 +533,6 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
     )
   }
 
-  const scoreStyle = selectedMatch ? getScoreBadgeStyle(selectedMatch.score) : null
   const isAdzuna = selectedMatch?.source_engine === 'adzuna'
 
   return (
@@ -650,7 +666,7 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                           onClick={() => handleSort('score')}
                         >
                           <div className="flex items-center gap-1">
-                            Score
+                            Match
                             {sortField === 'score' && (
                               <svg className={`w-4 h-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -735,11 +751,9 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                               )}
                             </td>
 
-                            {/* Score */}
+                            {/* Match Strength */}
                             <td className="p-4">
-                              <div className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-semibold bg-gradient-to-r ${getScoreColor(match.score)} text-white shadow-sm`}>
-                                {match.score}%
-                              </div>
+                              <MatchDots score={match.score} />
                             </td>
 
                             {/* Job title */}
@@ -872,9 +886,9 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       TOP {selectedMatch.rank}
                     </div>
                   )}
-                  {selectedMatch.score > 0 && scoreStyle && (
-                    <div className={`${scoreStyle.bg} ${scoreStyle.text} px-3 py-1.5 rounded-lg text-sm font-semibold`}>
-                      {selectedMatch.score}% · {scoreStyle.label}
+                  {selectedMatch.score > 0 && (
+                    <div className="px-3 py-1.5 rounded-lg bg-gray-50">
+                      <MatchDots score={selectedMatch.score} showLabel={true} />
                     </div>
                   )}
                 </div>
@@ -1191,8 +1205,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       TOP {selectedMatch.rank}
                     </span>
                   )}
-                  <div className={`px-3 py-1 rounded-full ${getScoreBadgeStyle(selectedMatch.score).bg} ${getScoreBadgeStyle(selectedMatch.score).text} text-sm font-semibold`}>
-                    {selectedMatch.score}% · {getScoreBadgeStyle(selectedMatch.score).label}
+                  <div className="px-3 py-1.5 rounded-full bg-white/80">
+                    <MatchDots score={selectedMatch.score} showLabel={true} />
                   </div>
                 </div>
                 <button
