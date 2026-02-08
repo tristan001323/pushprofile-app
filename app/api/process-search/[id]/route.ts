@@ -230,7 +230,15 @@ async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
     })
   }
 
-  console.log(`Adzuna: searched ${rolesToSearch.length} roles, found ${allJobs.length} unique jobs`)
+  // DEBUG: Log contract_type distribution from Adzuna
+  const adzunaContractTypeCounts: Record<string, number> = {}
+  allJobs.forEach(job => {
+    const ct = (job.matching_details?.contract_type as string) || 'undefined'
+    adzunaContractTypeCounts[ct] = (adzunaContractTypeCounts[ct] || 0) + 1
+  })
+  console.log(`[Adzuna DEBUG] Found ${allJobs.length} unique jobs`)
+  console.log(`[Adzuna DEBUG] Contract type distribution: ${JSON.stringify(adzunaContractTypeCounts)}`)
+
   return allJobs
 }
 
@@ -300,6 +308,8 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contr
         if (t === 'freelance') atsEmploymentTypes.push('contract', 'temporary')
       })
     }
+    console.log(`[ATS DEBUG] Contract types requested: ${JSON.stringify(contractTypes)}`)
+    console.log(`[ATS DEBUG] ATS employment types filter: ${JSON.stringify(atsEmploymentTypes)}`)
 
     // Map remote options to ATS workplace_type values
     const atsWorkplaceTypes: string[] = []
@@ -312,9 +322,18 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contr
       })
     }
 
-    return jobs
-      .filter(job => {
-        if (!job.title) return false
+    // DEBUG: Log all employment_type values from ATS
+    const employmentTypeCounts: Record<string, number> = {}
+    jobs.forEach(job => {
+      const et = job.employment_type || 'undefined'
+      employmentTypeCounts[et] = (employmentTypeCounts[et] || 0) + 1
+    })
+    console.log(`[ATS DEBUG] Raw jobs: ${jobs.length}, employment_type distribution: ${JSON.stringify(employmentTypeCounts)}`)
+
+    const filteredJobs = jobs.filter(job => {
+        if (!job.title) {
+          return false
+        }
 
         // Filter by date if date_posted is available
         if (job.date_posted) {
@@ -331,7 +350,9 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contr
         // Filter by employment type (CDI, CDD, Stage, Freelance)
         // Include jobs with undefined employment_type (don't be too strict)
         if (atsEmploymentTypes.length > 0 && job.employment_type) {
-          if (!atsEmploymentTypes.includes(job.employment_type)) return false
+          if (!atsEmploymentTypes.includes(job.employment_type)) {
+            return false
+          }
         }
 
         // Filter by workplace type (Remote, Hybrid, On-site)
@@ -342,6 +363,16 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contr
 
         return true
       })
+
+    // DEBUG: Log filtered results
+    const filteredEmploymentTypeCounts: Record<string, number> = {}
+    filteredJobs.forEach(job => {
+      const et = job.employment_type || 'undefined'
+      filteredEmploymentTypeCounts[et] = (filteredEmploymentTypeCounts[et] || 0) + 1
+    })
+    console.log(`[ATS DEBUG] After filtering: ${filteredJobs.length} jobs, employment_type distribution: ${JSON.stringify(filteredEmploymentTypeCounts)}`)
+
+    return filteredJobs
       .map(job => {
         // Build location string from first location
         const loc = job.locations?.[0]
@@ -430,6 +461,8 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
       requestedContractType = 'freelance'  // But we display as "Freelance"
     }
   }
+  console.log(`[Indeed DEBUG] Contract types requested: ${JSON.stringify(contractTypes)}`)
+  console.log(`[Indeed DEBUG] Indeed jobType filter: ${jobType || 'none'}`)
 
   const input: Record<string, unknown> = {
     keywords,  // Now searches ALL roles!
@@ -449,7 +482,15 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, co
       timeoutSecs: 90
     })
 
-    console.log(`[Indeed] Raw results: ${jobs.length} jobs returned`)
+    console.log(`[Indeed DEBUG] Raw results: ${jobs.length} jobs returned`)
+    if (jobs.length > 0) {
+      // Log a sample of the first 3 jobs to see their structure
+      console.log(`[Indeed DEBUG] Sample jobs:`, jobs.slice(0, 3).map(j => ({
+        title: j.title,
+        company: j.company?.companyName,
+        attributes: j.attributes
+      })))
+    }
 
     // Date threshold for "older than X" filters
     const now = new Date()
@@ -581,6 +622,18 @@ function filterAndScoreJobs(
   // Note: If job has unknown contract_type, we INCLUDE it (don't exclude unknown jobs)
   if (contractTypes.length > 0) {
     const normalizedFilters = contractTypes.map(ct => ct.toLowerCase())
+
+    // DEBUG: Log contract_type distribution BEFORE filtering
+    const beforeContractTypeCounts: Record<string, number> = {}
+    filtered.forEach(job => {
+      const ct = (job.matching_details?.contract_type as string) || 'undefined'
+      beforeContractTypeCounts[ct] = (beforeContractTypeCounts[ct] || 0) + 1
+    })
+    console.log(`[FILTER DEBUG] Before contract filter: ${filtered.length} jobs`)
+    console.log(`[FILTER DEBUG] Contract type distribution: ${JSON.stringify(beforeContractTypeCounts)}`)
+    console.log(`[FILTER DEBUG] Filtering for: ${JSON.stringify(normalizedFilters)}`)
+
+    const beforeCount = filtered.length
     filtered = filtered.filter(job => {
       const rawContractType = job.matching_details?.contract_type as string | undefined
 
@@ -603,7 +656,15 @@ function filterAndScoreJobs(
       })
       return matchesFilter
     })
-    console.log(`After contract filter (${contractTypes.join(', ')}): ${filtered.length} jobs`)
+
+    // DEBUG: Log how many were filtered out
+    const afterContractTypeCounts: Record<string, number> = {}
+    filtered.forEach(job => {
+      const ct = (job.matching_details?.contract_type as string) || 'undefined'
+      afterContractTypeCounts[ct] = (afterContractTypeCounts[ct] || 0) + 1
+    })
+    console.log(`[FILTER DEBUG] After contract filter: ${filtered.length} jobs (removed ${beforeCount - filtered.length})`)
+    console.log(`[FILTER DEBUG] Remaining contract types: ${JSON.stringify(afterContractTypeCounts)}`)
   }
 
   // Filter by remote options (On-site, Hybrid, Full remote)
@@ -799,6 +860,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const allJobs = [...adzunaJobs, ...indeedJobs, ...atsJobs]
     console.log(`[${searchId}] Total raw jobs: ${allJobs.length}`)
+
+    // DEBUG: Summary by source_engine
+    const sourceEngineCounts: Record<string, number> = {}
+    allJobs.forEach(job => {
+      sourceEngineCounts[job.source_engine] = (sourceEngineCounts[job.source_engine] || 0) + 1
+    })
+    console.log(`[DEBUG] Jobs by source_engine: ${JSON.stringify(sourceEngineCounts)}`)
 
     if (allJobs.length === 0) {
       await supabase
