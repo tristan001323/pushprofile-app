@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { runApifyActor, APIFY_ACTORS, DecisionMakerOutput } from '@/lib/apify'
+import { callClaude } from '@/lib/claude'
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -30,48 +31,50 @@ interface EnrichedContact {
   company_domain: string | null
 }
 
-// Helper to generate possible domains from company name
-function generatePossibleDomains(companyName: string, providedDomain?: string): string[] {
-  if (providedDomain) {
-    // Clean the domain
-    const clean = providedDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
-    return [clean]
+// Use Claude to find the company domain
+async function findDomainWithClaude(companyName: string): Promise<string | null> {
+  try {
+    const prompt = `Quel est le domaine web principal de l'entreprise "${companyName}" ?
+
+Reponds UNIQUEMENT avec le domaine (ex: google.com, microsoft.com, airbnb.fr).
+Si tu ne connais pas, reponds "unknown".
+Pas d'explication, juste le domaine.`
+
+    const response = await callClaude({
+      model: 'haiku',  // Haiku is faster and cheaper for simple tasks
+      prompt,
+      maxTokens: 50
+    })
+
+    const domain = response.text.trim().toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .split('/')[0]
+      .replace(/[^a-z0-9.-]/g, '')
+
+    if (domain && domain !== 'unknown' && domain.includes('.')) {
+      console.log(`[Claude] Found domain for "${companyName}": ${domain}`)
+      return domain
+    }
+
+    console.log(`[Claude] Could not find domain for "${companyName}"`)
+    return null
+  } catch (error) {
+    console.error('[Claude] Error finding domain:', error)
+    return null
   }
+}
 
-  const domains: string[] = []
-
-  // Clean the full name
-  const fullClean = companyName.toLowerCase()
-    .replace(/\s*(sas|sarl|sa|inc|ltd|gmbh|group|france|global|education|tech|digital|consulting|solutions|services)\s*/gi, ' ')
-    .trim()
-    .replace(/\s+/g, '') // No spaces version
-    .replace(/[^a-z0-9]/g, '')
-
-  // First word only
+// Fallback: generate possible domains from company name
+function generateFallbackDomains(companyName: string): string[] {
   const words = companyName.toLowerCase().split(/\s+/)
   const firstWord = words[0].replace(/[^a-z0-9]/g, '')
 
-  // Hyphenated version (first 2-3 words)
-  const hyphenated = words.slice(0, 3)
-    .map(w => w.replace(/[^a-z0-9]/g, ''))
-    .filter(w => w.length > 0 && !['sas', 'sarl', 'sa', 'inc', 'ltd', 'gmbh', 'the', 'le', 'la', 'les'].includes(w))
-    .join('-')
-
-  // Generate variations with different TLDs
-  const bases = [firstWord, hyphenated, fullClean].filter(b => b && b.length > 2)
-  const tlds = ['.com', '.fr', '.io', '.co']
-
-  for (const base of bases) {
-    for (const tld of tlds) {
-      const domain = base + tld
-      if (!domains.includes(domain)) {
-        domains.push(domain)
-      }
-    }
-  }
-
-  console.log(`[Domain] Generated ${domains.length} possible domains for "${companyName}":`, domains.slice(0, 6))
-  return domains.slice(0, 6) // Max 6 attempts
+  return [
+    `${firstWord}.com`,
+    `${firstWord}.fr`,
+    `${firstWord}.io`
+  ].filter(d => d.length > 4)
 }
 
 // Helper to split full name into first/last
@@ -96,77 +99,68 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'user_id is required' }, { status: 400 })
     }
 
-    // Generate possible domains to try
-    const possibleDomains = generatePossibleDomains(company_name, company_domain)
+    console.log(`Enriching contacts for ${company_name}`)
 
-    if (possibleDomains.length === 0) {
+    // 1. Determine domain: use provided, or ask Claude, or fallback to guessing
+    let domain: string | null = null
+
+    if (company_domain) {
+      domain = company_domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+      console.log(`[Domain] Using provided domain: ${domain}`)
+    } else {
+      // Ask Claude to find the domain
+      domain = await findDomainWithClaude(company_name)
+
+      // Fallback to simple guessing if Claude doesn't know
+      if (!domain) {
+        const fallbacks = generateFallbackDomains(company_name)
+        domain = fallbacks[0] || null
+        console.log(`[Domain] Using fallback domain: ${domain}`)
+      }
+    }
+
+    if (!domain) {
       return NextResponse.json({ error: 'Could not determine company domain' }, { status: 400 })
     }
 
-    console.log(`Enriching contacts for ${company_name}`)
+    // 2. Check cache first
+    const { data: cachedContacts } = await supabase
+      .from('contacts_cache')
+      .select('*')
+      .eq('company_domain', domain.toLowerCase())
+      .gte('enriched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
 
-    // 1. Check cache first (for any of the possible domains)
-    for (const domain of possibleDomains) {
-      const { data: cachedContacts } = await supabase
-        .from('contacts_cache')
-        .select('*')
-        .eq('company_domain', domain.toLowerCase())
-        .gte('enriched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-
-      if (cachedContacts && cachedContacts.length > 0) {
-        console.log(`Found ${cachedContacts.length} cached contacts for ${domain}`)
-        return NextResponse.json({
-          success: true,
-          contacts: cachedContacts,
-          from_cache: true,
-          credits_used: 0
-        })
-      }
-    }
-
-    // 2. Try each domain until we find contacts
-    let results: DecisionMakerOutput[] = []
-    let successDomain: string | null = null
-
-    for (const domain of possibleDomains) {
-      console.log(`[Try] Searching domain: ${domain}`)
-
-      const input = {
-        domain: domain,
-        seniority: ["c_suite", "director", "vp", "head", "manager"],
-        maxLeadsPerDomain: 3
-      }
-
-      const domainResults = await runApifyActor<DecisionMakerOutput>({
-        actorId: APIFY_ACTORS.DECISION_MAKER_FINDER,
-        input,
-        timeoutSecs: 30  // Shorter timeout per attempt
+    if (cachedContacts && cachedContacts.length > 0) {
+      console.log(`Found ${cachedContacts.length} cached contacts for ${domain}`)
+      return NextResponse.json({
+        success: true,
+        contacts: cachedContacts,
+        from_cache: true,
+        credits_used: 0
       })
-
-      // Check if we got real results (not "no emails found" message)
-      const hasRealResults = domainResults.some(r =>
-        r.email || r.linkedin || (r.name && !r.name.includes('no emails found'))
-      )
-
-      if (hasRealResults) {
-        console.log(`[Success] Found contacts for domain: ${domain}`)
-        results = domainResults
-        successDomain = domain
-        break
-      } else {
-        console.log(`[No results] Domain ${domain} returned no contacts`)
-      }
     }
 
-    console.log(`Decision Maker Finder returned ${results.length} contacts`)
+    // 3. Call Decision Maker Email Finder API
+    console.log(`[Search] Searching contacts for domain: ${domain}`)
+
+    const input = {
+      domain: domain,
+      seniority: ["c_suite", "director", "vp", "head", "manager"],
+      maxLeadsPerDomain: 5
+    }
+
+    const results = await runApifyActor<DecisionMakerOutput>({
+      actorId: APIFY_ACTORS.DECISION_MAKER_FINDER,
+      input,
+      timeoutSecs: 60
+    })
+
+    console.log(`Decision Maker Finder returned ${results.length} results`)
 
     // DEBUG: Log raw results
     if (results.length > 0) {
       console.log('Raw Decision Maker results:', JSON.stringify(results, null, 2))
     }
-
-    // Use the successful domain or fallback to first one
-    const domain = successDomain || possibleDomains[0]
 
     // 3. Normalize results to our format
     // Note: API returns fields like "01_Name", "04_Email", etc.
