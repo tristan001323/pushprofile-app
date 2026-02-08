@@ -187,27 +187,37 @@ export default function SignupPage() {
   const progressPercent = (step / totalSteps) * 100
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#F8F9FA' }}>
-      <Card className="w-full max-w-lg p-4 md:p-8 shadow-lg">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+      {/* Background decorations */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-indigo-200/30 to-purple-200/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-blue-200/30 to-cyan-200/30 rounded-full blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-lg relative">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-4 md:p-8 shadow-2xl shadow-indigo-500/10 border border-white/50">
         {/* Header */}
         <div className="text-center mb-6">
           <Link href="/">
-            <h1 className="text-2xl font-bold" style={{ color: '#1D3557' }}>
-              Push<span style={{ color: '#6366F1' }}>Profile</span>
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform cursor-pointer">
+              <span className="text-white font-bold text-2xl">P</span>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Push<span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Profile</span>
             </h1>
           </Link>
         </div>
 
         {/* Progress bar */}
         <div className="mb-8">
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full transition-all duration-300"
-              style={{ width: `${progressPercent}%`, backgroundColor: '#6366F1' }}
+              className="h-full transition-all duration-300 bg-gradient-to-r from-indigo-500 to-purple-600"
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <p className="text-xs text-center mt-2" style={{ color: '#457B9D' }}>
-            Étape {step} sur {totalSteps}
+          <p className="text-xs text-center mt-2 text-gray-500">
+            Etape {step} sur {totalSteps}
           </p>
         </div>
 
@@ -215,14 +225,14 @@ export default function SignupPage() {
         {step === 1 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Bienvenue ! Qui êtes-vous ?</h2>
-              <p className="text-sm mt-2" style={{ color: '#457B9D' }}>Cela nous aide à personnaliser votre expérience</p>
+              <h2 className="text-xl font-bold text-gray-900">Bienvenue ! Qui etes-vous ?</h2>
+              <p className="text-sm mt-2 text-gray-500">Cela nous aide a personnaliser votre experience</p>
             </div>
 
             {/* Bouton Google */}
             <button
               onClick={handleGoogleSignup}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -230,13 +240,13 @@ export default function SignupPage() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              <span style={{ color: '#1D3557' }} className="font-medium">S'inscrire avec Google</span>
+              <span className="text-gray-700 font-medium group-hover:text-gray-900 transition-colors">S'inscrire avec Google</span>
             </button>
 
             {/* Séparateur */}
             <div className="flex items-center my-2">
               <div className="flex-1 border-t border-gray-200"></div>
-              <span className="px-4 text-sm" style={{ color: '#9CA3AF' }}>ou</span>
+              <span className="px-4 text-sm text-gray-400">ou</span>
               <div className="flex-1 border-t border-gray-200"></div>
             </div>
 
@@ -256,7 +266,7 @@ export default function SignupPage() {
         {step === 2 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Quelle est la taille de votre équipe ?</h2>
+              <h2 className="text-xl font-bold text-gray-900">Quelle est la taille de votre équipe ?</h2>
             </div>
             <div className="space-y-3">
               {renderOption('teamSize', '1-10', '1 à 10 personnes', '👥')}
@@ -271,7 +281,7 @@ export default function SignupPage() {
         {step === 3 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Quel est votre rôle principal ?</h2>
+              <h2 className="text-xl font-bold text-gray-900">Quel est votre rôle principal ?</h2>
             </div>
             <div className="space-y-3">
               {renderOption('role', 'recruiter', 'Recruteur / RH', '🎯')}
@@ -286,7 +296,7 @@ export default function SignupPage() {
         {step === 4 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Combien de postes recrutez-vous par an ?</h2>
+              <h2 className="text-xl font-bold text-gray-900">Combien de postes recrutez-vous par an ?</h2>
             </div>
             <div className="space-y-3">
               {renderOption('recruitmentVolume', '1-5', '1 à 5 postes', '📝')}
@@ -301,7 +311,7 @@ export default function SignupPage() {
         {step === 5 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>
+              <h2 className="text-xl font-bold text-gray-900">
                 {isJobSeeker ? 'Que recherchez-vous ?' : 'Votre cas d\'usage prioritaire ?'}
               </h2>
             </div>
@@ -325,7 +335,7 @@ export default function SignupPage() {
         {step === 6 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Comment nous avez-vous connu ?</h2>
+              <h2 className="text-xl font-bold text-gray-900">Comment nous avez-vous connu ?</h2>
             </div>
             <div className="space-y-3">
               {renderOption('source', 'linkedin', 'LinkedIn', '💼')}
@@ -340,7 +350,7 @@ export default function SignupPage() {
         {step === 7 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Quelle est l'urgence de votre besoin ?</h2>
+              <h2 className="text-xl font-bold text-gray-900">Quelle est l'urgence de votre besoin ?</h2>
             </div>
             <div className="space-y-3">
               {renderOption('urgency', 'immediate', 'Immédiat', '⚡')}
@@ -354,7 +364,7 @@ export default function SignupPage() {
         {step === 8 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>
+              <h2 className="text-xl font-bold text-gray-900">
                 {isJobSeeker ? 'Quel type de contrat recherchez-vous ?' : 'Types de contrats que vous proposez ?'}
               </h2>
             </div>
@@ -370,7 +380,7 @@ export default function SignupPage() {
         {step === 9 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Votre objectif principal ?</h2>
+              <h2 className="text-xl font-bold text-gray-900">Votre objectif principal ?</h2>
             </div>
             <div className="space-y-3">
               {renderOption('mainGoal', 'save_time', 'Gagner du temps', '⏱️')}
@@ -386,14 +396,14 @@ export default function SignupPage() {
           <div className="space-y-4">
             <div className="text-center mb-6">
               <div className="text-5xl mb-4">🎯</div>
-              <h2 className="text-xl font-bold" style={{ color: '#1D3557' }}>Merci pour vos réponses !</h2>
+              <h2 className="text-xl font-bold text-gray-900">Merci pour vos réponses !</h2>
               <p className="text-sm mt-3 px-4 py-3 rounded-xl" style={{ backgroundColor: '#F1FAEE', color: '#1D3557' }}>
                 {isJobSeeker
                   ? "Vous êtes à deux doigts de devenir un chasseur de jobs d'élite. 🏹 Fini les heures perdues sur LinkedIn !"
                   : "Vous êtes à deux doigts de devenir un sniper du recrutement. 🎯 Vos concurrents vont pleurer."
                 }
               </p>
-              <p className="text-sm mt-4" style={{ color: '#457B9D' }}>Créez votre compte pour commencer</p>
+              <p className="text-sm mt-4 text-gray-500">Créez votre compte pour commencer</p>
             </div>
 
             <form onSubmit={handleSignup} className="space-y-4">
@@ -487,7 +497,7 @@ export default function SignupPage() {
                   minLength={8}
                   autoComplete="new-password"
                 />
-                <p className="text-xs mt-1" style={{ color: '#457B9D' }}>Minimum 8 caractères</p>
+                <p className="text-xs mt-1 text-gray-500">Minimum 8 caractères</p>
               </div>
 
               {error && (
@@ -499,10 +509,9 @@ export default function SignupPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full"
-                style={{ backgroundColor: '#6366F1', color: 'white' }}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300"
               >
-                {loading ? 'Création...' : 'Créer mon compte'}
+                {loading ? 'Creation...' : 'Creer mon compte'}
               </Button>
             </form>
           </div>
@@ -516,7 +525,7 @@ export default function SignupPage() {
                 type="button"
                 variant="outline"
                 onClick={prevStep}
-                className="flex-1"
+                className="flex-1 h-12 rounded-xl"
               >
                 Retour
               </Button>
@@ -525,8 +534,11 @@ export default function SignupPage() {
               type="button"
               onClick={nextStep}
               disabled={!canProceed()}
-              className="flex-1"
-              style={{ backgroundColor: canProceed() ? '#6366F1' : '#E5E7EB', color: canProceed() ? 'white' : '#9CA3AF' }}
+              className={`flex-1 h-12 rounded-xl transition-all duration-300 ${
+                canProceed()
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30'
+                  : 'bg-gray-100 text-gray-400'
+              }`}
             >
               Continuer
             </Button>
@@ -535,14 +547,15 @@ export default function SignupPage() {
 
         {/* Lien connexion */}
         <div className="text-center mt-6">
-          <p className="text-sm" style={{ color: '#457B9D' }}>
-            Déjà un compte ?{' '}
-            <Link href="/login" className="font-semibold hover:underline" style={{ color: '#6366F1' }}>
+          <p className="text-sm text-gray-500">
+            Deja un compte ?{' '}
+            <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
               Se connecter
             </Link>
           </p>
         </div>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

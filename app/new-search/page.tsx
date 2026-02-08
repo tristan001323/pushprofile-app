@@ -339,10 +339,19 @@ export default function NewSearchPage() {
         <div className="max-w-4xl mx-auto">
 
           {/* Page Header */}
-          <h1 className="text-3xl font-bold text-text mb-2">Nouvelle Recherche</h1>
-          <p className="mb-6" style={{ color: '#457B9D' }}>
-            Trouvez les meilleures opportunités sur LinkedIn, Indeed, Glassdoor et WTTJ
-          </p>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Nouvelle Recherche</h1>
+              <p className="text-gray-500">
+                Trouvez les meilleures opportunites sur LinkedIn, Indeed, Glassdoor et WTTJ
+              </p>
+            </div>
+          </div>
 
           {/* Segmented Control - Main tabs */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
@@ -375,7 +384,7 @@ export default function NewSearchPage() {
           </div>
 
           {/* Card unique avec accent top border */}
-          <Card className={`p-4 md:p-8 border-t-4 ${activeTab === 'standard' ? 'border-indigo-500' : ''}`} style={activeTab === 'linkedin' ? { borderTopColor: '#0A66C2' } : {}}>
+          <div className={`bg-white/80 backdrop-blur-xl rounded-2xl p-4 md:p-8 shadow-xl border border-white/50 border-t-4 ${activeTab === 'standard' ? 'border-t-indigo-500' : 'border-t-[#0A66C2]'}`}>
 
             {/* ==================== FORMULAIRE STANDARD ==================== */}
             {activeTab === 'standard' && (
@@ -397,10 +406,10 @@ export default function NewSearchPage() {
                 </div>
 
                 {/* Profil du candidat : CV ou LinkedIn */}
-                <div className="p-5 bg-secondary rounded-lg">
+                <div className="p-5 bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl border border-gray-200/50">
                 <div className="flex items-center gap-2 mb-4">
-                  <h3 className="font-semibold text-base">Profil du candidat</h3>
-                  <span className="text-xs text-muted">- optionnel</span>
+                  <h3 className="font-semibold text-base text-gray-900">Profil du candidat</h3>
+                  <span className="text-xs text-gray-400">- optionnel</span>
                 </div>
 
                 {/* Tabs CV / LinkedIn */}
@@ -510,8 +519,8 @@ export default function NewSearchPage() {
               </div>
 
               {/* Critères de recherche */}
-              <div className="p-5 bg-secondary rounded-lg space-y-4">
-                <h3 className="font-semibold text-base">Critères de recherche (optionnel)</h3>
+              <div className="p-5 bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl border border-gray-200/50 space-y-4">
+                <h3 className="font-semibold text-base text-gray-900">Criteres de recherche (optionnel)</h3>
 
                 {/* Grille 3 colonnes */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -623,31 +632,33 @@ export default function NewSearchPage() {
               </div>
 
               {/* Exclure cabinets */}
-              <div className="flex items-center space-x-3 p-4 bg-secondary rounded-lg">
+              <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl border border-gray-200/50">
                 <input
                   type="checkbox"
                   id="excludeAgencies"
                   checked={excludeAgencies}
                   onChange={(e) => setExcludeAgencies(e.target.checked)}
-                  className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-accent"
+                  className="w-5 h-5 text-indigo-600 rounded-lg focus:ring-2 focus:ring-indigo-500 border-gray-300"
                 />
                 <label htmlFor="excludeAgencies" className="text-sm">
-                  <span className="font-medium">Exclure les cabinets de recrutement</span>
-                  <span className="text-muted block text-xs mt-1">
+                  <span className="font-medium text-gray-900">Exclure les cabinets de recrutement</span>
+                  <span className="text-gray-400 block text-xs mt-1">
                     (Michael Page, Robert Half, Hays, etc.)
                   </span>
                 </label>
               </div>
 
               {/* Récurrence */}
-              <div className="p-5 bg-secondary rounded-lg">
+              <div className="p-5 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-xl border border-indigo-200/50">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A8DADC' }}>
-                    <span className="text-xl">🔄</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-base">Recherche récurrente</h3>
-                    <p className="text-sm text-muted">Relancer automatiquement cette recherche</p>
+                    <h3 className="font-semibold text-base text-gray-900">Recherche recurrente</h3>
+                    <p className="text-sm text-gray-500">Relancer automatiquement cette recherche</p>
                   </div>
                 </div>
 
@@ -699,14 +710,14 @@ export default function NewSearchPage() {
                   variant="outline"
                   onClick={() => router.push('/searches')}
                   disabled={loading}
+                  className="h-12 rounded-xl border-gray-200 hover:bg-gray-50"
                 >
                   Annuler
                 </Button>
                 <Button
                   type="submit"
                   disabled={loading || extracting}
-                  className="flex-1"
-                  style={{ backgroundColor: '#6366F1', color: 'white' }}
+                  className="flex-1 h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-300"
                 >
                   {loading ? 'Analyse en cours...' : 'Lancer l\'analyse'}
                 </Button>
@@ -860,18 +871,18 @@ export default function NewSearchPage() {
                 </div>
 
                 {/* Exclure cabinets */}
-                <div className="flex items-center space-x-3 p-4 bg-secondary rounded-lg">
+                <div className="flex items-center space-x-3 p-4 bg-gradient-to-br from-blue-50/50 to-blue-100/30 rounded-xl border border-blue-200/50">
                   <input
                     type="checkbox"
                     id="linkedinExcludeAgencies"
                     checked={linkedinExcludeAgencies}
                     onChange={(e) => setLinkedinExcludeAgencies(e.target.checked)}
-                    className="w-5 h-5 rounded focus:ring-2"
+                    className="w-5 h-5 rounded-lg focus:ring-2 focus:ring-blue-500 border-gray-300"
                     style={{ accentColor: '#0A66C2' }}
                   />
                   <label htmlFor="linkedinExcludeAgencies" className="text-sm">
-                    <span className="font-medium">Exclure les cabinets de recrutement</span>
-                    <span className="text-muted block text-xs mt-1">
+                    <span className="font-medium text-gray-900">Exclure les cabinets de recrutement</span>
+                    <span className="text-gray-400 block text-xs mt-1">
                       (Michael Page, Robert Half, Hays, etc.)
                     </span>
                   </label>
@@ -891,13 +902,14 @@ export default function NewSearchPage() {
                     variant="outline"
                     onClick={() => router.push('/searches')}
                     disabled={loading}
+                    className="h-12 rounded-xl border-gray-200 hover:bg-gray-50"
                   >
                     Annuler
                   </Button>
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="flex-1"
+                    className="flex-1 h-12 rounded-xl text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:opacity-90"
                     style={{ backgroundColor: '#0A66C2' }}
                   >
                     {loading ? 'Recherche en cours...' : 'Lancer la recherche'}
@@ -949,7 +961,7 @@ export default function NewSearchPage() {
               </form>
             )}
 
-          </Card>
+          </div>
         </div>
       </div>
     </AppLayout>
