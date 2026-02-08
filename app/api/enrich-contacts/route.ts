@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Call Decision Maker Email Finder API
     const input = {
-      domains: domain,  // String, not array
+      domain: domain,  // Singular, not plural!
       seniority: ["c_suite", "director", "vp", "head", "manager"],
       maxLeadsPerDomain: 3
     }
