@@ -668,9 +668,8 @@ export async function scrapeLinkedInProfile(profileUrl: string): Promise<LinkedI
     results = await runApifyActor<LinkedInProfileOutput>({
       actorId: APIFY_ACTORS.LINKEDIN_PROFILE,
       input: {
-        profileUrls: [cleanUrl],
-        scrapeProfiles: true,      // Profile details only
-        scrapeEmails: false,       // NO email search ($4/1000 instead of $10/1000)
+        queries: [cleanUrl],  // Updated: was 'profileUrls', now 'queries'
+        profileScraperMode: "Profile details no email ($4 per 1k)",
       },
       timeoutSecs: 60
     })
