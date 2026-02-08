@@ -145,8 +145,17 @@ export async function POST(request: NextRequest) {
 
     const input = {
       domain: domain,
-      seniority: ["c_suite", "director", "vp", "head", "manager"],
-      maxLeadsPerDomain: 5
+      seniority: [
+        // Executives
+        "c_suite", "ceo", "cto", "cfo", "coo", "cmo", "chro",
+        "director", "vp", "head", "manager",
+        // HR & Recruitment (English)
+        "hr", "human_resources", "talent", "talent_acquisition",
+        "recruiter", "recruiting", "people", "people_ops",
+        // HR & Recruitment (French)
+        "rh", "drh", "ressources_humaines", "recrutement", "recruteur"
+      ],
+      maxLeadsPerDomain: 10
     }
 
     const results = await runApifyActor<DecisionMakerOutput>({
