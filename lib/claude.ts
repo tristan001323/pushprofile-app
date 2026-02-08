@@ -89,6 +89,80 @@ export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse
   }
 }
 
+// Call Claude with a PDF document - Claude reads the PDF directly (perfect for CVs)
+interface ClaudeDocumentOptions {
+  model: ClaudeModel
+  system?: string
+  prompt: string
+  documentBase64: string
+  documentMediaType: string // 'application/pdf'
+  maxTokens?: number
+}
+
+export async function callClaudeWithDocument(options: ClaudeDocumentOptions): Promise<ClaudeResponse> {
+  const { model, system, prompt, documentBase64, documentMediaType, maxTokens = 2500 } = options
+  const modelId = MODEL_IDS[model]
+
+  // Build message with document + text prompt
+  const content: Array<Record<string, unknown>> = [
+    {
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: documentMediaType,
+        data: documentBase64,
+      },
+    },
+    {
+      type: 'text',
+      text: prompt,
+    },
+  ]
+
+  const messages = [{ role: 'user', content }]
+
+  const body: Record<string, unknown> = {
+    model: modelId,
+    max_tokens: maxTokens,
+    messages,
+  }
+
+  if (system) {
+    body.system = system
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+      'x-api-key': getAnthropicKey(),
+    },
+    body: JSON.stringify(body),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok || !data.content?.[0]) {
+    console.error('Claude document API error:', data)
+    throw new Error(`Claude API error (${model}): ${data.error?.message || 'Unknown error'}`)
+  }
+
+  const inputTokens = data.usage?.input_tokens || 0
+  const outputTokens = data.usage?.output_tokens || 0
+  const estimatedCost = calculateCost(model, inputTokens, outputTokens)
+
+  console.log(`[Claude ${model.toUpperCase()} + PDF] Model: ${modelId} | Input: ${inputTokens} tokens | Output: ${outputTokens} tokens | Cost: $${estimatedCost.toFixed(4)}`)
+
+  return {
+    text: data.content[0].text,
+    model,
+    inputTokens,
+    outputTokens,
+    estimatedCost,
+  }
+}
+
 // Helper to clean JSON from markdown code blocks
 export function cleanJsonResponse(text: string): string {
   return text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()

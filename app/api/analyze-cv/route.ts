@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { callClaudeWithFallback, cleanJsonResponse } from '@/lib/claude'
+import { callClaudeWithFallback, callClaudeWithDocument, cleanJsonResponse } from '@/lib/claude'
 import { scrapeLinkedInProfile, isValidLinkedInProfileUrl } from '@/lib/apify'
 import { linkedInProfileToCvData, type LinkedInCvData } from '@/lib/linkedin-to-cv'
 
@@ -30,32 +30,55 @@ interface ExtendedParsedData extends ParsedCV {
   current_company?: string | null
 }
 
-// Parse CV with Claude Haiku (fallback to Sonnet if fails)
-async function parseCV(cvText: string): Promise<ParsedCV> {
-  // Tronquer si trop long (économie de tokens)
+// Prompt commun pour l'analyse de CV
+const CV_PARSING_PROMPT = `Tu es un expert en recrutement. Analyse ce CV et extrais les informations de manière EXHAUSTIVE.
+
+RÈGLES IMPORTANTES:
+1. target_roles: Extrais LE POSTE ACTUEL ou le plus récent + les variations possibles. Ex: si "Consultant Achat", ajoute aussi "Procurement Consultant", "Acheteur", "Buyer", "Category Manager", etc.
+2. skills: Sois EXHAUSTIF. Extrais TOUTES les compétences : outils (SAP, Coupa, Excel...), méthodes (RFI, RFP, négociation...), domaines (achats indirects, CAPEX, facility management...), soft skills (management, leadership...)
+3. experience_years: Calcule le TOTAL des années d'expérience professionnelle depuis le premier poste. Aujourd'hui = 2025.
+4. location: Cherche la ville dans les coordonnées ou l'adresse. Si "Île-de-France" ou "IDF" ou région parisienne, mets "Paris".
+5. seniority: Base-toi sur les années d'expérience ET les responsabilités:
+   - Junior: 0-2 ans
+   - Confirmé: 3-5 ans
+   - Senior: 6-10 ans ou management d'équipe
+   - Expert: 10+ ans ou responsabilités stratégiques/COMEX
+6. education: Le diplôme le plus élevé avec l'école
+7. languages: Toutes les langues mentionnées
+
+Réponds UNIQUEMENT avec le JSON, sans backticks, sans explication:
+{"target_roles":["poste principal","variation 1","variation 2","variation 3"],"skills":["skill1","skill2","skill3","..."],"experience_years":0,"location":"Ville","seniority":"Junior|Confirmé|Senior|Expert","education":"Diplôme - École","languages":["Français","Anglais"]}`
+
+// Parse CV from PDF using Claude's native document reading (BEST QUALITY)
+async function parseCVFromPdf(pdfBase64: string, mediaType: string): Promise<ParsedCV> {
+  console.log('Parsing CV with Claude document reading (PDF direct)...')
+
+  const response = await callClaudeWithDocument({
+    model: 'haiku',
+    prompt: CV_PARSING_PROMPT,
+    documentBase64: pdfBase64,
+    documentMediaType: mediaType,
+    maxTokens: 2500,
+  })
+
+  return parseClaudeResponse(response.text)
+}
+
+// Parse CV from text (fallback for DOCX/TXT)
+async function parseCVFromText(cvText: string): Promise<ParsedCV> {
+  console.log('Parsing CV from extracted text...')
+
   const maxLength = 8000
   const truncatedCV = cvText.length > maxLength
     ? cvText.substring(0, maxLength) + '\n[... CV tronqué ...]'
     : cvText
 
-  const prompt = `Tu es un expert en recrutement. Analyse ce CV et extrais les informations de manière EXHAUSTIVE.
-
-RÈGLES IMPORTANTES:
-1. target_roles: Extrais LE POSTE ACTUEL ou le plus récent + les variations possibles. Ex: si "Chef de Projet Digital", ajoute aussi "Digital Project Manager", "Product Owner", etc.
-2. skills: Sois EXHAUSTIF. Extrais TOUTES les technologies, outils, méthodes, langages, frameworks mentionnés. Inclus les soft skills importants (management, agile, etc.)
-3. experience_years: Calcule le TOTAL des années d'expérience professionnelle (pas les études). Si dates présentes, calcule précisément.
-4. location: Cherche la ville dans les coordonnées, l'adresse, ou les expériences récentes. Si "Île-de-France" ou "IDF", mets "Paris".
-5. seniority: Base-toi sur les années d'expérience ET les responsabilités (management = senior minimum)
-6. education: Le diplôme le plus élevé avec l'école si prestigieuse (HEC, Polytechnique, etc.)
-7. languages: Toutes les langues mentionnées avec leur niveau si indiqué
+  const prompt = `${CV_PARSING_PROMPT}
 
 CV À ANALYSER:
 ---
 ${truncatedCV}
----
-
-Réponds UNIQUEMENT avec le JSON, sans backticks, sans explication:
-{"target_roles":["poste principal","variation 1","variation 2"],"skills":["skill1","skill2","..."],"experience_years":0,"location":"Ville","seniority":"Junior|Confirmé|Senior|Expert","education":"Diplôme - École","languages":["Français","Anglais"]}`
+---`
 
   const response = await callClaudeWithFallback(
     { model: 'haiku', prompt, maxTokens: 2500 },
@@ -66,8 +89,13 @@ Réponds UNIQUEMENT avec le JSON, sans backticks, sans explication:
     console.log('CV parsing fell back to Sonnet')
   }
 
+  return parseClaudeResponse(response.text)
+}
+
+// Parse Claude's JSON response into ParsedCV
+function parseClaudeResponse(responseText: string): ParsedCV {
   try {
-    const parsed = JSON.parse(cleanJsonResponse(response.text))
+    const parsed = JSON.parse(cleanJsonResponse(responseText))
 
     // Validation et nettoyage
     const targetRoles: string[] = Array.isArray(parsed.target_roles)
@@ -80,6 +108,8 @@ Réponds UNIQUEMENT avec le JSON, sans backticks, sans explication:
       ? parsed.languages.filter((l: unknown): l is string => typeof l === 'string')
       : ['Français']
 
+    console.log(`CV parsed: ${targetRoles.length} roles, ${skillsArray.length} skills, ${parsed.experience_years} years exp, location: ${parsed.location}`)
+
     return {
       target_roles: targetRoles,
       skills: Array.from(new Set(skillsArray)),
@@ -90,7 +120,7 @@ Réponds UNIQUEMENT avec le JSON, sans backticks, sans explication:
       languages
     }
   } catch (parseError) {
-    console.error('Failed to parse CV response:', response.text)
+    console.error('Failed to parse CV response:', responseText)
     throw new Error('Échec du parsing du CV. Veuillez réessayer.')
   }
 }
@@ -149,8 +179,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       cv_text,
-      linkedin_url,        // NEW: LinkedIn profile URL
-      input_type,          // NEW: 'cv' | 'linkedin' | 'manual'
+      cv_base64,           // NEW: PDF en base64 pour lecture directe par Claude
+      cv_media_type,       // NEW: Type MIME (application/pdf)
+      linkedin_url,
+      input_type,
       user_id,
       name,
       search_type,
@@ -165,7 +197,9 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validation
-    const hasCV = cv_text && cv_text.trim().length > 0
+    const hasCVPdf = cv_base64 && cv_base64.length > 0
+    const hasCVText = cv_text && cv_text.trim().length > 0
+    const hasCV = hasCVPdf || hasCVText
     const hasLinkedIn = linkedin_url && linkedin_url.trim().length > 0
     const hasStandardCriteria = job_title || location || brief
 
@@ -204,9 +238,16 @@ export async function POST(request: NextRequest) {
 
     } else if (hasCV && (search_type === 'cv' || search_type === 'both' || actualInputType === 'cv')) {
       // MODE CV: Parse with Claude
-      console.log('Parsing CV with Claude...')
-      parsedData = await parseCV(cv_text)
+      // Priorité au PDF (meilleure qualité) sinon texte extrait
+      if (hasCVPdf) {
+        console.log('Parsing CV from PDF (direct document reading)...')
+        parsedData = await parseCVFromPdf(cv_base64, cv_media_type || 'application/pdf')
+      } else {
+        console.log('Parsing CV from extracted text...')
+        parsedData = await parseCVFromText(cv_text)
+      }
 
+      // Apply overrides if provided
       if ((search_type === 'both' || actualInputType === 'both') && hasStandardCriteria) {
         if (job_title) parsedData.target_roles = [job_title, ...parsedData.target_roles]
         if (location) parsedData.location = location

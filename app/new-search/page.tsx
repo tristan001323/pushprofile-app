@@ -53,6 +53,8 @@ export default function NewSearchPage() {
 
   // Champs CV
   const [cvText, setCvText] = useState('')
+  const [cvBase64, setCvBase64] = useState<string | null>(null) // PDF en base64 pour Claude
+  const [cvMediaType, setCvMediaType] = useState<string | null>(null)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
 
@@ -262,6 +264,21 @@ export default function NewSearchPage() {
     return await file.text()
   }
 
+  // Convertir fichier en base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => {
+        const result = reader.result as string
+        // Enlever le préfixe "data:application/pdf;base64,"
+        const base64 = result.split(',')[1]
+        resolve(base64)
+      }
+      reader.onerror = reject
+    })
+  }
+
   // Handler upload fichier
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -270,27 +287,36 @@ export default function NewSearchPage() {
     setUploadedFile(file)
     setExtracting(true)
     setError('')
+    setCvBase64(null)
+    setCvMediaType(null)
 
     try {
-      let text = ''
-
+      // Pour les PDFs : envoyer directement à Claude (meilleure qualité)
       if (file.type === 'application/pdf') {
-        text = await extractPdfText(file)
-      } else if (
+        const base64 = await fileToBase64(file)
+        setCvBase64(base64)
+        setCvMediaType('application/pdf')
+        setCvText('') // Pas besoin du texte extrait, Claude lira le PDF
+      }
+      // Pour DOCX : extraire le texte
+      else if (
         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
         file.name.endsWith('.docx')
       ) {
-        text = await extractDocxText(file)
-      } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
-        text = await extractTxtText(file)
+        const text = await extractDocxText(file)
+        setCvText(text)
+      }
+      // Pour TXT : lire directement
+      else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        const text = await extractTxtText(file)
+        setCvText(text)
       } else {
         throw new Error('Format non supporté. Utilisez PDF, DOCX ou TXT.')
       }
-
-      setCvText(text)
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de l\'extraction du texte')
+      setError(err.message || 'Erreur lors du traitement du fichier')
       setUploadedFile(null)
+      setCvBase64(null)
     } finally {
       setExtracting(false)
     }
@@ -300,6 +326,8 @@ export default function NewSearchPage() {
   const removeFile = () => {
     setUploadedFile(null)
     setCvText('')
+    setCvBase64(null)
+    setCvMediaType(null)
   }
 
   // Validation LinkedIn URL
@@ -316,7 +344,7 @@ export default function NewSearchPage() {
     }
 
     // Check if we have at least one valid input source
-    const hasCV = cvText && cvText.trim().length > 0
+    const hasCV = (cvText && cvText.trim().length > 0) || cvBase64
     const hasLinkedIn = linkedinUrl && linkedinUrl.trim().length > 0
     const hasManualCriteria = jobTitle || location || brief
 
@@ -353,7 +381,9 @@ export default function NewSearchPage() {
 
       // Determine input type
       const hasLinkedIn = linkedinUrl && linkedinUrl.trim().length > 0
-      const hasCV = cvText && cvText.trim().length > 0
+      const hasCVText = cvText && cvText.trim().length > 0
+      const hasCVPdf = cvBase64 !== null
+      const hasCV = hasCVText || hasCVPdf
       const inputType = hasLinkedIn ? 'linkedin' : hasCV ? 'cv' : 'manual'
 
       const response = await fetch('/api/analyze-cv', {
@@ -375,6 +405,8 @@ export default function NewSearchPage() {
           brief: brief || null,
 
           cv_text: cvText || null,
+          cv_base64: cvBase64 || null,        // PDF en base64 pour lecture directe
+          cv_media_type: cvMediaType || null, // Type MIME du fichier
           linkedin_url: linkedinUrl || null,
 
           recurrence: recurrence !== 'none' ? recurrence : null,
