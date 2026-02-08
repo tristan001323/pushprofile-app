@@ -349,6 +349,13 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contr
 
         // Filter by employment type (CDI, CDD, Stage, Freelance)
         // Include jobs with undefined employment_type (be lenient to get more results)
+        const isFreelanceSearch = contractTypes.some(ct => ct.toLowerCase() === 'freelance')
+
+        // For Freelance searches: EXCLUDE internships explicitly
+        if (isFreelanceSearch && job.employment_type === 'internship') {
+          return false
+        }
+
         if (atsEmploymentTypes.length > 0 && job.employment_type) {
           if (!atsEmploymentTypes.includes(job.employment_type)) {
             return false
@@ -589,7 +596,11 @@ function getDisplayContractType(rawType: string | undefined, requestedTypes: str
   // If user searched for Freelance, show "Freelance" for:
   // - contract/cdd type jobs
   // - undefined type jobs (we included them, assume they could be freelance)
+  // BUT NOT for stage/internship - those should stay as "Stage"
   if (isFreelanceSearch) {
+    // Don't convert Stage to Freelance
+    if (normalized === 'stage') return 'Stage'
+
     if (normalized === 'cdd' || normalized === 'freelance' || rawType === 'contract' || !rawType || normalized === null) {
       return 'Freelance'
     }
@@ -640,13 +651,19 @@ function filterAndScoreJobs(
     console.log(`[FILTER DEBUG] Filtering for: ${JSON.stringify(normalizedFilters)}`)
 
     const beforeCount = filtered.length
+    const isFreelanceSearch = normalizedFilters.includes('freelance')
+
     filtered = filtered.filter(job => {
       const rawContractType = job.matching_details?.contract_type as string | undefined
+      const jobContractType = normalizeContractType(rawContractType)
+
+      // For Freelance searches: EXCLUDE stages explicitly
+      if (isFreelanceSearch && jobContractType === 'stage') {
+        return false
+      }
 
       // If job has no contract type info, include it (be lenient)
       if (!rawContractType) return true
-
-      const jobContractType = normalizeContractType(rawContractType)
 
       // If normalization returned null (unknown type), include it
       if (jobContractType === null) return true
