@@ -133,7 +133,7 @@ function normalizeLocation(location: string | undefined): string {
 }
 
 // Fetch Adzuna jobs - search with ALL target roles for better coverage
-async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Promise<NormalizedJob[]> {
+async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contractTypes: string[] = []): Promise<NormalizedJob[]> {
   const { appId, appKey } = getAdzunaCredentials()
   if (!appId || !appKey) return []
 
@@ -153,12 +153,22 @@ async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30): P
   const fetchDays = isOlderThan3Months ? 180 : isOlderThan1Month ? 120 : maxDaysOld
   const minDaysOld = isOlderThan3Months ? 90 : isOlderThan1Month ? 30 : 0
 
+  // Build contract type params for Adzuna
+  // Adzuna uses: permanent=1, contract=1, full_time=1, part_time=1
+  let contractParams = ''
+  if (contractTypes.length > 0) {
+    const normalizedTypes = contractTypes.map(ct => ct.toLowerCase())
+    if (normalizedTypes.includes('cdi')) contractParams += '&permanent=1'
+    if (normalizedTypes.includes('cdd') || normalizedTypes.includes('freelance')) contractParams += '&contract=1'
+    // Note: Adzuna doesn't have specific "stage/internship" filter
+  }
+
   const allJobs: NormalizedJob[] = []
   const seenIds = new Set<string>()
 
   // Make parallel requests for each role
   const requests = rolesToSearch.map(async (jobTitle) => {
-    const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=30&where=${encodeURIComponent(location)}&distance=50&max_days_old=${fetchDays}&what=${encodeURIComponent(jobTitle)}`
+    const params = `?app_id=${appId}&app_key=${appKey}&results_per_page=30&where=${encodeURIComponent(location)}&distance=50&max_days_old=${fetchDays}&what=${encodeURIComponent(jobTitle)}${contractParams}`
 
     try {
       const response = await fetch(baseUrl + params)
@@ -216,7 +226,7 @@ async function fetchAdzunaJobs(parsedData: ParsedCV, maxDaysOld: number = 30): P
 }
 
 // Fetch ATS Jobs (Greenhouse, Lever, Workday, Ashby, etc. - 13 platforms)
-async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Promise<NormalizedJob[]> {
+async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contractTypes: string[] = [], remoteOptions: string[] = []): Promise<NormalizedJob[]> {
   // All 13 ATS platforms supported by this actor
   const ALL_ATS_SOURCES = [
     'greenhouse',
@@ -269,9 +279,33 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Prom
     const maxDateThreshold = new Date(now)
     maxDateThreshold.setDate(now.getDate() - (isOlderFilter ? 180 : maxDaysOld))
 
+    // Map contract types to ATS employment_type values
+    const atsEmploymentTypes: string[] = []
+    if (contractTypes.length > 0) {
+      contractTypes.forEach(ct => {
+        const t = ct.toLowerCase()
+        if (t === 'cdi') atsEmploymentTypes.push('full_time')
+        if (t === 'cdd') atsEmploymentTypes.push('contract', 'temporary')
+        if (t === 'stage') atsEmploymentTypes.push('internship')
+        if (t === 'freelance') atsEmploymentTypes.push('contract')
+      })
+    }
+
+    // Map remote options to ATS workplace_type values
+    const atsWorkplaceTypes: string[] = []
+    if (remoteOptions.length > 0) {
+      remoteOptions.forEach(ro => {
+        const r = ro.toLowerCase()
+        if (r === 'on-site' || r === 'on_site' || r === 'onsite') atsWorkplaceTypes.push('onsite')
+        if (r === 'hybrid') atsWorkplaceTypes.push('hybrid')
+        if (r === 'full remote' || r === 'remote' || r === 'full_remote') atsWorkplaceTypes.push('remote')
+      })
+    }
+
     return jobs
       .filter(job => {
         if (!job.title) return false
+
         // Filter by date if date_posted is available
         if (job.date_posted) {
           const jobDate = new Date(job.date_posted)
@@ -283,6 +317,18 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Prom
             if (jobDate < maxDateThreshold) return false
           }
         }
+
+        // Filter by employment type (CDI, CDD, Stage, Freelance)
+        if (atsEmploymentTypes.length > 0 && job.employment_type) {
+          if (!atsEmploymentTypes.includes(job.employment_type)) return false
+        }
+
+        // Filter by workplace type (Remote, Hybrid, On-site)
+        if (atsWorkplaceTypes.length > 0) {
+          const jobWorkplace = job.workplace_type || (job.is_remote ? 'remote' : 'onsite')
+          if (!atsWorkplaceTypes.includes(jobWorkplace)) return false
+        }
+
         return true
       })
       .map(job => {
@@ -335,7 +381,7 @@ async function fetchATSJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Prom
 }
 
 // Fetch Indeed jobs - search with ALL target roles
-async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30): Promise<NormalizedJob[]> {
+async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30, contractTypes: string[] = []): Promise<NormalizedJob[]> {
   // Use ALL target roles for comprehensive search
   const keywords = parsedData.target_roles.slice(0, 5)
   if (keywords.length === 0) keywords.push('developer')
@@ -347,12 +393,23 @@ async function fetchIndeedJobs(parsedData: ParsedCV, maxDaysOld: number = 30): P
   const fetchDays = isOlderThan3Months ? 180 : isOlderThan1Month ? 120 : maxDaysOld
   const minDaysOld = isOlderThan3Months ? 90 : isOlderThan1Month ? 30 : 0
 
+  // Build job type filter for Indeed
+  // Indeed uses: fulltime, parttime, contract, internship, temporary
+  let jobType: string | undefined = undefined
+  if (contractTypes.length > 0) {
+    const ct = contractTypes[0].toLowerCase() // Indeed only supports one job type
+    if (ct === 'cdi') jobType = 'fulltime'
+    if (ct === 'cdd' || ct === 'freelance') jobType = 'contract'
+    if (ct === 'stage') jobType = 'internship'
+  }
+
   const input: Record<string, unknown> = {
     keywords,  // Now searches ALL roles!
     location: normalizeLocation(parsedData.location),
     country: 'France',
     datePosted: String(fetchDays), // Fetch more for "older than" filters
-    maxItems: 50  // Increased from 20
+    maxItems: 50,  // Increased from 20
+    ...(jobType && { jobType })  // Add job type filter if specified
   }
 
   try {
@@ -628,15 +685,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Launch all scrapers in parallel (Adzuna + Indeed + ATS Jobs)
     const [adzunaJobs, indeedJobs, atsJobs] = await Promise.all([
-      fetchAdzunaJobs(parsedData, maxDaysOld).then(jobs => {
+      fetchAdzunaJobs(parsedData, maxDaysOld, contractTypes).then(jobs => {
         console.log(`[${searchId}] Adzuna: ${jobs.length} jobs`)
         return jobs
       }),
-      fetchIndeedJobs(parsedData, maxDaysOld).then(jobs => {
+      fetchIndeedJobs(parsedData, maxDaysOld, contractTypes).then(jobs => {
         console.log(`[${searchId}] Indeed: ${jobs.length} jobs`)
         return jobs
       }),
-      fetchATSJobs(parsedData, maxDaysOld).then(jobs => {
+      fetchATSJobs(parsedData, maxDaysOld, contractTypes, remoteOptions).then(jobs => {
         console.log(`[${searchId}] ATS (13 platforms): ${jobs.length} jobs`)
         return jobs
       })
