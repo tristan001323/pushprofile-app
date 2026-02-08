@@ -167,8 +167,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Processing state
-  const [searchStatus, setSearchStatus] = useState<'processing' | 'completed' | 'error'>('processing')
+  // Processing state - start with 'loading' to avoid flashing processing screen
+  const [searchStatus, setSearchStatus] = useState<'loading' | 'processing' | 'completed' | 'error'>('loading')
   const [processingStep, setProcessingStep] = useState<string | null>(null)
   const [stepLabel, setStepLabel] = useState<string>('')
   const [progress, setProgress] = useState(0)
