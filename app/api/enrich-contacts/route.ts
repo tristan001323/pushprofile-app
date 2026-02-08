@@ -41,7 +41,7 @@ Si tu ne connais pas, reponds "unknown".
 Pas d'explication, juste le domaine.`
 
     const response = await callClaude({
-      model: 'haiku',  // Haiku is faster and cheaper for simple tasks
+      model: 'sonnet',  // Sonnet is more reliable for finding correct domains
       prompt,
       maxTokens: 50
     })
