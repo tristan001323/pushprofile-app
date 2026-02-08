@@ -1184,8 +1184,8 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       TOP {selectedMatch.rank}
                     </span>
                   )}
-                  <div className={`px-3 py-1 rounded-full ${getScoreBadgeStyle(selectedMatch.score_display || selectedMatch.score).bg} ${getScoreBadgeStyle(selectedMatch.score_display || selectedMatch.score).text} text-sm font-semibold`}>
-                    {selectedMatch.score_display || selectedMatch.score}% · {getScoreBadgeStyle(selectedMatch.score_display || selectedMatch.score).label}
+                  <div className={`px-3 py-1 rounded-full ${getScoreBadgeStyle(selectedMatch.score).bg} ${getScoreBadgeStyle(selectedMatch.score).text} text-sm font-semibold`}>
+                    {selectedMatch.score}% · {getScoreBadgeStyle(selectedMatch.score).label}
                   </div>
                 </div>
                 <button
@@ -1263,6 +1263,101 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                       __html: selectedMatch.matching_details?.full_description || 'Pas de description disponible'
                     }}
                   />
+                  {/* Small link to view offer */}
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <a
+                      href={`/api/redirect/${selectedMatch.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Voir l'offre sur le site original
+                    </a>
+                  </div>
+                </div>
+
+                {/* Contacts Section in Modal */}
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Contacts
+                  </h3>
+
+                  {enrichedContacts.length === 0 ? (
+                    <Button
+                      onClick={() => enrichContacts(selectedMatch.company_name, selectedMatch.id)}
+                      disabled={contactsLoading}
+                      variant="outline"
+                      className="w-full rounded-xl"
+                    >
+                      {contactsLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mr-2" />
+                          Recherche en cours...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          Rechercher les contacts de {selectedMatch.company_name}
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <div className="space-y-3">
+                      {enrichedContacts.map((contact, idx) => (
+                        <div key={idx} className="p-3 bg-gray-50 rounded-xl">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {contact.full_name || `${contact.first_name} ${contact.last_name}`}
+                              </p>
+                              <p className="text-sm text-gray-500">{contact.job_title}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {contact.email && (
+                                <a
+                                  href={`mailto:${contact.email}`}
+                                  className="p-2 rounded-lg bg-white hover:bg-indigo-50 text-indigo-600 transition-colors"
+                                  title={contact.email}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                </a>
+                              )}
+                              {contact.linkedin_url && (
+                                <a
+                                  href={contact.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2 rounded-lg bg-white hover:bg-blue-50 text-blue-600 transition-colors"
+                                  title="LinkedIn"
+                                >
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          {contact.email && (
+                            <p className="text-xs text-gray-400 mt-2">{contact.email}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {contactsError && (
+                    <p className="text-sm text-red-500 mt-2">{contactsError}</p>
+                  )}
                 </div>
 
                 {/* Source */}
@@ -1281,23 +1376,14 @@ export default function SearchDetailPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
 
-              {/* Modal Footer */}
-              <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-3">
+              {/* Modal Footer - Just close button */}
+              <div className="p-4 border-t border-gray-100 bg-gray-50">
                 <Button
                   onClick={() => setIsModalOpen(false)}
                   variant="outline"
-                  className="flex-1 rounded-xl"
+                  className="w-full rounded-xl"
                 >
                   Fermer
-                </Button>
-                <Button
-                  onClick={() => window.open(`/api/redirect/${selectedMatch.id}`, '_blank')}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
-                >
-                  Voir l'offre sur le site
-                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
                 </Button>
               </div>
             </div>
